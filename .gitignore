@@ -135,3 +135,7 @@ dmypy.json
 
 # macOS
 .DS_Store
+
+# mindnode
+pychess.mindnode/
+
