@@ -1,3 +1,3 @@
 # pychess
 
-Game of Chess in python
+The game of Chess in python
