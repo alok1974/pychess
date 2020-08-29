@@ -4,7 +4,7 @@ import collections
 
 from pychess.mover import Move
 from pychess.squarer import Square
-from pychess import piecer
+from pychess.piecer import generate_pieces
 from pychess.constant import PieceType, Color, Direction
 
 
@@ -113,8 +113,8 @@ def moves_for_testing(piece):
     return moves.get((piece.type, piece.color), [])
 
 
-def generate_piece(piece_type, color, order):
-    all_pieces = piecer.generate_pieces()
+def generate_piece(piece_type, color, order=0):
+    all_pieces = generate_pieces()
     required_pieces = [
         p
         for p in all_pieces
@@ -127,59 +127,8 @@ def generate_piece(piece_type, color, order):
 
 
 class TestMover(unittest.TestCase):
-    def test_angle(self):
-        white_bishop = generate_piece(
-            piece_type=PieceType.bishop,
-            color=Color.white,
-            order=0,
-        )
-
-        src = Square((0, 0))
-        dst = Square('h8')
-        m = Move(
-            piece=white_bishop,
-            src=src,
-            dst=dst,
-        )
-
-        self.assertEqual(m.angle, 45.0)
-
-    def test_direction(self):
-        white_knight = generate_piece(
-            piece_type=PieceType.knight,
-            color=Color.white,
-            order=1,
-        )
-
-        src = Square((3, 5))
-        dst = Square((4, 7))
-        m = Move(
-            piece=white_knight,
-            src=src,
-            dst=dst,
-        )
-
-        self.assertEqual(m.direction, Direction.nne)
-
-    def test_distance(self):
-        black_queen = generate_piece(
-            piece_type=PieceType.queen,
-            color=Color.black,
-            order=0,
-        )
-
-        src = Square((4, 1))
-        dst = Square((1, 5))
-        m = Move(
-            piece=black_queen,
-            src=src,
-            dst=dst,
-        )
-
-        self.assertEqual(m.distance, 5.0)
-
     def test_is_legal(self):
-        for piece in piecer.generate_pieces():
+        for piece in generate_pieces():
             for move_data in moves_for_testing(piece):
                 src_address, dst_address = move_data.move
                 src = Square(src_address)
@@ -205,6 +154,117 @@ class TestMover(unittest.TestCase):
                     )
                     print(error_msg)
                     raise
+
+    def test_piece(self):
+        for piece in generate_pieces():
+            for move_data in moves_for_testing(piece):
+                src_address, dst_address = move_data.move
+                src = Square(src_address)
+                dst = Square(dst_address)
+                m = Move(
+                    piece=piece,
+                    src=src,
+                    dst=dst,
+                )
+                self.assertEqual(m.piece, piece)
+
+    def test_src(self):
+        for piece in generate_pieces():
+            for move_data in moves_for_testing(piece):
+                src_address, dst_address = move_data.move
+                src = Square(src_address)
+                dst = Square(dst_address)
+                m = Move(
+                    piece=piece,
+                    src=src,
+                    dst=dst,
+                )
+                self.assertEqual(m.src, src)
+
+    def test_dst(self):
+        for piece in generate_pieces():
+            for move_data in moves_for_testing(piece):
+                src_address, dst_address = move_data.move
+                src = Square(src_address)
+                dst = Square(dst_address)
+                m = Move(
+                    piece=piece,
+                    src=src,
+                    dst=dst,
+                )
+                self.assertEqual(m.dst, dst)
+
+    def test_distance(self):
+        black_queen = generate_piece(
+            piece_type=PieceType.queen,
+            color=Color.black,
+        )
+
+        src = Square((4, 1))
+        dst = Square((1, 5))
+        m = Move(
+            piece=black_queen,
+            src=src,
+            dst=dst,
+        )
+
+        self.assertEqual(m.distance, 5.0)
+
+    def test_angle(self):
+        white_bishop = generate_piece(
+            piece_type=PieceType.bishop,
+            color=Color.white,
+        )
+
+        src = Square((0, 0))
+        dst = Square('h8')
+        m = Move(
+            piece=white_bishop,
+            src=src,
+            dst=dst,
+        )
+
+        self.assertEqual(m.angle, 45.0)
+
+    def test_direction(self):
+        white_knight = generate_piece(
+            piece_type=PieceType.knight,
+            color=Color.white,
+        )
+
+        src = Square((3, 5))
+        dst = Square((4, 7))
+        m = Move(
+            piece=white_knight,
+            src=src,
+            dst=dst,
+        )
+
+        self.assertEqual(m.direction, Direction.nne)
+
+    def test_repr(self):
+        for piece in generate_pieces():
+            for move_data in moves_for_testing(piece):
+                src_address, dst_address = move_data.move
+                src = Square(src_address)
+                dst = Square(dst_address)
+                m = Move(
+                    piece=piece,
+                    src=src,
+                    dst=dst,
+                )
+                expected_result = (
+                    '<'
+                    f'{m.__class__.__name__}'
+                    ': '
+                    f'{piece.code}'
+                    f'({piece.color_code}) '
+                    f'{src.address}'
+                    f' - '
+                    f'{dst.address}'
+                    '>'
+                )
+                self.assertEqual(repr(m), expected_result)
 
 
 if __name__ == '__main__':

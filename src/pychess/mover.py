@@ -161,3 +161,16 @@ class Move:
             self.src == start_src and
             self.dst in possible_dst
         )
+
+    def __repr__(self):
+        return (
+            '<'
+            f'{self.__class__.__name__}'
+            ': '
+            f'{self.piece.code}'
+            f'({self.piece.color_code}) '
+            f'{self.src.address}'
+            f' - '
+            f'{self.dst.address}'
+            '>'
+        )
