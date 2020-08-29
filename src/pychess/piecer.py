@@ -99,7 +99,7 @@ class Piece:
         ),
     }
 
-    def __init__(self, piece_type, color, order):
+    def __init__(self, piece_type, color, order=0):
         self._type = piece_type
         self._color = color
         self._color_code = self._color.name[:1]
@@ -184,6 +184,27 @@ class Piece:
             f'<{self.__class__.__name__}'
             f'({self.color.name} {self.name} {self.order})>'
         )
+
+    def __hash__(self):
+        return (self.type.value * 100) + (self.color.value * 10) + self.order
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __neq__(self, other):
+        return hash(self) != hash(other)
+
+    def __gt__(self, other):
+        return hash(self) > hash(other)
+
+    def __lt__(self, other):
+        return hash(self) < hash(other)
+
+    def __ge__(self, other):
+        return self.__eq__ or self.__gt__
+
+    def __le__(self, other):
+        return self.__eq__ or self.__lt__
 
 
 def generate_pieces():

@@ -40,8 +40,8 @@ NUM_PIECES = _declare_constants(
 
 @enum.unique
 class Color(enum.Enum):
-    white = 0
-    black = 1
+    black = 0
+    white = 1
 
 
 @enum.unique
