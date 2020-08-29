@@ -1,4 +1,5 @@
 import unittest
+import itertools
 
 
 from pychess.squarer import Square
@@ -38,27 +39,51 @@ def get_exception_string(address, error_no):
 
 
 class TestSquarer(unittest.TestCase):
-    def test_eq(self):
-        s1 = Square((1, 3))
-        s2 = Square((1, 3))
-        self.assertEqual(s1, s2)
-        self.assertFalse(s1 is s2)
+    def setUp(self):
+        self.x_map = dict(
+            [
+                (i, 'abcdefgh'[i])
+                for i in range(8)
+            ]
+        )
+        self.y_map = dict(
+            [
+                (i, str(i + 1))
+                for i in range(8)
+            ]
+        )
 
-    def test_neq(self):
-        s1 = Square((1, 3))
-        s2 = Square((3, 1))
+        self.squares = dict(
+            [
+                ((x, y), Square((x, y)))
+                for (x, y) in itertools.product(range(8), range(8))
+            ]
+        )
 
-        self.assertNotEqual(s1, s2)
+    def test_x(self):
+        for (x, y), square in self.squares.items():
+            expected_result = x
+            self.assertEqual(square.x, expected_result)
 
-    def test_repr(self):
-        s = Square((1, 6))
-        expected_result = '<Square: b7 (1, 6)>'
-        self.assertEqual(repr(s), expected_result)
+    def test_y(self):
+        for (x, y), square in self.squares.items():
+            expected_result = y
+            self.assertEqual(square.y, expected_result)
+
+    def test_x_address(self):
+        for (x, y), square in self.squares.items():
+            expected_result = self.x_map[x]
+            self.assertEqual(square.x_address, expected_result)
+
+    def test_y_address(self):
+        for (x, y), square in self.squares.items():
+            expected_result = self.y_map[y]
+            self.assertEqual(square.y_address, expected_result)
 
     def test_address(self):
-        s1 = Square((1, 6))
-        s2 = Square('b7')
-        self.assertEqual(s1, s2)
+        for (x, y), square in self.squares.items():
+            expected_result = f'{self.x_map[x]}{self.y_map[y]}'
+            self.assertEqual(square.address, expected_result)
 
     def test_parse_adress_1(self):
         address = (1, 2, 3)
@@ -99,6 +124,29 @@ class TestSquarer(unittest.TestCase):
 
         exc_str = get_exception_string(address=address, error_no=4)
         self.assertTrue(exc_str in str(context.exception))
+
+    def test_hash(self):
+        for (x, y), square in self.squares.items():
+            expected_result = 10 * x + y
+            self.assertEqual(hash(square), expected_result)
+
+    def test_equals(self):
+        s1 = Square((1, 3))
+        s2 = Square((1, 3))
+        self.assertEqual(s1, s2)
+        self.assertFalse(s1 is s2)
+
+    def test_not_equals(self):
+        s1 = Square((1, 3))
+        s2 = Square((3, 1))
+
+        self.assertNotEqual(s1, s2)
+
+    def test_repr(self):
+        for (x, y), square in self.squares.items():
+            address = f'{self.x_map[x]}{self.y_map[y]}'
+            expected_result = f'<Square: {address} ({x}, {y})>'
+            self.assertEqual(repr(square), expected_result)
 
 
 if __name__ == "__main__":

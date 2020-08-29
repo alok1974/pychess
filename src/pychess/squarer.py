@@ -18,6 +18,13 @@ class Square:
         ]
     )
 
+    __slots__ = (
+        '_x',
+        '_y',
+        '_x_addr',
+        '_y_addr',
+    )
+
     def __init__(self, address):
         is_tuple, x_val, y_val = self._parse_address(address)
         if is_tuple:
@@ -108,6 +115,9 @@ class Square:
 
         assert(len(keys_for_addr) == 1)
         return keys_for_addr[0]
+
+    def __hash__(self):
+        return (10 * self.x) + self.y
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
