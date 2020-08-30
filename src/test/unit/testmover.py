@@ -266,6 +266,24 @@ class TestMover(unittest.TestCase):
                 )
                 self.assertEqual(repr(m), expected_result)
 
+    def test_path(self):
+        piece = generate_piece(PieceType.queen, Color.white)
+        src = Square('a1')
+        dst = Square('h8')
+        mv = Move(piece, src, dst)
+        expected_result = [
+            Square('a1'),
+            Square('b2'),
+            Square('c3'),
+            Square('d4'),
+            Square('e5'),
+            Square('f6'),
+            Square('g7'),
+            Square('h8'),
+
+        ]
+        self.assertEqual(mv.path, expected_result)
+
 
 if __name__ == '__main__':
     unittest.main()

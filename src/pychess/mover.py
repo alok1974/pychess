@@ -102,6 +102,64 @@ class Move:
         elif 315.0 < self.angle < 360.0:
             return Direction.ese
 
+    @property
+    def path(self):
+        piece_types = [PieceType.queen, PieceType.rook, PieceType.bishop]
+        if self.piece.type not in piece_types:
+            return [self.src, self.dst]
+
+        coords = []
+        x_incr = None
+        y_incr = None
+        span = None
+        if self.angle == 0.0:
+            x_incr = 1
+            y_incr = 0
+            span = self.dst.x - self.src.x
+        elif self.angle == 45.0:
+            x_incr = 1
+            y_incr = 1
+            span = self.dst.x - self.src.x
+        elif self.angle == 90.0:
+            x_incr = 0
+            y_incr = 1
+            span = self.dst.y - self.src.y
+        elif self.angle == 135.0:
+            x_incr = -1
+            y_incr = 1
+            span = self.src.x - self.dst.x
+        elif self.angle == 180.0:
+            x_incr = -1
+            y_incr = 0
+            span = self.src.x - self.dst.x
+        elif self.angle == 225.0:
+            x_incr = -1
+            y_incr = -1
+            span = self.src.x - self.dst.x
+        elif self.angle == 270.0:
+            x_incr = 0
+            y_incr = -1
+            span = self.src.y - self.dst.y
+        elif self.angle == 315.0:
+            x_incr = 1
+            y_incr = -1
+            span = self.dst.x - self.src.x
+
+        coords = [
+            Square(
+                (
+                    self.src.x + (s * x_incr),
+                    self.src.y + (s * y_incr),
+                ),
+            )
+            for s in range(1, span)
+        ]
+
+        coords.append(self.dst)
+        coords.insert(0, self.src)
+
+        return coords
+
     def _validate(self, piece, src, dst):
         if not isinstance(piece, Piece):
             error_msg = (
