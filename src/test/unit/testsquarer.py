@@ -142,6 +142,30 @@ class TestSquarer(unittest.TestCase):
 
         self.assertNotEqual(s1, s2)
 
+    def test_greater(self):
+        s1 = Square('a1')
+        s2 = Square('a2')
+
+        self.assertGreater(s2, s1)
+
+    def test_less(self):
+        s1 = Square('a1')
+        s2 = Square('a2')
+
+        self.assertLess(s1, s2)
+
+    def test_geater_equals(self):
+        s1 = Square('a1')
+        s2 = Square('a2')
+
+        self.assertGreaterEqual(s2, s1)
+
+    def test_less_equals(self):
+        s1 = Square('a1')
+        s2 = Square('a2')
+
+        self.assertLess(s1, s2)
+
     def test_repr(self):
         for (x, y), square in self.squares.items():
             address = f'{self.x_map[x]}{self.y_map[y]}'
