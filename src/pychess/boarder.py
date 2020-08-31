@@ -95,7 +95,7 @@ class Board:
         """
         Will produce an output like this
 
-            a b c d e f g h
+           a b c d e f g h
         8 |_|#|_|#|_|#|_|#| 8
         7 |#|_|#|_|#|_|#|_| 7
         6 |_|#|_|#|_|#|_|#| 6
@@ -104,7 +104,7 @@ class Board:
         3 |#|_|#|_|#|_|#|_| 3
         2 |_|#|_|#|_|#|_|#| 2
         1 |#|_|#|_|#|_|#|_| 1
-            a b c d e f g h
+           a b c d e f g h
         """
         header_footer = '    a b c d e f g h'
         out = []
