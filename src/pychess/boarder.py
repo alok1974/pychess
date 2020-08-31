@@ -16,6 +16,14 @@ class Board:
     def data(self):
         return self._data
 
+    @property
+    def pieces(self):
+        return [v for v in self.data.values() if v is not None]
+
+    @property
+    def squares(self):
+        return list(self.data.keys())
+
     def get_piece(self, square):
         return self.data[square]
 
