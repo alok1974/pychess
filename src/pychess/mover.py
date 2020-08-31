@@ -30,6 +30,14 @@ class Move:
         return self._is_distance_legal() and self._is_direction_legal()
 
     @property
+    def is_diagonal(self):
+        return self.angle in [45.0, 135.0, 225.0, 315.0]
+
+    @property
+    def is_orthogonal(self):
+        return self.angle in [0.0, 90.0, 180.0, 270.0]
+
+    @property
     def piece(self):
         return self._piece
 
@@ -104,6 +112,9 @@ class Move:
 
     @property
     def path(self):
+        if not self.is_legal:
+            return []
+
         piece_types = [PieceType.queen, PieceType.rook, PieceType.bishop]
         if self.piece.type not in piece_types:
             return [self.src, self.dst]
@@ -155,8 +166,9 @@ class Move:
             for s in range(1, span)
         ]
 
-        coords.append(self.dst)
-        coords.insert(0, self.src)
+        if span:
+            coords.append(self.dst)
+            coords.insert(0, self.src)
 
         return coords
 
