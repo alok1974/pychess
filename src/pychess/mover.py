@@ -195,7 +195,11 @@ class Move:
                 first_row = 6
 
             if self.src.y == first_row:
-                return self.distance == PAWN_FIRST_MOVE_DISTANCE
+                allowed_distance = (
+                    self.piece.travel_distance +
+                    [PAWN_FIRST_MOVE_DISTANCE]
+                )
+                return self.distance in allowed_distance
             else:
                 return self.distance in self.piece.travel_distance
         else:
