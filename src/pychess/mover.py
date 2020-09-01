@@ -249,3 +249,17 @@ class Move:
             f'{self.dst.address}'
             '>'
         )
+
+    def __eq__(self, other):
+        return (
+            self.piece == other.piece and
+            self.src == other.src and
+            self.dst == other.dst
+        )
+
+    def __neq__(self, other):
+        return (
+            self.piece != other.piece or
+            self.src != other.src or
+            self.dst != other.dst
+        )

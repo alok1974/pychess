@@ -6,6 +6,7 @@ from pychess.mover import Move
 from pychess.squarer import Square
 from pychess.piecer import generate_pieces
 from pychess.constant import PieceType, Color, Direction
+from pychess.piecer import Piece
 
 
 # Move Data
@@ -1438,6 +1439,37 @@ class TestMover(unittest.TestCase):
                     '>'
                 )
                 self.assertEqual(repr(m), expected_result)
+
+    def test_equals(self):
+        mv = Move(
+            Piece(PieceType.pawn, Color.black),
+            Square('a2'),
+            Square('a4')
+        )
+
+        expected_result = Move(
+            Piece(PieceType.pawn, Color.black),
+            Square('a2'),
+            Square('a4')
+        )
+
+        self.assertFalse(mv is expected_result)
+        self.assertEqual(mv, expected_result)
+
+    def test_not_equals(self):
+        mv = Move(
+            Piece(PieceType.pawn, Color.black),
+            Square('b2'),
+            Square('b3')
+        )
+
+        expected_result = Move(
+            Piece(PieceType.pawn, Color.black),
+            Square('a2'),
+            Square('a4')
+        )
+
+        self.assertNotEqual(mv, expected_result)
 
     def test_path(self):
         for piece in generate_pieces():
