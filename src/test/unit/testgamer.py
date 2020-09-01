@@ -8,6 +8,12 @@ from pychess.constant import PieceType, Color
 from pychess.mover import Move
 
 
+def _check_win(game):
+    if game.is_game_over:
+        winner = str(game.winner.name).capitalize()
+        print(f'{winner} wins!')
+
+
 class TestGamer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -16,53 +22,69 @@ class TestGamer(unittest.TestCase):
 
         # Illegal Move - White rook trying to move diagonally
         cls.game.move(Square('a1'), Square('h8'))
+        _check_win(cls.game)
 
         # Move 1 - White opening with d4
         cls.game.move(Square('d2'), Square('d4'))
+        _check_win(cls.game)
 
         # Move 2 - Black opening with c6
         cls.game.move(Square('c7'), Square('c6'))
+        _check_win(cls.game)
 
         # Illegal Move - Trying to capture white pawn at d4 by white queen
         cls.game.move(Square('d1'), Square('d4'))
+        _check_win(cls.game)
 
         # Move 3 - White Queen to d3
         cls.game.move(Square('d1'), Square('d3'))
+        _check_win(cls.game)
 
         # Illegal Move - Queen trying to jump over white pawn at d4
         # nothing will happen
         cls.game.move(Square('d3'), Square('d5'))
+        _check_win(cls.game)
 
         # Move 4 - Black moves pawn a6
         cls.game.move(Square('a7'), Square('a6'))
+        _check_win(cls.game)
 
-        # Move 5- Black pawn at h7 captured by the white queen
+        # Move 5 - Black pawn at h7 captured by the white queen
         cls.game.move(Square('d3'), Square('h7'))
+        _check_win(cls.game)
 
         # Move 6 - Black pawn to a5
         cls.game.move(Square('a6'), Square('a5'))
+        _check_win(cls.game)
 
         # Move 7 - White queen to f5
         cls.game.move(Square('h7'), Square('f5'))
+        _check_win(cls.game)
 
         # Move 8 - Black rook to h6, where it comes under attack
         # by the black bishop at c1
         cls.game.move(Square('h8'), Square('h6'))
+        _check_win(cls.game)
 
         # Move 9 - White pawn to e4
         cls.game.move(Square('e2'), Square('e4'))
+        _check_win(cls.game)
 
         # Move 10 - Black pawn to a4
         cls.game.move(Square('a5'), Square('a4'))
+        _check_win(cls.game)
 
         # Move 11 - White rook to c4
         cls.game.move(Square('f1'), Square('c4'))
+        _check_win(cls.game)
 
         # Move 12 - White rook to h5 attacking the queen
         cls.game.move(Square('h6'), Square('h5'))
+        _check_win(cls.game)
 
         # Move 13 - White queen to f7, it's a mate!
         cls.game.move(Square('f5'), Square('f7'))
+        _check_win(cls.game)
 
     def test_board(self):
         expected_result = (
@@ -167,6 +189,10 @@ class TestGamer(unittest.TestCase):
             }
         }
         self.assertEqual(self.game.capturables, expected_result)
+
+    def test_winner(self):
+        expected_result = Color.white
+        self.assertEqual(self.game.winner, expected_result)
 
 
 if __name__ == '__main__':
