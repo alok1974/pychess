@@ -1,9 +1,17 @@
+from collections import namedtuple
+
+
 from .boarder import Board
 from .mover import Move
 from .constant import PieceType, Color
 
 
 class Game:
+    MOVE_RESULT = namedtuple(
+        'MOVE_RESULT',
+        ['success', 'moved_piece']
+    )
+
     def __init__(self):
         self._board = Board()
         self._captured_white = []
@@ -12,7 +20,8 @@ class Game:
         self._capturables = []
         self._pieces_checking_black = []
         self._pieces_checking_white = []
-        self._color_to_move = Color.white
+        self._to_move = Color.white
+        self._winner = None
 
     @property
     def board(self):
@@ -33,6 +42,10 @@ class Game:
     @property
     def black_points(self):
         return sum([p.worth for p in self.captured_white])
+
+    @property
+    def winner(self):
+        return self._winner
 
     @property
     def leader(self):
@@ -71,14 +84,25 @@ class Game:
         self._capturables = []
         self._pieces_checking_black = []
         self._pieces_checking_white = []
-        self._color_to_move = Color.white
+        self._to_move = Color.white
+        self._winner = None
 
+    @property
     def is_game_over(self):
         pass
 
     def move(self, src, dst):
-        if not self._is_move_legal(src, dst):
+        result = self._perform_move(src, dst)
+        if not result.success:
             return
+
+        self._move_history.append(Move(result.moved_piece, src, dst))
+        self._get_capturables()
+        self._toggle_to_move()
+
+    def _perform_move(self, src, dst):
+        if not self._is_move_legal(src, dst):
+            return self.MOVE_RESULT(success=False, moved_piece=None)
 
         dst_piece = self.board.clear_square(dst)
         if dst_piece is not None:
@@ -89,18 +113,15 @@ class Game:
 
         src_piece = self.board.clear_square(src)
         self.board.add_piece(src_piece, dst)
+        return self.MOVE_RESULT(success=True, moved_piece=src_piece)
 
-        self._get_capturables()
-        self._move_history.append(Move(src_piece, src, dst))
-        self._change_color_to_move()
-
-    def _change_color_to_move(self):
-        if self._color_to_move == Color.black:
-            self._color_to_move = Color.white
+    def _toggle_to_move(self):
+        if self._to_move == Color.black:
+            self._to_move = Color.white
         else:
-            self._color_to_move = Color.black
+            self._to_move = Color.black
 
-    def _is_move_legal(self, src, dst, check_player=True):
+    def _is_move_legal(self, src, dst, check_to_move=True):
         piece_to_move = self.board.get_piece(src)
 
         # Case I: No piece to move
@@ -108,8 +129,8 @@ class Game:
             return False
 
         # Case II: Not this player's turn
-        if check_player:
-            if piece_to_move.color != self._color_to_move:
+        if check_to_move:
+            if piece_to_move.color != self._to_move:
                 return False
 
         # Case III: Illegal move for piece
@@ -162,7 +183,7 @@ class Game:
                 for threatened_piece in threatened_pieces:
                     src = self.board.get_square(threatening_piece)
                     dst = self.board.get_square(threatened_piece)
-                    if self._is_move_legal(src, dst, check_player=False):
+                    if self._is_move_legal(src, dst, check_to_move=False):
                         self._capturables[color].setdefault(
                             threatening_piece, []
                         ).append(threatened_piece)
@@ -178,10 +199,10 @@ class Game:
                                     threatening_piece
                                 )
 
-    def _is_mate(self, color):
+    def _is_mate(self):
         is_under_check = bool(
             self._pieces_checking_black
-            if color == Color.black
+            if self._to_move == Color.black
             else self._pieces_checking_white
         )
 
