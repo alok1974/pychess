@@ -1430,6 +1430,7 @@ class TestMover(unittest.TestCase):
                     f'{m.__class__.__name__}'
                     ': '
                     f'{piece.code}'
+                    f'{piece.order}'
                     f'({piece.color_code}) '
                     f'{src.address}'
                     f' - '
@@ -1476,6 +1477,7 @@ class TestMover(unittest.TestCase):
                     dst=dst,
                 )
                 self.assertEqual(m.is_orthogonal, move_data.is_orthogonal)
+
 
 if __name__ == '__main__':
     unittest.main()

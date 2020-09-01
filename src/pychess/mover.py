@@ -242,6 +242,7 @@ class Move:
             f'{self.__class__.__name__}'
             ': '
             f'{self.piece.code}'
+            f'{self.piece.order}'
             f'({self.piece.color_code}) '
             f'{self.src.address}'
             f' - '
