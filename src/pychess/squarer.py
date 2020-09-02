@@ -74,7 +74,7 @@ class Square:
             x_val, y_val = address
 
             error_msg_2 = (
-                'x and y should be a number from 1 to 8, '
+                'x and y should be a number from 0 to 7, '
                 f'given x={x_val}, y={y_val}'
             )
             if x_val not in range(8) or y_val not in range(8):
@@ -97,7 +97,7 @@ class Square:
             error_msg_4 = (
                 f'The given address={address} is invalid, '
                 'it should either be a tuple like (0, 5) '
-                'where each elements of tuple is a number from 1 to 8 or '
+                'where each elements of tuple is a number from 0 to 7 or '
                 'it should be a string of the form '
                 '\'<alpha><number>\' where <alpha> is one of '
                 '\'abcdefgh\' and <number> is from 1 to 8, example '

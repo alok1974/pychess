@@ -13,7 +13,7 @@ def get_exception_string(address, error_no):
         )
     elif error_no == 2:
         return (
-            'x and y should be a number from 1 to 8, '
+            'x and y should be a number from 0 to 7, '
             f'given x={address[0]}, y={address[1]}'
         )
     elif error_no == 3:
@@ -28,7 +28,7 @@ def get_exception_string(address, error_no):
         return (
             f'The given address={address} is invalid, '
             'it should either be a tuple like (0, 5) '
-            'where each elements of tuple is a number from 1 to 8 or '
+            'where each elements of tuple is a number from 0 to 7 or '
             'it should be a string of the form '
             '\'<alpha><number>\' where <alpha> is one of '
             '\'abcdefgh\' and <number> is from 1 to 8, example '
