@@ -139,5 +139,4 @@ class Square:
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        coord = f'{self.x}, {self.y}'
-        return f'<{class_name}: {self.address} ({coord})>'
+        return f'<{class_name}: {self.address}>'

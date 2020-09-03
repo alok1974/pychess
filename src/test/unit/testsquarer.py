@@ -169,7 +169,7 @@ class TestSquarer(unittest.TestCase):
     def test_repr(self):
         for (x, y), square in self.squares.items():
             address = f'{self.x_map[x]}{self.y_map[y]}'
-            expected_result = f'<Square: {address} ({x}, {y})>'
+            expected_result = f'<Square: {address}>'
             self.assertEqual(repr(square), expected_result)
 
 
