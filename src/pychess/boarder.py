@@ -28,6 +28,9 @@ class Board:
         return self.data[square]
 
     def add_piece(self, piece, square):
+        if piece is None:
+            return
+
         if piece in self.data.values():
             square = self.get_square(piece)
             error_msg = (
