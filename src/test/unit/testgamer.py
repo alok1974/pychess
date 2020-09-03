@@ -21,69 +21,69 @@ class TestGamer(unittest.TestCase):
         cls.game = Game()
 
         # Illegal Move - White rook trying to move diagonally
-        cls.game.move(Square('a1'), Square('h8'))
+        cls.game.move(('a1h8'))
         _check_win(cls.game)
 
         # Move 1 - White opening with d4
-        cls.game.move(Square('d2'), Square('d4'))
+        cls.game.move(('d2d4'))
         _check_win(cls.game)
 
         # Move 2 - Black opening with c6
-        cls.game.move(Square('c7'), Square('c6'))
+        cls.game.move(('c7c6'))
         _check_win(cls.game)
 
         # Illegal Move - Trying to capture white pawn at d4 by white queen
-        cls.game.move(Square('d1'), Square('d4'))
+        cls.game.move(('d1d4'))
         _check_win(cls.game)
 
         # Move 3 - White Queen to d3
-        cls.game.move(Square('d1'), Square('d3'))
+        cls.game.move(('d1d3'))
         _check_win(cls.game)
 
         # Illegal Move - Queen trying to jump over white pawn at d4
         # nothing will happen
-        cls.game.move(Square('d3'), Square('d5'))
+        cls.game.move(('d3d5'))
         _check_win(cls.game)
 
         # Move 4 - Black moves pawn a6
-        cls.game.move(Square('a7'), Square('a6'))
+        cls.game.move(('a7a6'))
         _check_win(cls.game)
 
         # Move 5 - Black pawn at h7 captured by the white queen
-        cls.game.move(Square('d3'), Square('h7'))
+        cls.game.move(('d3h7'))
         _check_win(cls.game)
 
         # Move 6 - Black pawn to a5
-        cls.game.move(Square('a6'), Square('a5'))
+        cls.game.move(('a6a5'))
         _check_win(cls.game)
 
         # Move 7 - White queen to f5
-        cls.game.move(Square('h7'), Square('f5'))
+        cls.game.move(('h7f5'))
         _check_win(cls.game)
 
         # Move 8 - Black rook to h6, where it comes under attack
         # by the black bishop at c1
-        cls.game.move(Square('h8'), Square('h6'))
+        cls.game.move(('h8h6'))
         _check_win(cls.game)
 
         # Move 9 - White pawn to e4
-        cls.game.move(Square('e2'), Square('e4'))
+        cls.game.move(('e2e4'))
         _check_win(cls.game)
 
         # Move 10 - Black pawn to a4
-        cls.game.move(Square('a5'), Square('a4'))
+        cls.game.move(('a5a4'))
         _check_win(cls.game)
 
         # Move 11 - White rook to c4
-        cls.game.move(Square('f1'), Square('c4'))
+        cls.game.move(('f1c4'))
         _check_win(cls.game)
 
         # Move 12 - White rook to h5 attacking the queen
-        cls.game.move(Square('h6'), Square('h5'))
+        cls.game.move(('h6h5'))
         _check_win(cls.game)
 
         # Move 13 - White queen to f7, it's a mate!
-        cls.game.move(Square('f5'), Square('f7'))
+        cls.game.move(('f5f7'))
         _check_win(cls.game)
 
     def test_board(self):
@@ -193,6 +193,141 @@ class TestGamer(unittest.TestCase):
     def test_winner(self):
         expected_result = Color.white
         self.assertEqual(self.game.winner, expected_result)
+
+    def test_parse_move_spec_1(self):
+        move_spec = 'a1h8'
+        expected_result = (Square('a1'), Square('h8'))
+        self.assertEqual(Game.parse_move_spec(move_spec), expected_result)
+
+    def test_parse_move_spec_2(self):
+        move_spec = ('a1', 'h8')
+        expected_result = (Square('a1'), Square('h8'))
+        self.assertEqual(Game.parse_move_spec(move_spec), expected_result)
+
+    def test_parse_move_spec_3(self):
+        move_spec = ((0, 0), (0, 7))
+        expected_result = (Square((0, 0)), Square((0, 7)))
+        self.assertEqual(Game.parse_move_spec(move_spec), expected_result)
+
+    def test_parse_move_spec_4(self):
+        move_spec = [1, 2, 3, 4]
+        exc_str = (
+            f'`move_spec={move_spec}` should either be a tuple or a string'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_5(self):
+        move_spec = (1, 2, 3)
+        exc_str = (
+            f'{move_spec} tuple should have exactly two elements!'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_6(self):
+        addr_1 = 'aa'
+        addr_2 = '11'
+        move_spec = (addr_1, addr_2)
+        exc_str = (
+            f'Malformed address! The address {addr_1} supplied '
+            f'in arg `move_spec={move_spec}` should be of '
+            'the format \'<alpha><number>\' where alpha is '
+            'one of [a, b, c, d, e, f, g, h] and number '
+            'is from 1 to 8'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_7(self):
+        addr_1 = 'a1'
+        addr_2 = '11'
+        move_spec = (addr_1, addr_2)
+        exc_str = (
+            f'Malformed address! The address {addr_2} supplied '
+            f'in arg `move_spec={move_spec}` should be of '
+            'the format \'<alpha><number>\' where alpha is '
+            'one of [a, b, c, d, e, f, g, h] and number '
+            'is from 1 to 8'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_8(self):
+        addr_1 = (10, 30)
+        addr_2 = (12, 40)
+        move_spec = (addr_1, addr_2)
+        exc_str = (
+            f'The address {addr_1} supplied in arg '
+            f'`move_spec={move_spec}` should exactly be a '
+            'tuple of the form (a, b) where both a and b '
+            'are one of the numbers 0 to 7'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_9(self):
+        addr_1 = (0, 5)
+        addr_2 = (12, 40)
+        move_spec = (addr_1, addr_2)
+        exc_str = (
+            f'The address {addr_2} supplied in arg '
+            f'`move_spec={move_spec}` should exactly be a '
+            'tuple of the form (a, b) where both a and b '
+            'are one of the numbers 0 to 7'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_10(self):
+        move_spec = ((0, 5), (0, 5))
+        exc_str = (
+            f'`move_spec={move_spec}` should have distinct source and '
+            'destination'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_11(self):
+        move_spec = ('a1', 'a1')
+        exc_str = (
+            f'`move_spec={move_spec}` should have distinct source and '
+            'destination'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_12(self):
+        move_spec = 'c6c6'
+        exc_str = (
+            f'`move_spec={move_spec}` should have distinct source and '
+            'destination'
+        )
+        with self.assertRaises(Exception) as context:
+            Game.parse_move_spec(move_spec)
+
+        self.assertTrue(exc_str in str(context.exception))
+
+    def test_parse_move_spec_13(self):
+        move_spec = (Square('e1'), Square('e4'))
+        expected_result = move_spec
+        self.assertEqual(Game.parse_move_spec(move_spec), expected_result)
 
 
 if __name__ == '__main__':

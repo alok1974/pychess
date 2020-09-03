@@ -1,16 +1,19 @@
-from collections import namedtuple
+import collections
 import itertools
+import re
+import contextlib
+import copy
 
 
 from .boarder import Board
 from .mover import Move
-from .constant import PieceType, Color
+from .constant import PieceType, Color, ADDRESS_PATTERN, MOVE_PATTERN
 from .piecer import Piece
 from .squarer import Square
 
 
 class Game:
-    MOVE_RESULT = namedtuple(
+    MOVE_RESULT = collections.namedtuple(
         'MOVE_RESULT',
         ['success', 'moved_piece']
     )
@@ -24,12 +27,18 @@ class Game:
         self._pieces_checking_black = []
         self._pieces_checking_white = []
         self._current_player = Color.white
+        self._next_player = Color.black
         self._winner = None
         self._is_game_over = False
+        self._description = []
 
     @property
     def board(self):
         return self._board
+
+    @property
+    def description(self):
+        return '\n'.join(self._description)
 
     @property
     def captured_black(self):
@@ -89,14 +98,98 @@ class Game:
         self._pieces_checking_black = []
         self._pieces_checking_white = []
         self._current_player = Color.white
+        self._next_player = Color.black
         self._winner = None
         self._is_game_over = False
+        self._description = []
 
     @property
     def is_game_over(self):
         return self._is_game_over
 
-    def move(self, src, dst):
+    @staticmethod
+    def parse_move_spec(move_spec):
+        src = None
+        dst = None
+        if isinstance(move_spec, tuple):
+            if len(move_spec) != 2:
+                error_msg = (
+                    f'{move_spec} tuple should have exactly two elements!'
+                )
+                raise RuntimeError(error_msg)
+
+            both_string = all([isinstance(a, str) for a in move_spec])
+            both_tuple = all([isinstance(a, tuple) for a in move_spec])
+            both_squares = all([isinstance(a, Square) for a in move_spec])
+            if both_string:
+                for addr in move_spec:
+                    mo = re.match(ADDRESS_PATTERN, addr)
+                    if mo is None:
+                        error_msg = (
+                            f'Malformed address! The address {addr} supplied '
+                            f'in arg `move_spec={move_spec}` should be of '
+                            'the format \'<alpha><number>\' where alpha is '
+                            'one of [a, b, c, d, e, f, g, h] and number '
+                            'is from 1 to 8'
+                        )
+                        raise RuntimeError(error_msg)
+                x_addr, y_addr = move_spec
+                src, dst = Square(x_addr), Square(y_addr)
+            elif both_tuple:
+                for addr in move_spec:
+                    valid_len = len(addr) == 2
+                    valid_contents = all([n in range(8) for n in addr])
+                    if not valid_len or not valid_contents:
+                        error_msg = (
+                            f'The address {addr} supplied in arg '
+                            f'`move_spec={move_spec}` should exactly be a '
+                            'tuple of the form (a, b) where both a and b '
+                            'are one of the numbers 0 to 7'
+                        )
+                        raise RuntimeError(error_msg)
+                x, y = move_spec
+                src, dst = Square(x), Square(y)
+            elif both_squares:
+                src, dst = move_spec
+            else:
+                error_msg = (
+                    f'`move_spec={move_spec}` should contain either 2 '
+                    'strings or 2 tuples'
+                )
+                raise RuntimeError(error_msg)
+        elif isinstance(move_spec, str):
+            valid_len = len(move_spec) == 4
+            mo = re.match(MOVE_PATTERN, move_spec)
+            if not valid_len or mo is None:
+                error_msg = (
+                    f'`move_spec={move_spec}` should be of the form '
+                    '<alpha1><n1><alpha2><n2>, where alpha1 and alpha2 should '
+                    'one of [a, b, c, d, e, f, g, h] and n1 and n2 should be '
+                    'a number between 1 to 8'
+                )
+                raise RuntimeError(error_msg)
+            x_addr, y_addr = mo.groups()
+            src, dst = Square(x_addr), Square(y_addr)
+        else:
+            error_msg = (
+                f'`move_spec={move_spec}` should either be a tuple or a string'
+            )
+            raise RuntimeError(error_msg)
+
+        if src == dst:
+            error_msg = (
+                f'`move_spec={move_spec}` should have distinct source and '
+                'destination'
+            )
+            raise RuntimeError(error_msg)
+
+        return src, dst
+
+    def move(self, move_spec):
+        src, dst = self.parse_move_spec(move_spec)
+        self._move(src, dst)
+
+    def _move(self, src, dst):
         if self.is_game_over:
             return
 
@@ -132,13 +225,15 @@ class Game:
     def _toggle_player(self):
         if self._current_player == Color.black:
             self._current_player = Color.white
+            self._next_player = Color.black
         else:
             self._current_player = Color.black
+            self._next_player = Color.white
 
     def _is_move_legal(
             self, src, dst,
-            check_current_player=True,
-            check_self_color=True, dst_piece=None,
+            check_current_player=True, check_self_color=True,
+            dst_piece=None,
     ):
         piece_to_move = self.board.get_piece(src)
 
@@ -188,6 +283,9 @@ class Game:
             Color.white: {},
             Color.black: {},
         }
+        self._pieces_checking_black = []
+        self._pieces_checking_white = []
+
         for color in [Color.white, Color.black]:
             threatening_color = (
                 Color.black
@@ -195,8 +293,8 @@ class Game:
                 else Color.white
             )
 
-            threatening_pieces = self._get_pieces_on_board(threatening_color)
-            threatened_pieces = self._get_pieces_on_board(color)
+            threatening_pieces = self._get_pieces(threatening_color)
+            threatened_pieces = self._get_pieces(color)
 
             for threatening_piece in threatening_pieces:
                 for threatened_piece in threatened_pieces:
@@ -222,11 +320,7 @@ class Game:
                                 )
 
     def _is_mate(self):
-        checking_pieces = (
-            self._pieces_checking_black
-            if self._current_player == Color.white
-            else self._pieces_checking_black
-        )
+        self._description = []
 
         if self._current_player == Color.white:
             king_under_check = Piece(PieceType.king, Color.black)
@@ -236,10 +330,15 @@ class Game:
             checking_pieces = self._pieces_checking_white
 
         if len(checking_pieces) == 0:
-            # No piece is checking the king and hence no mate
+            self._description.append(
+                'No piece is checking the king and hence no mate.'
+            )
             return False
         elif len(checking_pieces) == 1:
             checking_piece = checking_pieces[0]
+            self._description.append(
+                f'The {king_under_check} is under check by {checking_piece}'
+            )
             if self._is_checking_piece_capturable(
                     checking_piece, king_under_check
             ):
@@ -247,48 +346,16 @@ class Game:
 
             elif self._is_check_blockable(checking_piece, king_under_check):
                 return False
-
             elif self._escape_square_exists(king_under_check):
                 return False
             else:
                 return True
         else:
+            self._description.append(
+                f'The {king_under_check} is being checked by the following - '
+                f'{checking_pieces}'
+            )
             return not self._escape_square_exists(king_under_check)
-
-    def _escape_square_exists(self, king):
-        def filter_self_color(square):
-            return self.board.get_piece(square).color != king.color
-
-        src = self.board.get_square(king)
-        # All squares surrounding the king
-        surrounding = [
-            Square((src.x + incr_x, src.y + incr_y))
-            for incr_x, incr_y in itertools.product([1, -1, 0], [1, -1, 0])
-            if 0 <= src.x + incr_x < 8 and
-            0 <= src.y + incr_y < 8 and
-            (incr_x, incr_y) != (0, 0)
-        ]
-
-        # Remove those squares from surrounding that are occupied by the pieces
-        # of the same color as the king
-        surrounding = list(filter(filter_self_color, surrounding))
-
-        opponent_pieces = [
-            (piece, self.board.get_square(piece))
-            for piece in self.board.pieces
-            if piece.color != king.color
-        ]
-
-        for s in surrounding:
-            for piece, piece_square in opponent_pieces:
-                if self._is_move_legal(
-                        piece_square, s,
-                        check_current_player=False,
-                        dst_piece=king,
-                ):
-                    return False
-
-        return True
 
     def _is_check_blockable(self, piece, king):
         unblockable = (
@@ -297,7 +364,10 @@ class Game:
             piece.type == PieceType.king
         )
         if unblockable:
-            # There is no way to bock the path of a pawn or a knight or a king
+            self._description.append(
+                f'The checking path for {piece} can not be blocked by any '
+                'means.'
+            )
             return False
 
         src = self.board.get_square(piece)
@@ -312,60 +382,159 @@ class Game:
         ]
         for checking_path_square in path:
             for blocking_piece in blocking_pieces:
-                blocking_square = self.board.get(blocking_piece)
-                blocking_move = Move(
-                    blocking_piece,
-                    blocking_square,
-                    checking_path_square,
-                )
-                if blocking_move.is_legal:
+                blocking_origin = self.board.get(blocking_piece)
+                if self._is_move_legal(blocking_origin, checking_path_square):
+                    self._description.append(
+                        'The check on {king} can be averted by blocking '
+                        f'the cheking piece {piece} by moving '
+                        f'{blocking_piece} from {blocking_origin} '
+                        f'to {checking_path_square}.'
+                    )
                     return True
+        self._description.append(
+            f'There is no way to block {piece} from giving check '
+            f'to {king}'
+        )
         return False
 
-    def _is_checking_piece_capturable(self, piece, checked_king):
-        capturables = self.capturables[self._current_player]
+    def _is_checking_piece_capturable(self, checking_piece, checked_king):
+        pieces_threatening_checking_piece = self._get_threatening_pieces(
+            piece=checking_piece,
+        )
+
+        pieces_that_can_capture_safely = []
+        for threatening_piece in pieces_threatening_checking_piece:
+            src = self._board.get_square(threatening_piece)
+            dst = self._board.get_square(checking_piece)
+            with self._try_move([(src, dst)]):
+                pieces_checking_after_move = (
+                    self._pieces_checking_black
+                    if checked_king.color == Color.black
+                    else self._pieces_checking_white
+                )
+                if not pieces_checking_after_move:
+                    pieces_that_can_capture_safely.append(threatening_piece)
+
+        if pieces_that_can_capture_safely:
+            self._description.append(
+                f'{checking_piece} checking {checked_king} can be captured'
+                f'by the following pieces - {pieces_that_can_capture_safely}.'
+            )
+            return True
+        else:
+            self._description.append(
+                f'{checking_piece} checking {checked_king} cannot be'
+                f'captured by any of the {checked_king.color.name} pieces.'
+            )
+            return False
+
+    def _get_threatening_pieces(self, piece):
+        threatening_pieces = []
+        capturables = self._capturables[piece.color]
         for threatening_piece, threatened_pieces in capturables.items():
             if piece in threatened_pieces:
-                if threatening_piece == checked_king:
-                    return self._is_capturable_by_king(
-                        threatening_piece,
-                        checked_king
-                    )
-                else:
-                    return True
+                threatening_pieces.append(threatening_piece)
 
-        return False
+        return threatening_pieces
 
-    def _is_capturable_by_king(self, piece, king):
-        dst = self.board.get_square(piece)
-        opponent_pieces = [
-            op
-            for op in self.board.pieces
-            if op.color == self._current_player and
-            op != piece
-        ]
-
-        for opponent_piece in opponent_pieces:
-            src = self.board.get_square(opponent_piece)
-            kwargs = {
-                'src': src,
-                'dst': dst,
-                'check_current_player': False,
-                'check_self_color': False,
-            }
-            if self._is_move_legal(**kwargs):
-                # The king can be captured after it captures
-                # the checking piece, hence the king cannot capture this piece
-                return False
-
-        # We have checked every piece of opponent, nothing
-        # is supporting the checking piece and it can be
-        # captured by the king.
-        return True
-
-    def _get_pieces_on_board(self, color):
+    def _get_pieces(self, color):
         return [
             piece
             for piece in self.board.pieces
             if piece.color == color
         ]
+
+    def _get_capturing_pieces(self, piece):
+        capturables = self._capturables[piece.color]
+        capturing_pieces = []
+        for threatening_piece, threatened_pieces in capturables.items():
+            if piece in threatened_pieces:
+                capturing_pieces.append(threatening_piece)
+
+        return capturing_pieces
+
+    def _escape_square_exists(self, king):
+        def filter_self_color(square):
+            if self.board.is_empty(square):
+                return True
+            piece = self.board.get_piece(square)
+            return piece.color != king.color
+
+        king_square = self.board.get_square(king)
+
+        # All squares surrounding the king
+        surrounding = [
+            Square((king_square.x + incr_x, king_square.y + incr_y))
+            for incr_x, incr_y in itertools.product([1, -1, 0], [1, -1, 0])
+            if 0 <= king_square.x + incr_x < 8 and
+            0 <= king_square.y + incr_y < 8 and
+            (incr_x, incr_y) != (0, 0)
+        ]
+
+        # Remove those squares from surrounding that are occupied by the pieces
+        # of the same color as the king. The remaining squares are either
+        # empty or are covered by opponent pieces that the king can potentially
+        # capture.
+        surrounding = list(filter(filter_self_color, surrounding))
+
+        # Now remove the sqaures where king cannot move due to threat from
+        # other pieces
+        escape_squares = []
+        for surr_square in surrounding:
+            with self._try_move([(king_square, surr_square)]):
+                capturing_pieces = self._get_capturing_pieces(king)
+                if not capturing_pieces:
+                    escape_squares.append(surr_square)
+
+        # If there are still squares left in surrounding, these are the ones
+        # where the king can safely move to escape the check
+        if len(escape_squares) != 0:
+            self._description.append(
+                f'{king} can safely escape to these squares -  '
+                f'{escape_squares}'
+            )
+            return True
+
+        else:
+            self._description.append(
+                f'There are no squares where {king} can safely escape to'
+            )
+            return False
+
+    @contextlib.contextmanager
+    def _try_move(self, moves):
+        board_copy = copy.deepcopy(self._board)
+        captured_black_copy = copy.deepcopy(self._captured_black)
+        captured_white_copy = copy.deepcopy(self._captured_white)
+        capturables_copy = copy.deepcopy(self._capturables)
+        pieces_checking_black_copy = copy.deepcopy(self._pieces_checking_black)
+        pieces_checking_white_copy = copy.deepcopy(self._pieces_checking_white)
+
+        for move_spec in moves:
+            src, dst = self.parse_move_spec(move_spec)
+            dst_piece = self._board.clear_square(dst)
+            if dst_piece is not None:
+                if dst_piece.color == Color.black:
+                    self._captured_black.append(dst_piece)
+                else:
+                    self._captured_white.append(dst_piece)
+
+            src_piece = self._board.clear_square(src)
+            self._board.add_piece(src_piece, dst)
+            self._get_capturables()
+
+        try:
+            yield
+        finally:
+            self._board = copy.deepcopy(board_copy)
+            self._captured_black = copy.deepcopy(captured_black_copy)
+            self._captured_white = copy.deepcopy(captured_white_copy)
+            self._capturables = copy.deepcopy(capturables_copy)
+
+            self._pieces_checking_black = copy.deepcopy(
+                pieces_checking_black_copy
+            )
+
+            self._pieces_checking_white = copy.deepcopy(
+                pieces_checking_white_copy
+            )

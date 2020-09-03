@@ -15,6 +15,7 @@ CODE_KNIGHT = 'n'
 PAWN_FIRST_MOVE_DISTANCE = 2
 KING_CASTLE_DISTANCE = 2
 ADDRESS_PATTERN = r"^([abcdefgh])([12345678])$"
+MOVE_PATTERN = r"^([abcdefgh][12345678])([abcdefgh][12345678])$"
 
 
 @enum.unique
