@@ -215,6 +215,24 @@ def generate_pieces():
     return pieces
 
 
+def get_piece_row_place(piece):
+    places = {
+        (PieceType.rook, 0): 0,
+        (PieceType.knight, 0): 1,
+        (PieceType.bishop, 0): 2,
+        (PieceType.queen, 0): 3,
+        (PieceType.king, 0): 4,
+        (PieceType.bishop, 1): 5,
+        (PieceType.knight, 1): 6,
+        (PieceType.rook, 1): 7,
+    }
+
+    if piece.type == PieceType.pawn:
+        return piece.order
+
+    return places[(piece.type, piece.order)]
+
+
 def _generate_pieces(color):
     pieces = []
     for piece_type in c.PieceType:
@@ -223,4 +241,4 @@ def _generate_pieces(color):
             piece = Piece(piece_type=piece_type, color=color, order=i)
             pieces.append(piece)
 
-    return pieces
+    return sorted(pieces)

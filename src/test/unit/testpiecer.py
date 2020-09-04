@@ -1,7 +1,7 @@
 import unittest
 
 
-from pychess.piecer import generate_pieces, Piece
+from pychess.piecer import generate_pieces, Piece, get_piece_row_place
 from pychess.constant import PieceType, Color, Direction as D
 
 
@@ -250,6 +250,26 @@ class TestPiecer(unittest.TestCase):
         p1 = Piece(PieceType.king, Color.white)
         p2 = Piece(PieceType.king, Color.white)
         self.assertLessEqual(p1, p2)
+
+    def test_get_pieces_row_place(self):
+        places = {
+            (PieceType.rook, 0): 0,
+            (PieceType.knight, 0): 1,
+            (PieceType.bishop, 0): 2,
+            (PieceType.queen, 0): 3,
+            (PieceType.king, 0): 4,
+            (PieceType.bishop, 1): 5,
+            (PieceType.knight, 1): 6,
+            (PieceType.rook, 1): 7,
+        }
+
+        for piece in generate_pieces():
+            if piece.type == PieceType.pawn:
+                expected_result = piece.order
+            else:
+                expected_result = places[(piece.type, piece.order)]
+            row_place = get_piece_row_place(piece)
+            self.assertEqual(row_place, expected_result)
 
 
 if __name__ == "__main__":
