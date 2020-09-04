@@ -14,12 +14,13 @@ def _declare_constants(obj_name, **name_value_dict):
 
 RESOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resources')
 IMAGE_DIR = os.path.join(RESOURCE_DIR, 'image')
+BOARD_IMAGE_NAME = 'board.png'
+BOARD_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BOARD_IMAGE_NAME)
 CODE_KNIGHT = 'n'
 PAWN_FIRST_MOVE_DISTANCE = 2
 KING_CASTLE_DISTANCE = 2
 ADDRESS_PATTERN = r"^([abcdefgh])([12345678])$"
 MOVE_PATTERN = r"^([abcdefgh][12345678])([abcdefgh][12345678])$"
-BOARD_IMAGE_NAME = 'board.png'
 PIECE_IMAGE = _declare_constants(
     obj_name='IMAGE_NAME',
     pawn=_declare_constants(
@@ -62,7 +63,13 @@ NUM_PIECES = _declare_constants(
     queen=1,
     king=1,
 )
-
+SQUARE_SIZE = 104
+BORDER_SIZE = 34
+NON_PAWN_IMAGE_SIZE = 72
+PAWN_IMAGE_SIZE = 64
+SQAURES_IN_A_ROW = 8
+IMAGE_WIDTH = 900
+IMAGE_HEIGHT = 900
 
 @enum.unique
 class PieceType(enum.Enum):
@@ -125,9 +132,6 @@ class STYLESHEET:
 class APP:
     NAME = "Pychess"
     STYLESHEET = STYLESHEET.dark_01
-    IMAGE_WIDTH = 900
-    IMAGE_HEIGHT = 900
     BUTTON_HEIGHT = 60
-
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
