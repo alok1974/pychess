@@ -1,3 +1,4 @@
+import os
 import enum
 import collections
 
@@ -11,11 +12,56 @@ def _declare_constants(obj_name, **name_value_dict):
     return ConstantContainer(*name_value_dict.values())
 
 
+RESOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resources')
+IMAGE_DIR = os.path.join(RESOURCE_DIR, 'image')
 CODE_KNIGHT = 'n'
 PAWN_FIRST_MOVE_DISTANCE = 2
 KING_CASTLE_DISTANCE = 2
 ADDRESS_PATTERN = r"^([abcdefgh])([12345678])$"
 MOVE_PATTERN = r"^([abcdefgh][12345678])([abcdefgh][12345678])$"
+BOARD_IMAGE_NAME = 'board.png'
+PIECE_IMAGE = _declare_constants(
+    obj_name='IMAGE_NAME',
+    pawn=_declare_constants(
+        obj_name='PAWN_IMAGES',
+        white='pawn.png',
+        black='pawn_b.png'
+    ),
+    knight=_declare_constants(
+        obj_name='KNIGHT_IMAGES',
+        white='knight.png',
+        black='knight_b.png'
+    ),
+    bishop=_declare_constants(
+        obj_name='BISHOP_IMAGES',
+        white='bishop.png',
+        black='bishop_b.png'
+    ),
+    rook=_declare_constants(
+        obj_name='ROOK_IMAGES',
+        white='rook.png',
+        black='rook_b.png'
+    ),
+    queen=_declare_constants(
+        obj_name='PAWN_IMAGES',
+        white='queen.png',
+        black='queen_b.png'
+    ),
+    king=_declare_constants(
+        obj_name='PAWN_IMAGES',
+        white='king.png',
+        black='king_b.png'
+    ),
+)
+NUM_PIECES = _declare_constants(
+    obj_name='NUM_PIECES',
+    pawn=8,
+    knight=2,
+    bishop=2,
+    rook=2,
+    queen=1,
+    king=1,
+)
 
 
 @enum.unique
@@ -26,17 +72,6 @@ class PieceType(enum.Enum):
     rook = 3
     queen = 4
     king = 5
-
-
-NUM_PIECES = _declare_constants(
-    obj_name='NUM_PIECES',
-    pawn=8,
-    knight=2,
-    bishop=2,
-    rook=2,
-    queen=1,
-    king=1,
-)
 
 
 @enum.unique
@@ -70,3 +105,29 @@ class Direction(enum.Enum):
     wnw = 13
     nw = 14
     nnw = 15
+
+
+class STYLESHEET:
+    def _get_stylesheet(stylesheet_name):
+        stylesheet = None
+        stylesheet_file_path = os.path.join(
+            f'{RESOURCE_DIR}/css',
+            f'{stylesheet_name}.css',
+        )
+        with open(stylesheet_file_path, 'r') as f:
+            stylesheet = f.read()
+
+        return stylesheet
+
+    dark_01 = _get_stylesheet('dark_01')
+
+
+class APP:
+    NAME = "Pychess"
+    STYLESHEET = STYLESHEET.dark_01
+    IMAGE_WIDTH = 900
+    IMAGE_HEIGHT = 900
+    BUTTON_HEIGHT = 60
+
+    FONT_FAMILY = 'Andale Mono'
+    FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
