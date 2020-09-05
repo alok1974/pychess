@@ -13,7 +13,7 @@ class BoardImage:
 
     @property
     def board(self):
-        return self._board()
+        return self._board
 
     @property
     def qt_image(self):
