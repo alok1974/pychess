@@ -4,13 +4,12 @@ import os
 from PIL import Image, ImageQt
 
 
-from . import constant as c
+from . import constant as C
 
 
 class BoardImage:
     def __init__(self, board):
-        self._board = board
-        self.init()
+        self.init(board=board)
 
     @property
     def board(self):
@@ -24,10 +23,6 @@ class BoardImage:
     def image(self):
         return self._board_image
 
-    @image.setter
-    def image(self, val):
-        self._board_image = val
-
     @property
     def width(self):
         return self._board_image.width
@@ -36,28 +31,29 @@ class BoardImage:
     def height(self):
         return self._board_image.height
 
-    def init(self):
+    def init(self, board):
+        self._board = board
+        self._base_image = self._load_image(C.IMAGE.BOARD_IMAGE_FILE_PATH)
         self._board_image = Image.new(
             'RGBA',
-            (c.IMAGE_WIDTH, c.IMAGE_HEIGHT),
+            self._base_image.size,
             color=(0, 0, 0),
         )
-        board_image = Image.open(c.BOARD_IMAGE_FILE_PATH)
-        self._board_image.paste(board_image, (0, 0))
+        self._board_image.paste(self._base_image, (0, 0))
 
         self.update()
 
-    def update(self):
+    def update(self, board=None):
+        self._board_image.paste(self._base_image, (0, 0))
         self._draw_pieces()
 
-    def show(self, x_res=900, y_res=900):
-        image = self._board_image.resize((x_res, y_res))
-        image.show()
+    def show(self):
+        self._board_image.show()
 
     def _draw_pieces(self):
         for piece in self._board.pieces:
             image_path = self._get_piece_image_path(piece)
-            piece_image = Image.open(image_path)
+            piece_image = self._load_image(image_path)
             piece_image.load()  # needed for alpha comp
             x, y = self._get_coordinates(piece)
             self._board_image.paste(
@@ -69,9 +65,9 @@ class BoardImage:
     def _get_piece_image_path(self, piece):
         piece_name = piece.type.name
         color_name = piece.color.name
-        piece_images = getattr(c.PIECE_IMAGE, piece_name)
+        piece_images = getattr(C.IMAGE.PIECE_IMAGE, piece_name)
         image_name = getattr(piece_images, color_name)
-        image_path = os.path.join(c.IMAGE_DIR, image_name)
+        image_path = os.path.join(C.IMAGE.IMAGE_DIR, image_name)
 
         error_msg = f'Image path {image_path} does not exist!'
         assert(os.path.exists(image_path)), error_msg
@@ -82,9 +78,9 @@ class BoardImage:
         row, column = square.x, square.y
 
         piece_image_size = (
-            c.PAWN_IMAGE_SIZE
-            if piece.type == c.PieceType.pawn
-            else c.NON_PAWN_IMAGE_SIZE
+            C.IMAGE.PAWN_IMAGE_SIZE
+            if piece.type == C.PieceType.pawn
+            else C.IMAGE.NON_PAWN_IMAGE_SIZE
         )
 
         return (
@@ -95,9 +91,18 @@ class BoardImage:
     def _get_coordinate(self, image_size, row_or_column, reverse=False):
         position = row_or_column
         if reverse:
-            position = c.SQAURES_IN_A_ROW - 1 - row_or_column
+            position = C.IMAGE.NB_SQUARES - 1 - row_or_column
 
-        base_offset = c.SQUARE_SIZE * position
-        image_offset = int((c.SQUARE_SIZE - image_size) / 2)
+        base_offset = C.IMAGE.SQUARE_SIZE * position
+        image_offset = int((C.IMAGE.SQUARE_SIZE - image_size) / 2)
 
-        return c.BORDER_SIZE + base_offset + image_offset
+        return C.IMAGE.BORDER_SIZE + base_offset + image_offset
+
+    def _load_image(self, image_path):
+        image = Image.open(image_path)
+        return image.resize(
+            (
+                int(image.width * C.IMAGE.RESIZE_FACTOR),
+                int(image.height * C.IMAGE.RESIZE_FACTOR),
+            )
+        )
