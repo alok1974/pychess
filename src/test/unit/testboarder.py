@@ -5,7 +5,7 @@ import itertools
 from pychess.boarder import Board
 from pychess.squarer import Square
 from pychess.piecer import Piece
-from pychess.constant import PieceType, Color
+from pychess import constant as C
 
 
 class TestBoarder(unittest.TestCase):
@@ -13,50 +13,50 @@ class TestBoarder(unittest.TestCase):
         self.data = {
 
             # Rooks
-            Square('a1'): Piece(PieceType.rook, Color.white, order=0),
-            Square('h1'): Piece(PieceType.rook, Color.white, order=1),
-            Square('a8'): Piece(PieceType.rook, Color.black, order=0),
-            Square('h8'): Piece(PieceType.rook, Color.black, order=1),
+            Square('a1'): Piece(C.PieceType.rook, C.Color.white, order=0),
+            Square('h1'): Piece(C.PieceType.rook, C.Color.white, order=1),
+            Square('a8'): Piece(C.PieceType.rook, C.Color.black, order=0),
+            Square('h8'): Piece(C.PieceType.rook, C.Color.black, order=1),
 
             # Kinghts
-            Square('b1'): Piece(PieceType.knight, Color.white, order=0),
-            Square('g1'): Piece(PieceType.knight, Color.white, order=1),
-            Square('b8'): Piece(PieceType.knight, Color.black, order=0),
-            Square('g8'): Piece(PieceType.knight, Color.black, order=1),
+            Square('b1'): Piece(C.PieceType.knight, C.Color.white, order=0),
+            Square('g1'): Piece(C.PieceType.knight, C.Color.white, order=1),
+            Square('b8'): Piece(C.PieceType.knight, C.Color.black, order=0),
+            Square('g8'): Piece(C.PieceType.knight, C.Color.black, order=1),
 
             # Bishops
-            Square('c1'): Piece(PieceType.bishop, Color.white, order=0),
-            Square('f1'): Piece(PieceType.bishop, Color.white, order=1),
-            Square('c8'): Piece(PieceType.bishop, Color.black, order=0),
-            Square('f8'): Piece(PieceType.bishop, Color.black, order=1),
+            Square('c1'): Piece(C.PieceType.bishop, C.Color.white, order=0),
+            Square('f1'): Piece(C.PieceType.bishop, C.Color.white, order=1),
+            Square('c8'): Piece(C.PieceType.bishop, C.Color.black, order=0),
+            Square('f8'): Piece(C.PieceType.bishop, C.Color.black, order=1),
 
             # Queens
-            Square('d1'): Piece(PieceType.queen, Color.white),
-            Square('d8'): Piece(PieceType.queen, Color.black),
+            Square('d1'): Piece(C.PieceType.queen, C.Color.white),
+            Square('d8'): Piece(C.PieceType.queen, C.Color.black),
 
             # Kings
-            Square('e1'): Piece(PieceType.king, Color.white),
-            Square('e8'): Piece(PieceType.king, Color.black),
+            Square('e1'): Piece(C.PieceType.king, C.Color.white),
+            Square('e8'): Piece(C.PieceType.king, C.Color.black),
 
             # White Pawns
-            Square('a2'): Piece(PieceType.pawn, Color.white, order=0),
-            Square('b2'): Piece(PieceType.pawn, Color.white, order=1),
-            Square('c2'): Piece(PieceType.pawn, Color.white, order=2),
-            Square('d2'): Piece(PieceType.pawn, Color.white, order=3),
-            Square('e2'): Piece(PieceType.pawn, Color.white, order=4),
-            Square('f2'): Piece(PieceType.pawn, Color.white, order=5),
-            Square('g2'): Piece(PieceType.pawn, Color.white, order=6),
-            Square('h2'): Piece(PieceType.pawn, Color.white, order=7),
+            Square('a2'): Piece(C.PieceType.pawn, C.Color.white, order=0),
+            Square('b2'): Piece(C.PieceType.pawn, C.Color.white, order=1),
+            Square('c2'): Piece(C.PieceType.pawn, C.Color.white, order=2),
+            Square('d2'): Piece(C.PieceType.pawn, C.Color.white, order=3),
+            Square('e2'): Piece(C.PieceType.pawn, C.Color.white, order=4),
+            Square('f2'): Piece(C.PieceType.pawn, C.Color.white, order=5),
+            Square('g2'): Piece(C.PieceType.pawn, C.Color.white, order=6),
+            Square('h2'): Piece(C.PieceType.pawn, C.Color.white, order=7),
 
             # Black Pawns
-            Square('a7'): Piece(PieceType.pawn, Color.black, order=0),
-            Square('b7'): Piece(PieceType.pawn, Color.black, order=1),
-            Square('c7'): Piece(PieceType.pawn, Color.black, order=2),
-            Square('d7'): Piece(PieceType.pawn, Color.black, order=3),
-            Square('e7'): Piece(PieceType.pawn, Color.black, order=4),
-            Square('f7'): Piece(PieceType.pawn, Color.black, order=5),
-            Square('g7'): Piece(PieceType.pawn, Color.black, order=6),
-            Square('h7'): Piece(PieceType.pawn, Color.black, order=7),
+            Square('a7'): Piece(C.PieceType.pawn, C.Color.black, order=0),
+            Square('b7'): Piece(C.PieceType.pawn, C.Color.black, order=1),
+            Square('c7'): Piece(C.PieceType.pawn, C.Color.black, order=2),
+            Square('d7'): Piece(C.PieceType.pawn, C.Color.black, order=3),
+            Square('e7'): Piece(C.PieceType.pawn, C.Color.black, order=4),
+            Square('f7'): Piece(C.PieceType.pawn, C.Color.black, order=5),
+            Square('g7'): Piece(C.PieceType.pawn, C.Color.black, order=6),
+            Square('h7'): Piece(C.PieceType.pawn, C.Color.black, order=7),
         }
 
     def test_data(self):

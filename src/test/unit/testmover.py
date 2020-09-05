@@ -5,7 +5,7 @@ import collections
 from pychess.mover import Move
 from pychess.squarer import Square
 from pychess.piecer import generate_pieces
-from pychess.constant import PieceType, Color, Direction
+from pychess import constant as C
 from pychess.piecer import Piece
 
 
@@ -30,7 +30,7 @@ def moves_for_testing(piece):
         a b c d e f g h
     """
     moves = {
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -65,7 +65,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -100,7 +100,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -135,7 +135,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -170,7 +170,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -205,7 +205,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -240,7 +240,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -275,7 +275,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.black): [
+        (C.PieceType.pawn, C.Color.black): [
 
                 MD(
                     move=('f7', 'f5'),
@@ -310,7 +310,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.knight, Color.black): [
+        (C.PieceType.knight, C.Color.black): [
 
                 MD(
                     move=('b8', 'a6'),
@@ -345,7 +345,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.knight, Color.black): [
+        (C.PieceType.knight, C.Color.black): [
                 MD(
                     move=('b8', 'a6'),
                     is_legal=True,
@@ -378,7 +378,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.bishop, Color.black): [
+        (C.PieceType.bishop, C.Color.black): [
 
                 MD(
                     move=('g1', 'a7'),
@@ -416,7 +416,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.bishop, Color.black): [
+        (C.PieceType.bishop, C.Color.black): [
 
                 MD(
                     move=('g1', 'a7'),
@@ -454,7 +454,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.rook, Color.black): [
+        (C.PieceType.rook, C.Color.black): [
 
                 MD(
                     move=('e7', 'e3'),
@@ -495,7 +495,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.rook, Color.black): [
+        (C.PieceType.rook, C.Color.black): [
 
                 MD(
                     move=('e7', 'e3'),
@@ -536,7 +536,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.queen, Color.black): [
+        (C.PieceType.queen, C.Color.black): [
 
                 MD(
                     move=('h5', 'e8'),
@@ -596,7 +596,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.king, Color.black): [
+        (C.PieceType.king, C.Color.black): [
 
                 MD(
                     move=('e8', 'g8'),
@@ -655,7 +655,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -690,7 +690,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -725,7 +725,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -760,7 +760,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -795,7 +795,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -830,7 +830,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -865,7 +865,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -900,7 +900,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.pawn, Color.white): [
+        (C.PieceType.pawn, C.Color.white): [
 
                 MD(
                     move=('d2', 'd4'),
@@ -935,7 +935,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.knight, Color.white): [
+        (C.PieceType.knight, C.Color.white): [
 
                 MD(
                     move=('g1', 'f3'),
@@ -970,7 +970,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.knight, Color.white): [
+        (C.PieceType.knight, C.Color.white): [
 
                 MD(
                     move=('g1', 'f3'),
@@ -1005,7 +1005,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.bishop, Color.white): [
+        (C.PieceType.bishop, C.Color.white): [
 
                 MD(
                     move=('f1', 'a6'),
@@ -1043,7 +1043,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.bishop, Color.white): [
+        (C.PieceType.bishop, C.Color.white): [
 
                 MD(
                     move=('f1', 'a6'),
@@ -1081,7 +1081,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.rook, Color.white): [
+        (C.PieceType.rook, C.Color.white): [
 
                 MD(
                     move=('a1', 'a8'),
@@ -1120,7 +1120,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.rook, Color.white): [
+        (C.PieceType.rook, C.Color.white): [
 
                 MD(
                     move=('a1', 'a8'),
@@ -1159,7 +1159,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.queen, Color.white): [
+        (C.PieceType.queen, C.Color.white): [
 
                 MD(
                     move=('b4', 'e1'),
@@ -1222,7 +1222,7 @@ def moves_for_testing(piece):
                 ),
 
             ],
-        (PieceType.king, Color.white): [
+        (C.PieceType.king, C.Color.white): [
 
                 MD(
                     move=('e1', 'g1'),
@@ -1369,8 +1369,8 @@ class TestMover(unittest.TestCase):
 
     def test_distance(self):
         black_queen = generate_piece(
-            piece_type=PieceType.queen,
-            color=Color.black,
+            piece_type=C.PieceType.queen,
+            color=C.Color.black,
         )
 
         src = Square((4, 1))
@@ -1385,8 +1385,8 @@ class TestMover(unittest.TestCase):
 
     def test_angle(self):
         white_bishop = generate_piece(
-            piece_type=PieceType.bishop,
-            color=Color.white,
+            piece_type=C.PieceType.bishop,
+            color=C.Color.white,
         )
 
         src = Square((0, 0))
@@ -1401,8 +1401,8 @@ class TestMover(unittest.TestCase):
 
     def test_direction(self):
         white_knight = generate_piece(
-            piece_type=PieceType.knight,
-            color=Color.white,
+            piece_type=C.PieceType.knight,
+            color=C.Color.white,
         )
 
         src = Square((3, 5))
@@ -1413,7 +1413,7 @@ class TestMover(unittest.TestCase):
             dst=dst,
         )
 
-        self.assertEqual(m.direction, Direction.nne)
+        self.assertEqual(m.direction, C.Direction.nne)
 
     def test_repr(self):
         for piece in generate_pieces():
@@ -1442,13 +1442,13 @@ class TestMover(unittest.TestCase):
 
     def test_equals(self):
         mv = Move(
-            Piece(PieceType.pawn, Color.black),
+            Piece(C.PieceType.pawn, C.Color.black),
             Square('a2'),
             Square('a4')
         )
 
         expected_result = Move(
-            Piece(PieceType.pawn, Color.black),
+            Piece(C.PieceType.pawn, C.Color.black),
             Square('a2'),
             Square('a4')
         )
@@ -1458,13 +1458,13 @@ class TestMover(unittest.TestCase):
 
     def test_not_equals(self):
         mv = Move(
-            Piece(PieceType.pawn, Color.black),
+            Piece(C.PieceType.pawn, C.Color.black),
             Square('b2'),
             Square('b3')
         )
 
         expected_result = Move(
-            Piece(PieceType.pawn, Color.black),
+            Piece(C.PieceType.pawn, C.Color.black),
             Square('a2'),
             Square('a4')
         )

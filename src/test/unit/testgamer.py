@@ -4,7 +4,7 @@ import unittest
 from pychess.gamer import Game
 from pychess.squarer import Square
 from pychess.piecer import Piece
-from pychess.constant import PieceType, Color
+from pychess import constant as C
 from pychess.mover import Move
 
 
@@ -103,8 +103,8 @@ class TestGamer(unittest.TestCase):
 
     def test_captured_black(self):
         expected_result = [
-            Piece(PieceType.pawn, Color.black, order=7),
-            Piece(PieceType.pawn, Color.black, order=5),
+            Piece(C.PieceType.pawn, C.Color.black, order=7),
+            Piece(C.PieceType.pawn, C.Color.black, order=5),
         ]
 
         self.assertEqual(self.game.captured_black, expected_result)
@@ -122,7 +122,7 @@ class TestGamer(unittest.TestCase):
         self.assertEqual(self.game.black_points, expected_result)
 
     def test_leader(self):
-        expected_result = Color.white
+        expected_result = C.Color.white
         self.assertEqual(self.game.leader, expected_result)
 
     def test_lead(self):
@@ -130,7 +130,7 @@ class TestGamer(unittest.TestCase):
         self.assertEqual(self.game.lead, expected_result)
 
     def test_pieces_checking_black(self):
-        expected_result = [Piece(PieceType.queen, Color.white)]
+        expected_result = [Piece(C.PieceType.queen, C.Color.white)]
         self.assertEqual(self.game.pieces_checking_black, expected_result)
 
     def test_pieces_checking_white(self):
@@ -139,13 +139,13 @@ class TestGamer(unittest.TestCase):
 
     def test_move_history(self):
         # Some short hands for fitting one move in one line
-        p = PieceType.pawn
-        b = PieceType.bishop
-        r = PieceType.rook
-        q = PieceType.queen
+        p = C.PieceType.pawn
+        b = C.PieceType.bishop
+        r = C.PieceType.rook
+        q = C.PieceType.queen
 
-        wt = Color.white
-        bl = Color.black
+        wt = C.Color.white
+        bl = C.Color.black
         s = Square
 
         expected_result = [
@@ -168,22 +168,22 @@ class TestGamer(unittest.TestCase):
 
     def test_capturables(self):
         expected_result = {
-            Color.white: {
-                Piece(PieceType.king, Color.black): [
-                    Piece(PieceType.queen, Color.white)
+            C.Color.white: {
+                Piece(C.PieceType.king, C.Color.black): [
+                    Piece(C.PieceType.queen, C.Color.white)
                 ],
-                Piece(PieceType.rook, Color.black, 1): [
-                    Piece(PieceType.pawn, Color.white, 7)
+                Piece(C.PieceType.rook, C.Color.black, 1): [
+                    Piece(C.PieceType.pawn, C.Color.white, 7)
                 ]
             },
-            Color.black: {
-                Piece(PieceType.queen, Color.white): [
-                    Piece(PieceType.pawn, Color.black, 4),
-                    Piece(PieceType.king, Color.black),
-                    Piece(PieceType.bishop, Color.black, 1),
-                    Piece(PieceType.pawn, Color.black, 6),
-                    Piece(PieceType.knight, Color.black, 1),
-                    Piece(PieceType.rook, Color.black, 1),
+            C.Color.black: {
+                Piece(C.PieceType.queen, C.Color.white): [
+                    Piece(C.PieceType.pawn, C.Color.black, 4),
+                    Piece(C.PieceType.king, C.Color.black),
+                    Piece(C.PieceType.bishop, C.Color.black, 1),
+                    Piece(C.PieceType.pawn, C.Color.black, 6),
+                    Piece(C.PieceType.knight, C.Color.black, 1),
+                    Piece(C.PieceType.rook, C.Color.black, 1),
 
                 ]
             }
@@ -191,7 +191,7 @@ class TestGamer(unittest.TestCase):
         self.assertEqual(self.game.capturables, expected_result)
 
     def test_winner(self):
-        expected_result = Color.white
+        expected_result = C.Color.white
         self.assertEqual(self.game.winner, expected_result)
 
     def test_parse_move_spec_1(self):

@@ -13,63 +13,24 @@ def _declare_constants(obj_name, **name_value_dict):
 
 
 RESOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resources')
-IMAGE_DIR = os.path.join(RESOURCE_DIR, 'image')
-BOARD_IMAGE_NAME = 'board.png'
-BOARD_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BOARD_IMAGE_NAME)
-CODE_KNIGHT = 'n'
-PAWN_FIRST_MOVE_DISTANCE = 2
-KING_CASTLE_DISTANCE = 2
-ADDRESS_PATTERN = r"^([abcdefgh])([12345678])$"
-MOVE_PATTERN = r"^([abcdefgh][12345678])([abcdefgh][12345678])$"
-PIECE_IMAGE = _declare_constants(
-    obj_name='IMAGE_NAME',
-    pawn=_declare_constants(
-        obj_name='PAWN_IMAGES',
-        white='pawn.png',
-        black='pawn_b.png'
-    ),
-    knight=_declare_constants(
-        obj_name='KNIGHT_IMAGES',
-        white='knight.png',
-        black='knight_b.png'
-    ),
-    bishop=_declare_constants(
-        obj_name='BISHOP_IMAGES',
-        white='bishop.png',
-        black='bishop_b.png'
-    ),
-    rook=_declare_constants(
-        obj_name='ROOK_IMAGES',
-        white='rook.png',
-        black='rook_b.png'
-    ),
-    queen=_declare_constants(
-        obj_name='PAWN_IMAGES',
-        white='queen.png',
-        black='queen_b.png'
-    ),
-    king=_declare_constants(
-        obj_name='PAWN_IMAGES',
-        white='king.png',
-        black='king_b.png'
-    ),
-)
-NUM_PIECES = _declare_constants(
-    obj_name='NUM_PIECES',
-    pawn=8,
-    knight=2,
-    bishop=2,
-    rook=2,
-    queen=1,
-    king=1,
-)
-SQUARE_SIZE = 104
-BORDER_SIZE = 34
-NON_PAWN_IMAGE_SIZE = 72
-PAWN_IMAGE_SIZE = 64
-SQAURES_IN_A_ROW = 8
-IMAGE_WIDTH = 900
-IMAGE_HEIGHT = 900
+
+
+class GAME:
+    CODE_KNIGHT = 'n'
+    PAWN_FIRST_MOVE_DISTANCE = 2
+    KING_CASTLE_DISTANCE = 2
+    ADDRESS_PATTERN = r"^([abcdefgh])([12345678])$"
+    MOVE_PATTERN = r"^([abcdefgh][12345678])([abcdefgh][12345678])$"
+    NUM_PIECES = _declare_constants(
+        obj_name='NUM_PIECES',
+        pawn=8,
+        knight=2,
+        bishop=2,
+        rook=2,
+        queen=1,
+        king=1,
+    )
+
 
 @enum.unique
 class PieceType(enum.Enum):
@@ -135,3 +96,52 @@ class APP:
     BUTTON_HEIGHT = 60
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
+
+
+class IMAGE:
+    NB_SQUARES = 8
+    IMAGE_DIR = os.path.join(RESOURCE_DIR, 'image')
+    BOARD_IMAGE_NAME = 'board.png'
+    BOARD_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BOARD_IMAGE_NAME)
+
+    PIECE_IMAGE = _declare_constants(
+        obj_name='IMAGE_NAME',
+        pawn=_declare_constants(
+            obj_name='PAWN_IMAGES',
+            white='pawn.png',
+            black='pawn_b.png'
+        ),
+        knight=_declare_constants(
+            obj_name='KNIGHT_IMAGES',
+            white='knight.png',
+            black='knight_b.png'
+        ),
+        bishop=_declare_constants(
+            obj_name='BISHOP_IMAGES',
+            white='bishop.png',
+            black='bishop_b.png'
+        ),
+        rook=_declare_constants(
+            obj_name='ROOK_IMAGES',
+            white='rook.png',
+            black='rook_b.png'
+        ),
+        queen=_declare_constants(
+            obj_name='PAWN_IMAGES',
+            white='queen.png',
+            black='queen_b.png'
+        ),
+        king=_declare_constants(
+            obj_name='PAWN_IMAGES',
+            white='king.png',
+            black='king_b.png'
+        ),
+    )
+
+    BASE_IMAGE_SIZE = 900
+    IMAGE_SIZE = 900
+    RESIZE_FACTOR = int(BASE_IMAGE_SIZE / IMAGE_SIZE)
+    SQUARE_SIZE = 104 * RESIZE_FACTOR
+    BORDER_SIZE = 34 * RESIZE_FACTOR
+    NON_PAWN_IMAGE_SIZE = 72 * RESIZE_FACTOR
+    PAWN_IMAGE_SIZE = 64 * RESIZE_FACTOR

@@ -2,10 +2,7 @@ import collections
 import math
 
 
-from pychess.constant import PieceType
-
-
-from . import constant as c
+from . import constant as C
 
 
 class Piece:
@@ -20,78 +17,78 @@ class Piece:
     )
 
     piece_data = {
-        PieceType.pawn: piece_attr(
+        C.PieceType.pawn: piece_attr(
             allowed_move_direction=[
-                c.Direction.n,
-                c.Direction.nw,
-                c.Direction.ne,
+                C.Direction.n,
+                C.Direction.nw,
+                C.Direction.ne,
             ],
             worth=1,
             nb_pieces=8,
             travel_distance=[1, math.sqrt(2)],
         ),
-        PieceType.knight: piece_attr(
+        C.PieceType.knight: piece_attr(
             allowed_move_direction=[
-                c.Direction.nnw,
-                c.Direction.nne,
-                c.Direction.wnw,
-                c.Direction.ene,
-                c.Direction.wsw,
-                c.Direction.ese,
-                c.Direction.ssw,
-                c.Direction.sse,
+                C.Direction.nnw,
+                C.Direction.nne,
+                C.Direction.wnw,
+                C.Direction.ene,
+                C.Direction.wsw,
+                C.Direction.ese,
+                C.Direction.ssw,
+                C.Direction.sse,
             ],
             worth=3,
             nb_pieces=2,
             travel_distance=[math.sqrt(5)],
         ),
-        PieceType.bishop: piece_attr(
+        C.PieceType.bishop: piece_attr(
             allowed_move_direction=[
-                c.Direction.nw,
-                c.Direction.ne,
-                c.Direction.sw,
-                c.Direction.se
+                C.Direction.nw,
+                C.Direction.ne,
+                C.Direction.sw,
+                C.Direction.se
             ],
             worth=3,
             nb_pieces=2,
             travel_distance=[0],
         ),
-        PieceType.rook: piece_attr(
+        C.PieceType.rook: piece_attr(
             allowed_move_direction=[
-                c.Direction.n,
-                c.Direction.s,
-                c.Direction.e,
-                c.Direction.w
+                C.Direction.n,
+                C.Direction.s,
+                C.Direction.e,
+                C.Direction.w
             ],
             worth=5,
             nb_pieces=2,
             travel_distance=[0],
         ),
-        PieceType.queen: piece_attr(
+        C.PieceType.queen: piece_attr(
             allowed_move_direction=[
-                c.Direction.nw,
-                c.Direction.ne,
-                c.Direction.sw,
-                c.Direction.se,
-                c.Direction.n,
-                c.Direction.e,
-                c.Direction.w,
-                c.Direction.s,
+                C.Direction.nw,
+                C.Direction.ne,
+                C.Direction.sw,
+                C.Direction.se,
+                C.Direction.n,
+                C.Direction.e,
+                C.Direction.w,
+                C.Direction.s,
             ],
             worth=9,
             nb_pieces=1,
             travel_distance=[0],
         ),
-        PieceType.king: piece_attr(
+        C.PieceType.king: piece_attr(
             allowed_move_direction=[
-                c.Direction.nw,
-                c.Direction.ne,
-                c.Direction.sw,
-                c.Direction.se,
-                c.Direction.n,
-                c.Direction.e,
-                c.Direction.w,
-                c.Direction.s,
+                C.Direction.nw,
+                C.Direction.ne,
+                C.Direction.sw,
+                C.Direction.se,
+                C.Direction.n,
+                C.Direction.e,
+                C.Direction.w,
+                C.Direction.s,
             ],
             worth=10,
             nb_pieces=1,
@@ -109,8 +106,8 @@ class Piece:
         self._name = piece_type.name
         self._code = (
             piece_type.name[:1]
-            if piece_type != PieceType.knight
-            else c.CODE_KNIGHT
+            if piece_type != C.PieceType.knight
+            else C.GAME.CODE_KNIGHT
         )
         self._worth = self._attr.worth
         self._allowed_move_direction = self._attr.allowed_move_direction
@@ -209,7 +206,7 @@ class Piece:
 
 def generate_pieces():
     pieces = []
-    for color in c.Color:
+    for color in C.Color:
         pieces.extend(_generate_pieces(color=color))
 
     return pieces
@@ -217,17 +214,17 @@ def generate_pieces():
 
 def get_piece_row_place(piece):
     places = {
-        (PieceType.rook, 0): 0,
-        (PieceType.knight, 0): 1,
-        (PieceType.bishop, 0): 2,
-        (PieceType.queen, 0): 3,
-        (PieceType.king, 0): 4,
-        (PieceType.bishop, 1): 5,
-        (PieceType.knight, 1): 6,
-        (PieceType.rook, 1): 7,
+        (C.PieceType.rook, 0): 0,
+        (C.PieceType.knight, 0): 1,
+        (C.PieceType.bishop, 0): 2,
+        (C.PieceType.queen, 0): 3,
+        (C.PieceType.king, 0): 4,
+        (C.PieceType.bishop, 1): 5,
+        (C.PieceType.knight, 1): 6,
+        (C.PieceType.rook, 1): 7,
     }
 
-    if piece.type == PieceType.pawn:
+    if piece.type == C.PieceType.pawn:
         return piece.order
 
     return places[(piece.type, piece.order)]
@@ -235,8 +232,8 @@ def get_piece_row_place(piece):
 
 def _generate_pieces(color):
     pieces = []
-    for piece_type in c.PieceType:
-        nb_pieces = getattr(c.NUM_PIECES, piece_type.name)
+    for piece_type in C.PieceType:
+        nb_pieces = getattr(C.GAME.NUM_PIECES, piece_type.name)
         for i in range(nb_pieces):
             piece = Piece(piece_type=piece_type, color=color, order=i)
             pieces.append(piece)
