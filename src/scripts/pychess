@@ -1,8 +1,5 @@
 #!/usr/bin/env python
+import pychess
 
 
-from pychess import boarder, imager
-
-board = boarder.Board()
-board_image = imager.BoardImage(board=board)
-board_image.show()
+pychess.run()
