@@ -1,7 +1,7 @@
 from PySide2 import QtWidgets
 
 
-from . import constant as C
+from . import constant as c
 
 
 class MainWindow(QtWidgets.QDialog):
@@ -11,8 +11,8 @@ class MainWindow(QtWidgets.QDialog):
         self._connect_signals()
 
     def _setup_ui(self):
-        self.setWindowTitle(C.APP.NAME)
-        self.setStyleSheet(C.APP.STYLESHEET)
+        self.setWindowTitle(c.APP.NAME)
+        self.setStyleSheet(c.APP.STYLESHEET)
 
     def _connect_signals(self):
         pass

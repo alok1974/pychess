@@ -1,7 +1,7 @@
 import math
 import decimal
 
-from . import constant as C
+from . import constant as c
 from .squarer import Square
 from .piecer import Piece
 
@@ -54,8 +54,8 @@ class Move:
         x, y = self.dst.x - self.src.x, self.dst.y - self.src.y
 
         # Reverse directions for black pawn
-        is_pawn = self.piece.type == C.PieceType.pawn
-        is_black = self.piece.color == C.Color.black
+        is_pawn = self.piece.type == c.PieceType.pawn
+        is_black = self.piece.color == c.Color.black
         if is_pawn and is_black:
             y = -1 * y
 
@@ -71,44 +71,44 @@ class Move:
     @property
     def direction(self):
         if self.angle == 0:
-            return C.Direction.e
+            return c.Direction.e
         elif 0.0 < self.angle < 45.0:
-            return C.Direction.ene
+            return c.Direction.ene
         elif self.angle == 45.0:
-            return C.Direction.ne
+            return c.Direction.ne
         elif 45.0 < self.angle < 90.0:
-            return C.Direction.nne
+            return c.Direction.nne
         elif self.angle == 90.0:
-            return C.Direction.n
+            return c.Direction.n
         elif 90.0 < self.angle < 135.0:
-            return C.Direction.nnw
+            return c.Direction.nnw
         elif self.angle == 135.0:
-            return C.Direction.nw
+            return c.Direction.nw
         elif 135.0 < self.angle < 180.0:
-            return C.Direction.wnw
+            return c.Direction.wnw
         elif self.angle == 180.0:
-            return C.Direction.w
+            return c.Direction.w
         elif 180.0 < self.angle < 225.0:
-            return C.Direction.wsw
+            return c.Direction.wsw
         elif self.angle == 225.0:
-            return C.Direction.sw
+            return c.Direction.sw
         elif 225.0 < self.angle < 270.0:
-            return C.Direction.ssw
+            return c.Direction.ssw
         elif self.angle == 270.0:
-            return C.Direction.s
+            return c.Direction.s
         elif 270.0 < self.angle < 315.0:
-            return C.Direction.sse
+            return c.Direction.sse
         elif self.angle == 315.0:
-            return C.Direction.se
+            return c.Direction.se
         elif 315.0 < self.angle < 360.0:
-            return C.Direction.ese
+            return c.Direction.ese
 
     @property
     def path(self):
         if not self.is_legal:
             return []
 
-        piece_types = [C.PieceType.queen, C.PieceType.rook, C.PieceType.bishop]
+        piece_types = [c.PieceType.queen, c.PieceType.rook, c.PieceType.bishop]
         if self.piece.type not in piece_types:
             return [self.src, self.dst]
 
@@ -182,15 +182,15 @@ class Move:
         if self.piece.travel_distance == [0]:
             return True
 
-        if self.piece.type == C.PieceType.pawn:  # Case: pawn first move
+        if self.piece.type == c.PieceType.pawn:  # Case: pawn first move
             first_row = 1
-            if self.piece.color == C.Color.black:
+            if self.piece.color == c.Color.black:
                 first_row = 6
 
             if self.src.y == first_row:
                 allowed_distance = (
                     self.piece.travel_distance +
-                    [C.GAME.PAWN_FIRST_MOVE_DISTANCE]
+                    [c.GAME.PAWN_FIRST_MOVE_DISTANCE]
                 )
                 return self.distance in allowed_distance
             else:
@@ -203,12 +203,12 @@ class Move:
 
     def _is_trying_castling(self):
         return (
-            self.distance == C.GAME.KING_CASTLE_DISTANCE and
-            self.piece.type == C.PieceType.king
+            self.distance == c.GAME.KING_CASTLE_DISTANCE and
+            self.piece.type == c.PieceType.king
         )
 
     def _is_legal_castling(self):
-        if self.piece.type != C.PieceType.king:
+        if self.piece.type != c.PieceType.king:
             error_msg = 'Castling can be checked for king only!'
             raise ValueError(error_msg)
 
@@ -217,7 +217,7 @@ class Move:
             Square('g1'),  # Case: short castle
             Square('c1'),  # Case: long castle
         ]
-        if self.piece.color == C.Color.black:
+        if self.piece.color == c.Color.black:
             start_src = Square('e8')
             possible_dst = [
                 Square('g8'),  # Case: short castle

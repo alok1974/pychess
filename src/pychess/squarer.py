@@ -1,7 +1,7 @@
 import re
 
 
-from . import constant as C
+from . import constant as c
 
 
 class Square:
@@ -87,7 +87,7 @@ class Square:
                 '\'abcdefgh\' and <number> is from 1 to 8, example '
                 '\'a5\', \'h4\' etc.'
             )
-            mo = re.match(C.GAME.ADDRESS_PATTERN, address)
+            mo = re.match(c.GAME.ADDRESS_PATTERN, address)
             if mo is None:
                 raise ValueError(error_msg_3)
 

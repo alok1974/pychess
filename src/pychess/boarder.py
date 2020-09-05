@@ -3,7 +3,7 @@ import itertools
 
 from .squarer import Square
 from .piecer import Piece
-from . import constant as C
+from . import constant as c
 
 
 class Board:
@@ -69,28 +69,27 @@ class Board:
         )
 
     def _set_board(self):
-        self._set_color_pieces(color=C.Color.white)
-        self._set_color_pieces(color=C.Color.black)
+        self._set_color_pieces(color=c.Color.white)
+        self._set_color_pieces(color=c.Color.black)
 
     def _set_color_pieces(self, color):
-        c = color
         row_1 = 0
         row_2 = 1
-        if color == C.Color.black:
+        if color == c.Color.black:
             row_1 = 7
             row_2 = 6
 
-        self._data[Square((0, row_1))] = Piece(C.PieceType.rook, c, 0)
-        self._data[Square((1, row_1))] = Piece(C.PieceType.knight, c, 0)
-        self._data[Square((2, row_1))] = Piece(C.PieceType.bishop, c, 0)
-        self._data[Square((3, row_1))] = Piece(C.PieceType.queen, c, 0)
-        self._data[Square((4, row_1))] = Piece(C.PieceType.king, c, 0)
-        self._data[Square((5, row_1))] = Piece(C.PieceType.bishop, c, 1)
-        self._data[Square((6, row_1))] = Piece(C.PieceType.knight, c, 1)
-        self._data[Square((7, row_1))] = Piece(C.PieceType.rook, c, 1)
+        self._data[Square((0, row_1))] = Piece(c.PieceType.rook, color, 0)
+        self._data[Square((1, row_1))] = Piece(c.PieceType.knight, color, 0)
+        self._data[Square((2, row_1))] = Piece(c.PieceType.bishop, color, 0)
+        self._data[Square((3, row_1))] = Piece(c.PieceType.queen, color, 0)
+        self._data[Square((4, row_1))] = Piece(c.PieceType.king, color, 0)
+        self._data[Square((5, row_1))] = Piece(c.PieceType.bishop, color, 1)
+        self._data[Square((6, row_1))] = Piece(c.PieceType.knight, color, 1)
+        self._data[Square((7, row_1))] = Piece(c.PieceType.rook, color, 1)
 
         for i in range(8):
-            self._data[Square((i, row_2))] = Piece(C.PieceType.pawn, c, i)
+            self._data[Square((i, row_2))] = Piece(c.PieceType.pawn, color, i)
 
     def _validate_piece(self, piece):
         if piece not in self.data.values():
@@ -124,7 +123,7 @@ class Board:
                     line_data.append(filler)
                 else:
                     piece_code = piece.code
-                    if piece.color == C.Color.white:
+                    if piece.color == c.Color.white:
                         piece_code = piece_code.upper()
                     line_data.append(piece_code)
 

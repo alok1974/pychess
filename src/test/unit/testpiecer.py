@@ -2,7 +2,7 @@ import unittest
 
 
 from pychess.piecer import generate_pieces, Piece, get_piece_row_place
-from pychess import constant as C
+from pychess import constant as c
 
 
 class TestPiecer(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestPiecer(unittest.TestCase):
 
         pieces = sorted([
             Piece(pd[0], pd[1])
-            for pd in itertools.product(C.PieceType, C.Color)
+            for pd in itertools.product(c.PieceType, c.Color)
         ])
 
         expected_result = [
@@ -28,42 +28,42 @@ class TestPiecer(unittest.TestCase):
     def test_generate_pieces(self):
         pieces = generate_pieces()
 
-        w_pieces = [p for p in pieces if p.color == C.Color.white]
-        b_pieces = [p for p in pieces if p.color == C.Color.black]
+        w_pieces = [p for p in pieces if p.color == c.Color.white]
+        b_pieces = [p for p in pieces if p.color == c.Color.black]
         self.assertTrue(len(w_pieces) == len(b_pieces) == 16)
 
-        w_pawns = [p for p in w_pieces if p.type == C.PieceType.pawn]
-        b_pawns = [p for p in b_pieces if p.type == C.PieceType.pawn]
+        w_pawns = [p for p in w_pieces if p.type == c.PieceType.pawn]
+        b_pawns = [p for p in b_pieces if p.type == c.PieceType.pawn]
         self.assertTrue(len(w_pawns) == len(b_pawns) == 8)
 
-        w_knights = [p for p in w_pieces if p.type == C.PieceType.knight]
-        b_knights = [p for p in b_pieces if p.type == C.PieceType.knight]
+        w_knights = [p for p in w_pieces if p.type == c.PieceType.knight]
+        b_knights = [p for p in b_pieces if p.type == c.PieceType.knight]
         self.assertTrue(len(w_knights) == len(b_knights) == 2)
 
-        w_bishops = [p for p in w_pieces if p.type == C.PieceType.bishop]
-        b_bishops = [p for p in b_pieces if p.type == C.PieceType.bishop]
+        w_bishops = [p for p in w_pieces if p.type == c.PieceType.bishop]
+        b_bishops = [p for p in b_pieces if p.type == c.PieceType.bishop]
         self.assertTrue(len(w_bishops) == len(b_bishops) == 2)
 
-        w_bishops = [p for p in w_pieces if p.type == C.PieceType.bishop]
-        b_bishops = [p for p in b_pieces if p.type == C.PieceType.bishop]
+        w_bishops = [p for p in w_pieces if p.type == c.PieceType.bishop]
+        b_bishops = [p for p in b_pieces if p.type == c.PieceType.bishop]
         self.assertTrue(len(w_bishops) == len(b_bishops) == 2)
 
-        w_rooks = [p for p in w_pieces if p.type == C.PieceType.rook]
-        b_rooks = [p for p in b_pieces if p.type == C.PieceType.rook]
+        w_rooks = [p for p in w_pieces if p.type == c.PieceType.rook]
+        b_rooks = [p for p in b_pieces if p.type == c.PieceType.rook]
         self.assertTrue(len(w_rooks) == len(b_rooks) == 2)
 
-        w_queens = [p for p in w_pieces if p.type == C.PieceType.queen]
-        b_queens = [p for p in b_pieces if p.type == C.PieceType.queen]
+        w_queens = [p for p in w_pieces if p.type == c.PieceType.queen]
+        b_queens = [p for p in b_pieces if p.type == c.PieceType.queen]
         self.assertTrue(len(w_queens) == len(b_queens) == 1)
 
-        w_kings = [p for p in w_pieces if p.type == C.PieceType.king]
-        b_kings = [p for p in b_pieces if p.type == C.PieceType.king]
+        w_kings = [p for p in w_pieces if p.type == c.PieceType.king]
+        b_kings = [p for p in b_pieces if p.type == c.PieceType.king]
         self.assertTrue(len(w_kings) == len(b_kings) == 1)
 
     def test_name(self):
         expected_result = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
 
-        pieces = [Piece(p, C.Color.black) for p in C.PieceType]
+        pieces = [Piece(p, c.Color.black) for p in c.PieceType]
         names = [p.name for p in pieces]
 
         self.assertEqual(names, expected_result)
@@ -71,66 +71,66 @@ class TestPiecer(unittest.TestCase):
     def test_code(self):
         expected_result = ['p', 'n', 'b', 'r', 'q', 'k']
 
-        pieces = [Piece(p, C.Color.black) for p in C.PieceType]
+        pieces = [Piece(p, c.Color.black) for p in c.PieceType]
         codes = [p.code for p in pieces]
 
         self.assertEqual(codes, expected_result)
 
     def test_color(self):
-        p = Piece(C.PieceType.pawn, color=C.Color.black)
-        self.assertEqual(p.color, C.Color.black)
+        p = Piece(c.PieceType.pawn, color=c.Color.black)
+        self.assertEqual(p.color, c.Color.black)
 
-        p = Piece(C.PieceType.pawn, color=C.Color.white)
-        self.assertEqual(p.color, C.Color.white)
+        p = Piece(c.PieceType.pawn, color=c.Color.white)
+        self.assertEqual(p.color, c.Color.white)
 
     def test_color_code(self):
-        p = Piece(C.PieceType.pawn, color=C.Color.black)
+        p = Piece(c.PieceType.pawn, color=c.Color.black)
         self.assertEqual(p.color_code, 'b')
 
-        p = Piece(C.PieceType.pawn, color=C.Color.white)
+        p = Piece(c.PieceType.pawn, color=c.Color.white)
         self.assertEqual(p.color_code, 'w')
 
     def test_worth(self):
         expected_result = [1, 3, 3, 5, 9, 10]
 
-        pieces = [Piece(p, C.Color.black) for p in C.PieceType]
+        pieces = [Piece(p, c.Color.black) for p in c.PieceType]
         worths = [p.worth for p in pieces]
 
         self.assertEqual(worths, expected_result)
 
     def test_type(self):
-        pieces = [Piece(p, C.Color.black) for p in C.PieceType]
+        pieces = [Piece(p, c.Color.black) for p in c.PieceType]
         types = [p.type for p in pieces]
 
-        self.assertEqual(types, [t for t in C.PieceType])
+        self.assertEqual(types, [t for t in c.PieceType])
 
     def test_allowed_move_directions(self):
         moves = {
-            C.PieceType.pawn: [C.Direction.n, C.Direction.nw, C.Direction.ne],
-            C.PieceType.knight: [
-                C.Direction.nnw, C.Direction.nne, C.Direction.wnw,
-                C.Direction.ene, C.Direction.wsw, C.Direction.ese,
-                C.Direction.ssw, C.Direction.sse,
+            c.PieceType.pawn: [c.Direction.n, c.Direction.nw, c.Direction.ne],
+            c.PieceType.knight: [
+                c.Direction.nnw, c.Direction.nne, c.Direction.wnw,
+                c.Direction.ene, c.Direction.wsw, c.Direction.ese,
+                c.Direction.ssw, c.Direction.sse,
             ],
-            C.PieceType.bishop: [
-                C.Direction.nw, C.Direction.ne,
-                C.Direction.sw, C.Direction.se,
+            c.PieceType.bishop: [
+                c.Direction.nw, c.Direction.ne,
+                c.Direction.sw, c.Direction.se,
             ],
-            C.PieceType.rook: [
-                C.Direction.n, C.Direction.s, C.Direction.e, C.Direction.w
+            c.PieceType.rook: [
+                c.Direction.n, c.Direction.s, c.Direction.e, c.Direction.w
             ],
-            C.PieceType.queen: [
-                C.Direction.nw, C.Direction.ne, C.Direction.sw,
-                C.Direction.se, C.Direction.n, C.Direction.e,
-                C.Direction.w, C.Direction.s,
+            c.PieceType.queen: [
+                c.Direction.nw, c.Direction.ne, c.Direction.sw,
+                c.Direction.se, c.Direction.n, c.Direction.e,
+                c.Direction.w, c.Direction.s,
             ],
-            C.PieceType.king: [
-                C.Direction.nw, C.Direction.ne, C.Direction.sw, C.Direction.se,
-                C.Direction.n, C.Direction.e, C.Direction.w, C.Direction.s,
+            c.PieceType.king: [
+                c.Direction.nw, c.Direction.ne, c.Direction.sw, c.Direction.se,
+                c.Direction.n, c.Direction.e, c.Direction.w, c.Direction.s,
             ],
         }
 
-        pieces = [Piece(p, C.Color.black) for p in moves.keys()]
+        pieces = [Piece(p, c.Color.black) for p in moves.keys()]
 
         for p in pieces:
             expected_result = moves.get(p.type)
@@ -139,26 +139,26 @@ class TestPiecer(unittest.TestCase):
     def test_nb_pieces(self):
         expected_result = [8, 2, 2, 2, 1, 1]
 
-        pieces = [Piece(p, C.Color.black) for p in C.PieceType]
+        pieces = [Piece(p, c.Color.black) for p in c.PieceType]
         nb_pieces = [p.nb_pieces for p in pieces]
 
         self.assertEqual(nb_pieces, expected_result)
 
     def test_order(self):
         nb_pieces = {
-            C.PieceType.pawn: 8,
-            C.PieceType.knight: 2,
-            C.PieceType.bishop: 2,
-            C.PieceType.rook: 2,
-            C.PieceType.queen: 1,
-            C.PieceType.king: 1,
+            c.PieceType.pawn: 8,
+            c.PieceType.knight: 2,
+            c.PieceType.bishop: 2,
+            c.PieceType.rook: 2,
+            c.PieceType.queen: 1,
+            c.PieceType.king: 1,
         }
 
         for piece_type in nb_pieces.keys():
             pieces = []
             orders = []
             for i in range(nb_pieces[piece_type]):
-                pieces.append(Piece(piece_type, C.Color.black, order=i))
+                pieces.append(Piece(piece_type, c.Color.black, order=i))
                 orders = [p.order for p in pieces]
             expected_result = list(range(nb_pieces[piece_type]))
             self.assertEqual(orders, expected_result)
@@ -178,15 +178,15 @@ class TestPiecer(unittest.TestCase):
         import math
 
         travel_distance = {
-            C.PieceType.pawn: [1, math.sqrt(2)],
-            C.PieceType.knight: [math.sqrt(5)],
-            C.PieceType.bishop: [0],
-            C.PieceType.rook: [0],
-            C.PieceType.queen: [0],
-            C.PieceType.king: [1, math.sqrt(2)],
+            c.PieceType.pawn: [1, math.sqrt(2)],
+            c.PieceType.knight: [math.sqrt(5)],
+            c.PieceType.bishop: [0],
+            c.PieceType.rook: [0],
+            c.PieceType.queen: [0],
+            c.PieceType.king: [1, math.sqrt(2)],
         }
 
-        pieces = [Piece(p, C.Color.black) for p in travel_distance.keys()]
+        pieces = [Piece(p, c.Color.black) for p in travel_distance.keys()]
 
         for p in pieces:
             expected_result = travel_distance.get(p.type)
@@ -195,7 +195,7 @@ class TestPiecer(unittest.TestCase):
     def test_hash(self):
         import itertools
 
-        piece_data = [d for d in itertools.product(C.PieceType, C.Color)]
+        piece_data = [d for d in itertools.product(c.PieceType, c.Color)]
 
         expected_results = [
             (d[0].value * 100) + (d[1].value * 10) + (0)  # default order
@@ -212,71 +212,71 @@ class TestPiecer(unittest.TestCase):
                 raise
 
     def test_equals(self):
-        p1 = Piece(C.PieceType.pawn, C.Color.black)
-        p2 = Piece(C.PieceType.pawn, C.Color.black)
+        p1 = Piece(c.PieceType.pawn, c.Color.black)
+        p2 = Piece(c.PieceType.pawn, c.Color.black)
 
         self.assertTrue(p1 is not p2)
         self.assertEqual(p1, p2)
 
     def test_not_equals(self):
-        p1 = Piece(C.PieceType.rook, C.Color.black)
-        p2 = Piece(C.PieceType.rook, C.Color.black, order=1)
+        p1 = Piece(c.PieceType.rook, c.Color.black)
+        p2 = Piece(c.PieceType.rook, c.Color.black, order=1)
         self.assertNotEqual(p1, p2)
 
     def test_greater(self):
-        p1 = Piece(C.PieceType.king, C.Color.black)
-        p2 = Piece(C.PieceType.queen, C.Color.white)
+        p1 = Piece(c.PieceType.king, c.Color.black)
+        p2 = Piece(c.PieceType.queen, c.Color.white)
 
         self.assertGreater(p1, p2)
 
-        p1 = Piece(C.PieceType.king, C.Color.white)
-        p2 = Piece(C.PieceType.king, C.Color.black)
+        p1 = Piece(c.PieceType.king, c.Color.white)
+        p2 = Piece(c.PieceType.king, c.Color.black)
 
         self.assertGreater(p1, p2)
 
     def test_less(self):
-        p1 = Piece(C.PieceType.queen, C.Color.black)
-        p2 = Piece(C.PieceType.king, C.Color.white)
+        p1 = Piece(c.PieceType.queen, c.Color.black)
+        p2 = Piece(c.PieceType.king, c.Color.white)
 
         self.assertLess(p1, p2)
 
-        p1 = Piece(C.PieceType.queen, C.Color.black)
-        p2 = Piece(C.PieceType.queen, C.Color.white)
+        p1 = Piece(c.PieceType.queen, c.Color.black)
+        p2 = Piece(c.PieceType.queen, c.Color.white)
 
         self.assertLess(p1, p2)
 
     def test_greater_equals(self):
-        p1 = Piece(C.PieceType.king, C.Color.black)
-        p2 = Piece(C.PieceType.queen, C.Color.white)
+        p1 = Piece(c.PieceType.king, c.Color.black)
+        p2 = Piece(c.PieceType.queen, c.Color.white)
         self.assertGreaterEqual(p1, p2)
 
-        p1 = Piece(C.PieceType.king, C.Color.white)
-        p2 = Piece(C.PieceType.king, C.Color.white)
+        p1 = Piece(c.PieceType.king, c.Color.white)
+        p2 = Piece(c.PieceType.king, c.Color.white)
         self.assertGreaterEqual(p1, p2)
 
     def test_less_equals(self):
-        p1 = Piece(C.PieceType.queen, C.Color.black)
-        p2 = Piece(C.PieceType.king, C.Color.white)
+        p1 = Piece(c.PieceType.queen, c.Color.black)
+        p2 = Piece(c.PieceType.king, c.Color.white)
         self.assertLessEqual(p1, p2)
 
-        p1 = Piece(C.PieceType.king, C.Color.white)
-        p2 = Piece(C.PieceType.king, C.Color.white)
+        p1 = Piece(c.PieceType.king, c.Color.white)
+        p2 = Piece(c.PieceType.king, c.Color.white)
         self.assertLessEqual(p1, p2)
 
     def test_get_pieces_row_place(self):
         places = {
-            (C.PieceType.rook, 0): 0,
-            (C.PieceType.knight, 0): 1,
-            (C.PieceType.bishop, 0): 2,
-            (C.PieceType.queen, 0): 3,
-            (C.PieceType.king, 0): 4,
-            (C.PieceType.bishop, 1): 5,
-            (C.PieceType.knight, 1): 6,
-            (C.PieceType.rook, 1): 7,
+            (c.PieceType.rook, 0): 0,
+            (c.PieceType.knight, 0): 1,
+            (c.PieceType.bishop, 0): 2,
+            (c.PieceType.queen, 0): 3,
+            (c.PieceType.king, 0): 4,
+            (c.PieceType.bishop, 1): 5,
+            (c.PieceType.knight, 1): 6,
+            (c.PieceType.rook, 1): 7,
         }
 
         for piece in generate_pieces():
-            if piece.type == C.PieceType.pawn:
+            if piece.type == c.PieceType.pawn:
                 expected_result = piece.order
             else:
                 expected_result = places[(piece.type, piece.order)]

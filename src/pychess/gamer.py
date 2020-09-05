@@ -7,7 +7,7 @@ import copy
 
 from .boarder import Board
 from .mover import Move
-from . import constant as C
+from . import constant as c
 from .piecer import Piece
 from .squarer import Square
 
@@ -26,8 +26,8 @@ class Game:
         self._capturables = []
         self._pieces_checking_black = []
         self._pieces_checking_white = []
-        self._current_player = C.Color.white
-        self._next_player = C.Color.black
+        self._current_player = c.Color.white
+        self._next_player = c.Color.black
         self._winner = None
         self._is_game_over = False
         self._description = []
@@ -65,9 +65,9 @@ class Game:
         if self.black_points == self.white_points:
             return
         elif self.black_points > self.white_points:
-            return C.Color.black
+            return c.Color.black
         else:
-            return C.Color.white
+            return c.Color.white
 
     @property
     def lead(self):
@@ -97,8 +97,8 @@ class Game:
         self._capturables = []
         self._pieces_checking_black = []
         self._pieces_checking_white = []
-        self._current_player = C.Color.white
-        self._next_player = C.Color.black
+        self._current_player = c.Color.white
+        self._next_player = c.Color.black
         self._winner = None
         self._is_game_over = False
         self._description = []
@@ -123,7 +123,7 @@ class Game:
             both_squares = all([isinstance(a, Square) for a in move_spec])
             if both_string:
                 for addr in move_spec:
-                    mo = re.match(C.GAME.ADDRESS_PATTERN, addr)
+                    mo = re.match(c.GAME.ADDRESS_PATTERN, addr)
                     if mo is None:
                         error_msg = (
                             f'Malformed address! The address {addr} supplied '
@@ -159,7 +159,7 @@ class Game:
                 raise RuntimeError(error_msg)
         elif isinstance(move_spec, str):
             valid_len = len(move_spec) == 4
-            mo = re.match(C.GAME.MOVE_PATTERN, move_spec)
+            mo = re.match(c.GAME.MOVE_PATTERN, move_spec)
             if not valid_len or mo is None:
                 error_msg = (
                     f'`move_spec={move_spec}` should be of the form '
@@ -213,7 +213,7 @@ class Game:
 
         dst_piece = self.board.clear_square(dst)
         if dst_piece is not None:
-            if dst_piece.color == C.Color.black:
+            if dst_piece.color == c.Color.black:
                 self._captured_black.append(dst_piece)
             else:
                 self._captured_white.append(dst_piece)
@@ -223,12 +223,12 @@ class Game:
         return self.MOVE_RESULT(success=True, moved_piece=src_piece)
 
     def _toggle_player(self):
-        if self._current_player == C.Color.black:
-            self._current_player = C.Color.white
-            self._next_player = C.Color.black
+        if self._current_player == c.Color.black:
+            self._current_player = c.Color.white
+            self._next_player = c.Color.black
         else:
-            self._current_player = C.Color.black
-            self._next_player = C.Color.white
+            self._current_player = c.Color.black
+            self._next_player = c.Color.white
 
     def _is_move_legal(
             self, src, dst,
@@ -260,7 +260,7 @@ class Game:
 
         # Case V: Special case for pawn as it can only capture only
         # with a diagonal move
-        if piece_to_move.type == C.PieceType.pawn:
+        if piece_to_move.type == c.PieceType.pawn:
             if mv.is_orthogonal and dst_piece is not None:
                 return
             elif mv.is_diagonal and dst_piece is None:
@@ -268,9 +268,9 @@ class Game:
 
         # Case V: Path to destination is not empty
         if piece_to_move.type in [
-                C.PieceType.queen,
-                C.PieceType.rook,
-                C.PieceType.bishop,
+                c.PieceType.queen,
+                c.PieceType.rook,
+                c.PieceType.bishop,
         ]:
             in_between_squares = mv.path[1:-1]
             if not all([self.board.is_empty(s) for s in in_between_squares]):
@@ -280,17 +280,17 @@ class Game:
 
     def _get_capturables(self):
         self._capturables = {
-            C.Color.white: {},
-            C.Color.black: {},
+            c.Color.white: {},
+            c.Color.black: {},
         }
         self._pieces_checking_black = []
         self._pieces_checking_white = []
 
-        for color in [C.Color.white, C.Color.black]:
+        for color in [c.Color.white, c.Color.black]:
             threatening_color = (
-                C.Color.black
-                if color == C.Color.white
-                else C.Color.white
+                c.Color.black
+                if color == c.Color.white
+                else c.Color.white
             )
 
             threatening_pieces = self._get_pieces(threatening_color)
@@ -309,8 +309,8 @@ class Game:
                         ).append(threatened_piece)
 
                         # look for checks
-                        if threatened_piece.type == C.PieceType.king:
-                            if threatened_piece.color == C.Color.white:
+                        if threatened_piece.type == c.PieceType.king:
+                            if threatened_piece.color == c.Color.white:
                                 self._pieces_checking_white.append(
                                     threatening_piece
                                 )
@@ -322,11 +322,11 @@ class Game:
     def _is_mate(self):
         self._description = []
 
-        if self._current_player == C.Color.white:
-            king_under_check = Piece(C.PieceType.king, C.Color.black)
+        if self._current_player == c.Color.white:
+            king_under_check = Piece(c.PieceType.king, c.Color.black)
             checking_pieces = self._pieces_checking_black
         else:
-            king_under_check = Piece(C.PieceType.king, C.Color.white)
+            king_under_check = Piece(c.PieceType.king, c.Color.white)
             checking_pieces = self._pieces_checking_white
 
         if len(checking_pieces) == 0:
@@ -359,9 +359,9 @@ class Game:
 
     def _is_check_blockable(self, piece, king):
         unblockable = (
-            piece.type == C.PieceType.pawn or
-            piece.type == C.PieceType.knight or
-            piece.type == C.PieceType.king
+            piece.type == c.PieceType.pawn or
+            piece.type == c.PieceType.knight or
+            piece.type == c.PieceType.king
         )
         if unblockable:
             self._description.append(
@@ -409,7 +409,7 @@ class Game:
             with self._try_move([(src, dst)]):
                 pieces_checking_after_move = (
                     self._pieces_checking_black
-                    if checked_king.color == C.Color.black
+                    if checked_king.color == c.Color.black
                     else self._pieces_checking_white
                 )
                 if not pieces_checking_after_move:
@@ -514,7 +514,7 @@ class Game:
             src, dst = self.parse_move_spec(move_spec)
             dst_piece = self._board.clear_square(dst)
             if dst_piece is not None:
-                if dst_piece.color == C.Color.black:
+                if dst_piece.color == c.Color.black:
                     self._captured_black.append(dst_piece)
                 else:
                     self._captured_white.append(dst_piece)
