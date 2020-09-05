@@ -9,8 +9,7 @@ from . import constant as C
 class Board:
     def __init__(self):
         self._data = None
-        self._clear_board()
-        self._set_board()
+        self.reset()
 
     @property
     def data(self):
@@ -56,6 +55,10 @@ class Board:
 
     def clear(self):
         self._clear_board()
+
+    def reset(self):
+        self._clear_board()
+        self._set_board()
 
     def _clear_board(self):
         self._data = dict(

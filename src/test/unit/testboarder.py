@@ -3,6 +3,7 @@ import itertools
 
 
 from pychess.boarder import Board
+from pychess.constant import PieceType
 from pychess.squarer import Square
 from pychess.piecer import Piece
 from pychess import constant as C
@@ -153,6 +154,46 @@ class TestBoarder(unittest.TestCase):
         )
         b.clear()
         self.assertEqual(b.data, expected_result)
+
+    def test_reset(self):
+        b = Board()
+
+        # First move some pieces around
+        piece = b.clear_square(Square('e2'))
+        b.add_piece(piece, Square('e4'))
+
+        piece = b.clear_square(Square('e7'))
+        b.add_piece(piece, Square('e5'))
+
+        expected_piece = Piece(
+            C.PieceType.pawn,
+            C.Color.white,
+            order=4,
+        )
+        self.assertEqual(
+            b.get_piece(Square('e4')),
+            expected_piece,
+        )
+
+        expected_piece = Piece(
+            C.PieceType.pawn,
+            C.Color.black,
+            order=4,
+        )
+        self.assertEqual(
+            b.get_piece(Square('e5')),
+            expected_piece,
+        )
+
+        # Now let's reset the board
+        b.reset()
+
+        for square, piece in b.data.items():
+            if b.is_empty(square):
+                continue
+            expected_piece = self.data[square]
+
+            self.assertEqual(piece, expected_piece)
 
     def test_validate_piece(self):
         b = Board()

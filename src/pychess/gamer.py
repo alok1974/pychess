@@ -90,7 +90,7 @@ class Game:
         return self._capturables
 
     def reset(self):
-        self.board.clear()
+        self.board.reset()
         self._captured_white = []
         self._captured_black = []
         self._move_history = []
