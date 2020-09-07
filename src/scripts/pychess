@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-from pychess import boarder, run
+import pychess
 
 
-board = boarder.Board()
-run(board=board)
+pychess.run()
