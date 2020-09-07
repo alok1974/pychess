@@ -8,13 +8,21 @@ from .gamer import Game
 from .gui import MainWindow
 
 
-def run():
-    app = QtWidgets.QApplication(sys.argv)
-    mw = MainWindow()
-    game = Game()
-    mw.MOVE_SIGNAL.connect(game.move)
-    game.MOVE_SIGNAL.connect(mw.update)
-    game.INVALID_MOVE_SPEC_SIGNAL.connect(mw.clear_moves)
-    mw.init_board(board=game.board)
-    mw.show()
-    sys.exit(app.exec_())
+class Controller:
+    def __init__(self):
+        self._app = QtWidgets.QApplication(sys.argv)
+        self._main_window = MainWindow()
+        self._game = Game()
+        self._connect_signals()
+
+    def _connect_signals(self):
+        self._main_window.MOVE_SIGNAL.connect(self._game.move)
+        self._game.MOVE_SIGNAL.connect(self._main_window.update)
+        self._game.INVALID_MOVE_SPEC_SIGNAL.connect(
+            self._main_window.clear_moves
+        )
+
+    def run(self):
+        self._main_window.init_board(board=self._game.board)
+        self._main_window.show()
+        sys.exit(self._app.exec_())
