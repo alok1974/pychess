@@ -2,7 +2,6 @@ from pychess.gamer import Game
 
 
 def log_game_stats(game):
-    # print(f'game.board:\n{game.board}\n')
     print(f'game.move_history:\n{game.move_history}\n')
     print(f'game.captured_black:\n{game.captured_black}\n')
     print(f'game.captured_white:\n{game.captured_white}\n')
