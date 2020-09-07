@@ -120,13 +120,13 @@ class MainWindow(QtWidgets.QDialog):
             signal = self.MOVE_SIGNAL
 
         if signal is not None and both_cell_selected:
-            if self._first_square == self._second_square:
-                return
-
             move = f'{self._first_square.address}{self._second_square.address}'
             signal.emit(move)
-            self._first_square = None
-            self._second_square = None
+            self.clear_moves()
+
+    def clear_moves(self):
+        self._first_square = None
+        self._second_square = None
 
     def update(self):
         self._board_image.update()

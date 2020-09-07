@@ -20,6 +20,7 @@ class Game:
     )
 
     MOVE_SIGNAL = Signal()
+    INVALID_MOVE_SPEC_SIGNAL = Signal()
 
     def __init__(self):
         self._board = Board()
@@ -192,13 +193,19 @@ class Game:
         if self.is_game_over:
             return
 
-        src, dst = self.parse_move_spec(move_spec)
+        try:
+            src, dst = self.parse_move_spec(move_spec)
+        except RuntimeError:
+            self.INVALID_MOVE_SPEC_SIGNAL.emit()
+            return
+
         if self.board.get_piece(src).color != self._current_player:
-            # Not this player's move
+            self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
         result = self._perform_move(src, dst)
         if not result.success:
+            self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
         self.MOVE_SIGNAL.emit()
