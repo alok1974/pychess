@@ -10,6 +10,7 @@ from .mover import Move
 from . import constant as c
 from .piecer import Piece
 from .squarer import Square
+from .event import Signal
 
 
 class Game:
@@ -17,6 +18,8 @@ class Game:
         'MOVE_RESULT',
         ['success', 'moved_piece']
     )
+
+    MOVE_SIGNAL = Signal()
 
     def __init__(self):
         self._board = Board()
@@ -186,20 +189,20 @@ class Game:
         return src, dst
 
     def move(self, move_spec):
-        src, dst = self.parse_move_spec(move_spec)
-        self._move(src, dst)
-
-    def _move(self, src, dst):
         if self.is_game_over:
+            return
+
+        src, dst = self.parse_move_spec(move_spec)
+        if self.board.get_piece(src).color != self._current_player:
+            # Not this player's move
             return
 
         result = self._perform_move(src, dst)
         if not result.success:
             return
 
+        self.MOVE_SIGNAL.emit()
         self._move_history.append(Move(result.moved_piece, src, dst))
-        self._get_capturables()
-
         if self._is_mate():
             self._winner = self._current_player
             self._is_game_over = True
@@ -208,7 +211,8 @@ class Game:
         self._toggle_player()
 
     def _perform_move(self, src, dst):
-        if not self._is_move_legal(src, dst):
+        is_legal = self._is_move_legal(src, dst)
+        if not is_legal:
             return self.MOVE_RESULT(success=False, moved_piece=None)
 
         dst_piece = self.board.clear_square(dst)
@@ -220,6 +224,7 @@ class Game:
 
         src_piece = self.board.clear_square(src)
         self.board.add_piece(src_piece, dst)
+        self._update_capturables()
         return self.MOVE_RESULT(success=True, moved_piece=src_piece)
 
     def _toggle_player(self):
@@ -230,41 +235,49 @@ class Game:
             self._current_player = c.Color.black
             self._next_player = c.Color.white
 
-    def _is_move_legal(
-            self, src, dst,
-            check_current_player=True, check_self_color=True,
-            dst_piece=None,
-    ):
+    def _is_move_legal(self, src, dst):
         piece_to_move = self.board.get_piece(src)
 
         # Case I: No piece to move
         if piece_to_move is None:
+            # self._description.append(
+            #     f'\tThe piece to move {piece_to_move} is None'
+            # )
             return False
 
-        # Case II: Not this player's turn
-        if check_current_player:
-            if piece_to_move.color != self._current_player:
-                return False
-
-        # Case III: Illegal move for piece
+        # Case II: Illegal move for piece
         mv = Move(piece_to_move, src, dst)
         if not mv.is_legal:
+            # self._description.append(
+            #     f'\tThe move {mv} is not a legal move'
+            # )
             return False
 
-        # Case IV: Destination has piece of same color
-        dst_piece = dst_piece or self.board.get_piece(dst)
-        if check_self_color:
-            if dst_piece is not None:
-                if piece_to_move.color == dst_piece.color:
-                    return False
+        # Case III: Destination has piece of same color
+        dst_piece = self.board.get_piece(dst)
+        if dst_piece is not None:
+            if piece_to_move.color == dst_piece.color:
+                # self._description.append(
+                #     f'\tSource {piece_to_move} and destination piece '
+                #     f'{dst_piece} has the same color'
+                # )
+                return False
 
-        # Case V: Special case for pawn as it can only capture only
+        # Case IV: Special case for pawn as it can only capture only
         # with a diagonal move
         if piece_to_move.type == c.PieceType.pawn:
             if mv.is_orthogonal and dst_piece is not None:
-                return
+                # self._description.append(
+                #     f'\tThe pawn piece {piece_to_move} cannot move as the '
+                #     f'destination {dst} is occupied by {dst_piece}'
+                # )
+                return False
             elif mv.is_diagonal and dst_piece is None:
-                return
+                # self._description.append(
+                #     f'\tThe pawn piece {piece_to_move} cannot move diagonally '
+                #     f'to an empty square'
+                # )
+                return False
 
         # Case V: Path to destination is not empty
         if piece_to_move.type in [
@@ -274,11 +287,14 @@ class Game:
         ]:
             in_between_squares = mv.path[1:-1]
             if not all([self.board.is_empty(s) for s in in_between_squares]):
+                # self._description.append(
+                #     f'\tThe path {in_between_squares} is not empty'
+                # )
                 return False
 
         return True
 
-    def _get_capturables(self):
+    def _update_capturables(self):
         self._capturables = {
             c.Color.white: {},
             c.Color.black: {},
@@ -301,9 +317,7 @@ class Game:
                     src = self.board.get_square(threatening_piece)
                     dst = self.board.get_square(threatened_piece)
 
-                    if self._is_move_legal(
-                            src, dst, check_current_player=False
-                    ):
+                    if self._is_move_legal(src, dst):
                         self._capturables[color].setdefault(
                             threatening_piece, []
                         ).append(threatened_piece)
@@ -357,40 +371,47 @@ class Game:
             )
             return not self._escape_square_exists(king_under_check)
 
-    def _is_check_blockable(self, piece, king):
-        unblockable = (
-            piece.type == c.PieceType.pawn or
-            piece.type == c.PieceType.knight or
-            piece.type == c.PieceType.king
-        )
-        if unblockable:
-            self._description.append(
-                f'The checking path for {piece} can not be blocked by any '
-                'means.'
-            )
-            return False
+    def _is_capturable(self, piece):
+        capturables = self._capturables[piece.color]
+        for _, threatened in capturables.items():
+            if piece in threatened:
+                return True
 
+        return False
+
+    def _is_check_blockable(self, piece, king):
         src = self.board.get_square(piece)
         dst = self.board.get_square(king)
         checking_move = Move(piece, src, dst)
         path = checking_move.path[1:-1]
         blocking_pieces = [
-            p
-            for p in self.board.pieces
-            if piece.color == king.color and
-            piece != king
+            bp
+            for bp in self.board.pieces
+            if bp.color == king.color and
+            bp != king
         ]
         for checking_path_square in path:
             for blocking_piece in blocking_pieces:
-                blocking_origin = self.board.get(blocking_piece)
-                if self._is_move_legal(blocking_origin, checking_path_square):
+                blocking_origin = self.board.get_square(blocking_piece)
+                move = (blocking_origin, checking_path_square)
+                with self._try_move([move]):
                     self._description.append(
-                        'The check on {king} can be averted by blocking '
-                        f'the cheking piece {piece} by moving '
-                        f'{blocking_piece} from {blocking_origin} '
-                        f'to {checking_path_square}.'
+                        f'\nTrying blocking move by blocking piece '
+                        f'{blocking_piece}, from {blocking_origin} to '
+                        f'{checking_path_square}\n'
+                        'After this move, the caturables are: '
+                        f'{self._capturables[king.color]}\n\n'
                     )
-                    return True
+                    capturing_pieces = self._get_threatening_pieces(king)
+                    if not capturing_pieces:
+                        self._description.append(
+                            'The check on {king} can be averted by blocking '
+                            f'the cheking piece {piece} by moving '
+                            f'{blocking_piece} from {blocking_origin} '
+                            f'to {checking_path_square}.'
+                        )
+                        return True
+
         self._description.append(
             f'There is no way to block {piece} from giving check '
             f'to {king}'
@@ -444,15 +465,6 @@ class Game:
             if piece.color == color
         ]
 
-    def _get_capturing_pieces(self, piece):
-        capturables = self._capturables[piece.color]
-        capturing_pieces = []
-        for threatening_piece, threatened_pieces in capturables.items():
-            if piece in threatened_pieces:
-                capturing_pieces.append(threatening_piece)
-
-        return capturing_pieces
-
     def _escape_square_exists(self, king):
         def filter_self_color(square):
             if self.board.is_empty(square):
@@ -482,7 +494,7 @@ class Game:
         escape_squares = []
         for surr_square in surrounding:
             with self._try_move([(king_square, surr_square)]):
-                capturing_pieces = self._get_capturing_pieces(king)
+                capturing_pieces = self._get_threatening_pieces(king)
                 if not capturing_pieces:
                     escape_squares.append(surr_square)
 
@@ -503,30 +515,21 @@ class Game:
 
     @contextlib.contextmanager
     def _try_move(self, moves):
-        board_copy = copy.deepcopy(self._board)
+        board_copy = copy.deepcopy(self._board.data)
         captured_black_copy = copy.deepcopy(self._captured_black)
         captured_white_copy = copy.deepcopy(self._captured_white)
         capturables_copy = copy.deepcopy(self._capturables)
         pieces_checking_black_copy = copy.deepcopy(self._pieces_checking_black)
         pieces_checking_white_copy = copy.deepcopy(self._pieces_checking_white)
+        move_history_copy = copy.deepcopy(self._move_history)
 
         for move_spec in moves:
             src, dst = self.parse_move_spec(move_spec)
-            dst_piece = self._board.clear_square(dst)
-            if dst_piece is not None:
-                if dst_piece.color == c.Color.black:
-                    self._captured_black.append(dst_piece)
-                else:
-                    self._captured_white.append(dst_piece)
-
-            src_piece = self._board.clear_square(src)
-            self._board.add_piece(src_piece, dst)
-            self._get_capturables()
-
+            self._perform_move(src, dst)
         try:
             yield
         finally:
-            self._board = copy.deepcopy(board_copy)
+            self._board.data = copy.deepcopy(board_copy)
             self._captured_black = copy.deepcopy(captured_black_copy)
             self._captured_white = copy.deepcopy(captured_white_copy)
             self._capturables = copy.deepcopy(capturables_copy)
@@ -538,3 +541,5 @@ class Game:
             self._pieces_checking_white = copy.deepcopy(
                 pieces_checking_white_copy
             )
+
+            self._move_history = copy.deepcopy(move_history_copy)
