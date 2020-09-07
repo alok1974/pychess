@@ -1,5 +1,6 @@
 import unittest
 import itertools
+import copy
 
 
 from pychess.boarder import Board
@@ -65,6 +66,17 @@ class TestBoarder(unittest.TestCase):
         for square, piece in self.data.items():
             board_piece = b.data[square]
             self.assertEqual(board_piece, piece)
+
+    def test_set_data(self):
+        b = Board()
+        data_copy = copy.deepcopy(b.data)
+        piece = b.clear_square(Square('e2'))
+        b.add_piece(piece, Square('e4'))
+        self.assertNotEqual(b.data, data_copy)
+
+        b.data = data_copy
+        self.assertEqual(b.data, data_copy)
+
 
     def test_pieces(self):
         b = Board()

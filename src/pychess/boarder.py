@@ -15,6 +15,10 @@ class Board:
     def data(self):
         return self._data
 
+    @data.setter
+    def data(self, val):
+        self._data = val
+
     @property
     def pieces(self):
         return [v for v in self.data.values() if v is not None]
