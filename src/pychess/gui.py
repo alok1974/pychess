@@ -1,10 +1,8 @@
-
 from PySide2 import QtWidgets, QtCore, QtGui
-
-from pychess.squarer import Square
 
 
 from . import constant as c, imager
+from .squarer import Square
 
 
 class MainWindow(QtWidgets.QDialog):

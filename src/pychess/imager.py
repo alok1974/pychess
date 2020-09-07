@@ -56,7 +56,7 @@ class BoardImage:
         self._init_board_image()
 
     def update(self):
-        self._board_image.paste(self._base_image, (0, 0))
+        self._board_image.alpha_composite(self._base_image, (0, 0))
         self._draw_pieces()
 
     def show(self):
@@ -74,12 +74,10 @@ class BoardImage:
         for piece in self._board.pieces:
             image_path = self._get_piece_image_path(piece)
             piece_image = self._load_image(image_path)
-            piece_image.load()  # needed for alpha comp
             x, y = self._get_coordinates(piece)
-            self._board_image.paste(
+            self._board_image.alpha_composite(
                 piece_image,
                 (x, y),
-                mask=piece_image.split()[3],  # needed for alpha tranparency
             )
 
     def _get_coordinates(self, piece):
