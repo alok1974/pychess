@@ -199,7 +199,7 @@ class Game:
             self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
-        if self.board.get_piece(src).color != self._current_player:
+        if self._not_players_turn(src, dst):
             self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
@@ -216,6 +216,12 @@ class Game:
             return
 
         self._toggle_player()
+
+    def _not_players_turn(self, src, dst):
+        src_piece = self.board.get_piece(src)
+        if src_piece is None:
+            return True
+        return src_piece.color != self._current_player
 
     def _perform_move(self, src, dst):
         is_legal = self._is_move_legal(src, dst)
