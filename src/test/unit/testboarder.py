@@ -4,9 +4,8 @@ import copy
 
 
 from pychess.boarder import Board
-from pychess.constant import PieceType
-from pychess.squarer import Square
 from pychess.piecer import Piece
+from pychess.squarer import Square
 from pychess import constant as c
 
 
@@ -76,7 +75,6 @@ class TestBoarder(unittest.TestCase):
 
         b.data = data_copy
         self.assertEqual(b.data, data_copy)
-
 
     def test_pieces(self):
         b = Board()
