@@ -240,43 +240,25 @@ class Game:
 
         # Case I: No piece to move
         if piece_to_move is None:
-            # self._description.append(
-            #     f'\tThe piece to move {piece_to_move} is None'
-            # )
             return False
 
         # Case II: Illegal move for piece
         mv = Move(piece_to_move, src, dst)
         if not mv.is_legal:
-            # self._description.append(
-            #     f'\tThe move {mv} is not a legal move'
-            # )
             return False
 
         # Case III: Destination has piece of same color
         dst_piece = self.board.get_piece(dst)
         if dst_piece is not None:
             if piece_to_move.color == dst_piece.color:
-                # self._description.append(
-                #     f'\tSource {piece_to_move} and destination piece '
-                #     f'{dst_piece} has the same color'
-                # )
                 return False
 
         # Case IV: Special case for pawn as it can only capture only
         # with a diagonal move
         if piece_to_move.type == c.PieceType.pawn:
             if mv.is_orthogonal and dst_piece is not None:
-                # self._description.append(
-                #     f'\tThe pawn piece {piece_to_move} cannot move as the '
-                #     f'destination {dst} is occupied by {dst_piece}'
-                # )
                 return False
             elif mv.is_diagonal and dst_piece is None:
-                # self._description.append(
-                #     f'\tThe pawn piece {piece_to_move} cannot move diagonally '
-                #     f'to an empty square'
-                # )
                 return False
 
         # Case V: Path to destination is not empty
@@ -287,9 +269,6 @@ class Game:
         ]:
             in_between_squares = mv.path[1:-1]
             if not all([self.board.is_empty(s) for s in in_between_squares]):
-                # self._description.append(
-                #     f'\tThe path {in_between_squares} is not empty'
-                # )
                 return False
 
         return True
