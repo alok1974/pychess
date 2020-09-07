@@ -27,7 +27,7 @@ class Game:
         self._captured_white = []
         self._captured_black = []
         self._move_history = []
-        self._capturables = []
+        self._capturables = {}
         self._pieces_checking_black = []
         self._pieces_checking_white = []
         self._current_player = c.Color.white
@@ -98,7 +98,7 @@ class Game:
         self._captured_white = []
         self._captured_black = []
         self._move_history = []
-        self._capturables = []
+        self._capturables = {}
         self._pieces_checking_black = []
         self._pieces_checking_white = []
         self._current_player = c.Color.white
@@ -202,6 +202,12 @@ class Game:
         if self._not_players_turn(src, dst):
             self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
+
+        king = Piece(c.PieceType.king, color=self._current_player)
+        if self._is_capturable(king):
+            with self._try_move([(src, dst)]):
+                if self._is_capturable(king):
+                    return False
 
         result = self._perform_move(src, dst)
         if not result.success:
@@ -364,6 +370,9 @@ class Game:
             return not self._escape_square_exists(king_under_check)
 
     def _is_capturable(self, piece):
+        if not self._capturables:
+            return False
+
         capturables = self._capturables[piece.color]
         for _, threatened in capturables.items():
             if piece in threatened:
