@@ -121,10 +121,14 @@ class MainWindow(QtWidgets.QDialog):
 
         if signal is not None and both_cell_selected:
             move = f'{self._first_square.address}{self._second_square.address}'
-            print(move)
             signal.emit(move)
             self._first_square = None
             self._second_square = None
+
+    def update(self):
+        self._board_image.update()
+        self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
+        self._image_label.setPixmap(self._pixmap)
 
     def _pixel_to_square(self, x, y):
         resize_factor = float(
@@ -169,12 +173,3 @@ class MainWindow(QtWidgets.QDialog):
         # selections
         self._first_square = None
         self._second_square = None
-
-
-def run(board):
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    mw = MainWindow()
-    mw.init_board(board=board)
-    mw.show()
-    sys.exit(app.exec_())
