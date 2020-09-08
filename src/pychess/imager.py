@@ -111,7 +111,8 @@ class BoardImage:
             (
                 int(image.width * self._resize_factor),
                 int(image.height * self._resize_factor),
-            )
+            ),
+            resample=Image.LANCZOS,
         )
 
     @staticmethod
