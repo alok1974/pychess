@@ -9,6 +9,7 @@ from . import constant as c
 class Board:
     def __init__(self):
         self._data = None
+        self._reverse = None
         self.reset()
 
     @property
@@ -20,8 +21,16 @@ class Board:
         self._data = val
 
     @property
+    def reverse(self):
+        return self._reverse
+
+    @reverse.setter
+    def reverse(self, val):
+        self._reverse = val
+
+    @property
     def pieces(self):
-        return [v for v in self.data.values() if v is not None]
+        return list(self.reverse.keys())
 
     @property
     def squares(self):
@@ -34,7 +43,7 @@ class Board:
         if piece is None:
             return
 
-        if piece in self.data.values():
+        if piece in self.reverse.keys():
             square = self.get_square(piece)
             error_msg = (
                 f'The piece {piece} already exists on the board at {square} '
@@ -42,16 +51,19 @@ class Board:
             )
             raise RuntimeError(error_msg)
         self.data[square] = piece
+        self.reverse[piece] = square
 
     def get_square(self, piece):
         self._validate_piece(piece)
-        for square, board_piece in self.data.items():
-            if board_piece == piece:
-                return square
+        return self._reverse[piece]
 
     def clear_square(self, square):
         existing_piece = self.data[square]
         self.data[square] = None
+
+        if existing_piece is not None:
+            self.reverse.pop(existing_piece)
+
         return existing_piece
 
     def is_empty(self, square):
@@ -71,6 +83,8 @@ class Board:
                 for t in itertools.product(range(8), range(8))
             ]
         )
+
+        self.reverse = {}
 
     def _set_board(self):
         self._set_color_pieces(color=c.Color.white)
@@ -95,8 +109,12 @@ class Board:
         for i in range(8):
             self._data[Square((i, row_2))] = Piece(c.PieceType.pawn, color, i)
 
+        self.reverse.update(
+            {v: k for k, v in self._data.items() if v is not None}
+        )
+
     def _validate_piece(self, piece):
-        if piece not in self.data.values():
+        if piece not in self.reverse:
             error_msg = f'The piece {piece} is not found on board'
             raise RuntimeError(error_msg)
 

@@ -513,29 +513,31 @@ class Game:
 
     @contextlib.contextmanager
     def _try_move(self, src, dst):
-        board_copy = copy.deepcopy(self._board.data)
-        captured_black_copy = copy.deepcopy(self._captured_black)
-        captured_white_copy = copy.deepcopy(self._captured_white)
-        capturables_copy = copy.deepcopy(self._capturables)
-        pieces_checking_black_copy = copy.deepcopy(self._pieces_checking_black)
-        pieces_checking_white_copy = copy.deepcopy(self._pieces_checking_white)
-        move_history_copy = copy.deepcopy(self._move_history)
+        board_copy = self._board.data.copy()
+        reverse_copy = self._board.reverse.copy()
+        captured_black_copy = copy.copy(self._captured_black)
+        captured_white_copy = copy.copy(self._captured_white)
+        capturables_copy = self._capturables.copy()
+        pieces_checking_black_copy = copy.copy(self._pieces_checking_black)
+        pieces_checking_white_copy = copy.copy(self._pieces_checking_white)
+        move_history_copy = copy.copy(self._move_history)
 
         self._perform_move(src, dst)
         try:
             yield
         finally:
-            self._board.data = copy.deepcopy(board_copy)
-            self._captured_black = copy.deepcopy(captured_black_copy)
-            self._captured_white = copy.deepcopy(captured_white_copy)
-            self._capturables = copy.deepcopy(capturables_copy)
+            self._board.data = board_copy.copy()
+            self._board.reverse = reverse_copy.copy()
+            self._captured_black = copy.copy(captured_black_copy)
+            self._captured_white = copy.copy(captured_white_copy)
+            self._capturables = capturables_copy.copy()
 
-            self._pieces_checking_black = copy.deepcopy(
+            self._pieces_checking_black = copy.copy(
                 pieces_checking_black_copy
             )
 
-            self._pieces_checking_white = copy.deepcopy(
+            self._pieces_checking_white = copy.copy(
                 pieces_checking_white_copy
             )
 
-            self._move_history = copy.deepcopy(move_history_copy)
+            self._move_history = copy.copy(move_history_copy)
