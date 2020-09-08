@@ -203,11 +203,10 @@ class Game:
             self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
-        king = Piece(c.PieceType.king, color=self._current_player)
-        if self._is_capturable(king):
-            with self._try_move([(src, dst)]):
-                if self._is_capturable(king):
-                    return False
+        with self._try_move(src, dst):
+            king = Piece(c.PieceType.king, color=self._current_player)
+            if self._is_capturable(king):
+                return
 
         result = self._perform_move(src, dst)
         if not result.success:
@@ -394,8 +393,7 @@ class Game:
         for checking_path_square in path:
             for blocking_piece in blocking_pieces:
                 blocking_origin = self.board.get_square(blocking_piece)
-                move = (blocking_origin, checking_path_square)
-                with self._try_move([move]):
+                with self._try_move(blocking_origin, checking_path_square):
                     self._description.append(
                         f'\nTrying blocking move by blocking piece '
                         f'{blocking_piece}, from {blocking_origin} to '
@@ -428,7 +426,7 @@ class Game:
         for threatening_piece in pieces_threatening_checking_piece:
             src = self._board.get_square(threatening_piece)
             dst = self._board.get_square(checking_piece)
-            with self._try_move([(src, dst)]):
+            with self._try_move(src, dst):
                 pieces_checking_after_move = (
                     self._pieces_checking_black
                     if checked_king.color == c.Color.black
@@ -494,7 +492,7 @@ class Game:
         # other pieces
         escape_squares = []
         for surr_square in surrounding:
-            with self._try_move([(king_square, surr_square)]):
+            with self._try_move(king_square, surr_square):
                 capturing_pieces = self._get_threatening_pieces(king)
                 if not capturing_pieces:
                     escape_squares.append(surr_square)
@@ -507,7 +505,6 @@ class Game:
                 f'{escape_squares}'
             )
             return True
-
         else:
             self._description.append(
                 f'There are no squares where {king} can safely escape to'
@@ -515,7 +512,7 @@ class Game:
             return False
 
     @contextlib.contextmanager
-    def _try_move(self, moves):
+    def _try_move(self, src, dst):
         board_copy = copy.deepcopy(self._board.data)
         captured_black_copy = copy.deepcopy(self._captured_black)
         captured_white_copy = copy.deepcopy(self._captured_white)
@@ -524,9 +521,7 @@ class Game:
         pieces_checking_white_copy = copy.deepcopy(self._pieces_checking_white)
         move_history_copy = copy.deepcopy(self._move_history)
 
-        for move_spec in moves:
-            src, dst = self.parse_move_spec(move_spec)
-            self._perform_move(src, dst)
+        self._perform_move(src, dst)
         try:
             yield
         finally:
