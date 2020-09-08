@@ -1,5 +1,5 @@
 import math
-import decimal
+# import decimal
 
 from . import constant as c
 from .squarer import Square
@@ -24,11 +24,21 @@ class Move:
 
     @property
     def is_diagonal(self):
-        return self.angle in [45.0, 135.0, 225.0, 315.0]
+        return self.angle in [
+            math.radians(45.0),
+            math.radians(135.0),
+            math.radians(-135.0),
+            math.radians(-45.0),
+        ]
 
     @property
     def is_orthogonal(self):
-        return self.angle in [0.0, 90.0, 180.0, 270.0]
+        return self.angle in [
+            math.radians(0.0),
+            math.radians(90.0),
+            math.radians(180.0),
+            math.radians(-90.0),
+        ]
 
     @property
     def piece(self):
@@ -59,48 +69,41 @@ class Move:
         if is_pawn and is_black:
             y = -1 * y
 
-        result = math.atan2(y, x)
-        if self.degrees:
-            result = decimal.Decimal(str(math.degrees(result)))
-            result = result.quantize(decimal.Decimal('1.000000000000'))
-            result = float(result)
-            if result < 0:
-                result = 360.0 + result
-        return result
+        return math.atan2(y, x)
 
     @property
     def direction(self):
-        if self.angle == 0:
+        if self.angle == 0.0:
             return c.Direction.e
-        elif 0.0 < self.angle < 45.0:
+        elif 0.0 < self.angle < math.radians(45.0):
             return c.Direction.ene
-        elif self.angle == 45.0:
+        elif self.angle == math.radians(45.0):
             return c.Direction.ne
-        elif 45.0 < self.angle < 90.0:
+        elif math.radians(45.0) < self.angle < math.radians(90.0):
             return c.Direction.nne
-        elif self.angle == 90.0:
+        elif self.angle == math.radians(90.0):
             return c.Direction.n
-        elif 90.0 < self.angle < 135.0:
+        elif math.radians(90.0) < self.angle < math.radians(135.0):
             return c.Direction.nnw
-        elif self.angle == 135.0:
+        elif self.angle == math.radians(135.0):
             return c.Direction.nw
-        elif 135.0 < self.angle < 180.0:
+        elif math.radians(135.0) < self.angle < math.radians(180.0):
             return c.Direction.wnw
-        elif self.angle == 180.0:
+        elif self.angle == math.radians(180.0):
             return c.Direction.w
-        elif 180.0 < self.angle < 225.0:
+        elif math.radians(-180.0) < self.angle < math.radians(-135.0):
             return c.Direction.wsw
-        elif self.angle == 225.0:
+        elif self.angle == math.radians(-135.0):
             return c.Direction.sw
-        elif 225.0 < self.angle < 270.0:
+        elif math.radians(-135.0) < self.angle < math.radians(-90.0):
             return c.Direction.ssw
-        elif self.angle == 270.0:
+        elif self.angle == math.radians(-90.0):
             return c.Direction.s
-        elif 270.0 < self.angle < 315.0:
+        elif math.radians(-90.0) < self.angle < math.radians(-45.0):
             return c.Direction.sse
-        elif self.angle == 315.0:
+        elif self.angle == math.radians(-45.0):
             return c.Direction.se
-        elif 315.0 < self.angle < 360.0:
+        elif math.radians(-45.0) < self.angle < 0.0:
             return c.Direction.ese
 
     @property
@@ -120,31 +123,31 @@ class Move:
             x_incr = 1
             y_incr = 0
             span = self.dst.x - self.src.x
-        elif self.angle == 45.0:
+        elif self.angle == math.radians(45.0):
             x_incr = 1
             y_incr = 1
             span = self.dst.x - self.src.x
-        elif self.angle == 90.0:
+        elif self.angle == math.radians(90.0):
             x_incr = 0
             y_incr = 1
             span = self.dst.y - self.src.y
-        elif self.angle == 135.0:
+        elif self.angle == math.radians(135.0):
             x_incr = -1
             y_incr = 1
             span = self.src.x - self.dst.x
-        elif self.angle == 180.0:
+        elif self.angle == math.radians(180.0):
             x_incr = -1
             y_incr = 0
             span = self.src.x - self.dst.x
-        elif self.angle == 225.0:
+        elif self.angle == math.radians(-135.0):
             x_incr = -1
             y_incr = -1
             span = self.src.x - self.dst.x
-        elif self.angle == 270.0:
+        elif self.angle == math.radians(-90.0):
             x_incr = 0
             y_incr = -1
             span = self.src.y - self.dst.y
-        elif self.angle == 315.0:
+        elif self.angle == math.radians(-45.0):
             x_incr = 1
             y_incr = -1
             span = self.dst.x - self.src.x

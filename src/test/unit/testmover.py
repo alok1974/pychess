@@ -1,5 +1,6 @@
 import unittest
 import collections
+import math
 
 
 from pychess.mover import Move
@@ -1397,7 +1398,7 @@ class TestMover(unittest.TestCase):
             dst=dst,
         )
 
-        self.assertEqual(m.angle, 45.0)
+        self.assertEqual(m.angle, math.radians(45.0))
 
     def test_direction(self):
         white_knight = generate_piece(
