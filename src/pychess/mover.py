@@ -1,6 +1,3 @@
-import math
-# import decimal
-
 from . import constant as c
 from .squarer import Square
 from .piecer import Piece
@@ -20,25 +17,25 @@ class Move:
         if self._is_trying_castling():
             return self._is_legal_castling()
 
-        return self._is_distance_legal() and self._is_direction_legal()
+        return self._legal_move(self._piece)
+
+        # return self._is_distance_legal() and self._is_direction_legal()
+
+    @property
+    def is_valid_castling(self):
+        return self._is_trying_castling() and self._is_legal_castling()
 
     @property
     def is_diagonal(self):
-        return self.angle in [
-            math.radians(45.0),
-            math.radians(135.0),
-            math.radians(-135.0),
-            math.radians(-45.0),
-        ]
+        x = self.dst.x - self.src.x
+        y = self.dst.y - self.src.y
+        return abs(x) == abs(y)
 
     @property
     def is_orthogonal(self):
-        return self.angle in [
-            math.radians(0.0),
-            math.radians(90.0),
-            math.radians(180.0),
-            math.radians(-90.0),
-        ]
+        x = self.dst.x - self.src.x
+        y = self.dst.y - self.src.y
+        return (x == 0 and y != 0) or (x != 0 and y == 0)
 
     @property
     def piece(self):
@@ -52,59 +49,40 @@ class Move:
     def dst(self):
         return self._dst
 
-    @property
-    def distance(self):
-        return math.sqrt(
-            (self.dst.x - self.src.x) ** 2 +
-            (self.dst.y - self.src.y) ** 2
-        )
-
-    @property
-    def angle(self):
-        x, y = self.dst.x - self.src.x, self.dst.y - self.src.y
-
-        # Reverse directions for black pawn
-        is_pawn = self.piece.type == c.PieceType.pawn
-        is_black = self.piece.color == c.Color.black
-        if is_pawn and is_black:
-            y = -1 * y
-
-        return math.atan2(y, x)
-
-    @property
-    def direction(self):
-        if self.angle == 0.0:
-            return c.Direction.e
-        elif 0.0 < self.angle < math.radians(45.0):
-            return c.Direction.ene
-        elif self.angle == math.radians(45.0):
-            return c.Direction.ne
-        elif math.radians(45.0) < self.angle < math.radians(90.0):
-            return c.Direction.nne
-        elif self.angle == math.radians(90.0):
-            return c.Direction.n
-        elif math.radians(90.0) < self.angle < math.radians(135.0):
-            return c.Direction.nnw
-        elif self.angle == math.radians(135.0):
-            return c.Direction.nw
-        elif math.radians(135.0) < self.angle < math.radians(180.0):
-            return c.Direction.wnw
-        elif self.angle == math.radians(180.0):
-            return c.Direction.w
-        elif math.radians(-180.0) < self.angle < math.radians(-135.0):
-            return c.Direction.wsw
-        elif self.angle == math.radians(-135.0):
-            return c.Direction.sw
-        elif math.radians(-135.0) < self.angle < math.radians(-90.0):
-            return c.Direction.ssw
-        elif self.angle == math.radians(-90.0):
-            return c.Direction.s
-        elif math.radians(-90.0) < self.angle < math.radians(-45.0):
-            return c.Direction.sse
-        elif self.angle == math.radians(-45.0):
-            return c.Direction.se
-        elif math.radians(-45.0) < self.angle < 0.0:
-            return c.Direction.ese
+    def _legal_move(self, piece):
+        x = self.dst.x - self.src.x
+        y = self.dst.y - self.src.y
+        if piece.type == c.PieceType.pawn:
+            first_row_pawn = self.src.y == 1
+            if piece.color == c.Color.black:
+                y = -1 * y
+                first_row_pawn = self.src.y == 6
+            return (
+                (x in [-1, 0, 1] and y == 1) or
+                (first_row_pawn and x == 0 and y == 2)
+            )
+        elif piece.type == c.PieceType.rook:
+            return (x == 0 and y != 0) or (x != 0 and y == 0)
+        elif piece.type == c.PieceType.bishop:
+            return abs(x) == abs(y)
+        elif piece.type == c.PieceType.knight:
+            return (x, y) in [
+                (1, 2), (1, -2), (-1, 2), (-1, -2),
+                (2, 1), (2, -1), (-2, 1), (-2, -1),
+            ]
+        elif piece.type == c.PieceType.queen:
+            return (
+                (x == 0 and y != 0) or (x != 0 and y == 0) or
+                (abs(x) == abs(y))
+            )
+        elif piece.type == c.PieceType.king:
+            return (x, y) in [
+                (0, 1), (1, 1), (1, 0), (1, -1),
+                (0, -1), (-1, -1), (-1, 0), (-1, 1),
+            ]
+        else:
+            error_msg = (f'Unknown piece type {piece.type}')
+            raise ValueError(error_msg)
 
     @property
     def path(self):
@@ -115,42 +93,52 @@ class Move:
         if self.piece.type not in piece_types:
             return [self.src, self.dst]
 
+        x = self.dst.x - self.src.x
+        y = self.dst.y - self.src.y
+
         coords = []
         x_incr = None
         y_incr = None
         span = None
-        if self.angle == 0.0:
+        if y == 0 and x > 0:
             x_incr = 1
             y_incr = 0
             span = self.dst.x - self.src.x
-        elif self.angle == math.radians(45.0):
+        elif x > 0 and y > 0:
             x_incr = 1
             y_incr = 1
             span = self.dst.x - self.src.x
-        elif self.angle == math.radians(90.0):
+        elif x == 0 and y > 0:
             x_incr = 0
             y_incr = 1
             span = self.dst.y - self.src.y
-        elif self.angle == math.radians(135.0):
+        elif x < 0 and y > 0:
             x_incr = -1
             y_incr = 1
             span = self.src.x - self.dst.x
-        elif self.angle == math.radians(180.0):
+        elif x < 0 and y == 0:
             x_incr = -1
             y_incr = 0
             span = self.src.x - self.dst.x
-        elif self.angle == math.radians(-135.0):
+        elif x < 0 and y < 0:
             x_incr = -1
             y_incr = -1
             span = self.src.x - self.dst.x
-        elif self.angle == math.radians(-90.0):
+        elif x == 0 and y < 0:
             x_incr = 0
             y_incr = -1
             span = self.src.y - self.dst.y
-        elif self.angle == math.radians(-45.0):
+        elif x > 0 and y < 0:
             x_incr = 1
             y_incr = -1
             span = self.dst.x - self.src.x
+        else:
+            error_msg = (
+                f'Unknown span: src=({self.src.x}, {self.src.y}), '
+                f'dst=({self.dst.x}, {self.dst.y}), (x, y)=({x}, {y})'
+                f'move: {self}'
+            )
+            raise ValueError(error_msg)
 
         coords = [
             Square(
@@ -181,32 +169,9 @@ class Move:
             )
             raise ValueError(error_msg)
 
-    def _is_distance_legal(self):
-        if self.piece.travel_distance == [0]:
-            return True
-
-        if self.piece.type == c.PieceType.pawn:  # Case: pawn first move
-            first_row = 1
-            if self.piece.color == c.Color.black:
-                first_row = 6
-
-            if self.src.y == first_row:
-                allowed_distance = (
-                    self.piece.travel_distance +
-                    [c.GAME.PAWN_FIRST_MOVE_DISTANCE]
-                )
-                return self.distance in allowed_distance
-            else:
-                return self.distance in self.piece.travel_distance
-        else:
-            return self.distance in self.piece.travel_distance
-
-    def _is_direction_legal(self):
-        return self.direction in self.piece.allowed_move_direction
-
     def _is_trying_castling(self):
         return (
-            self.distance == c.GAME.KING_CASTLE_DISTANCE and
+            abs(self.dst.x - self.src.x) == c.GAME.KING_CASTLE_DISTANCE and
             self.piece.type == c.PieceType.king
         )
 
