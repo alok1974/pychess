@@ -42,6 +42,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
+        self._promption_piece_type = c.PieceType.queen
+
     @property
     def board(self):
         return self._board
@@ -98,6 +100,14 @@ class Game:
     @property
     def capturables(self):
         return self._capturables
+
+    @property
+    def promotion_piece_type(self):
+        return self._promption_piece_type
+
+    @promotion_piece_type.setter
+    def promotion_piece_type(self, piece_type):
+        self._promotion_piece = piece_type
 
     def reset(self):
         self.board.reset()
@@ -301,6 +311,7 @@ class Game:
             # No castling was asked for, let us proceed with a normal move
             moved_piece = self._move_piece(src, dst)
 
+        self._handle_promotion(moved_piece, dst)
         self._update_capturables()
 
         return self.MOVE_RESULT(
@@ -308,6 +319,33 @@ class Game:
             moved_piece=moved_piece,
             is_castling=castling_result,
         )
+
+    def _handle_promotion(self, moved_piece, dst):
+        if moved_piece.type != c.PieceType.pawn:
+            return
+
+        if moved_piece.color == c.Color.white:
+            last_row = 7
+        else:
+            last_row = 0
+
+        if dst.y != last_row:
+            return
+
+        promoted_piece = self._create_promoted_piece(
+            piece_type=self._promption_piece_type,
+            color=moved_piece.color,
+        )
+
+        self.board.clear_square(dst)
+        self.board.add_piece(promoted_piece, dst)
+
+    def _create_promoted_piece(self, piece_type, color):
+        pieces = self._get_pieces(color)
+        existing_pieces = [p for p in pieces if p.type == piece_type]
+        highest_order = max([p.order for p in existing_pieces])
+
+        return Piece(piece_type, color, highest_order + 1)
 
     def _move_piece(self, src, dst):
         dst_piece = self.board.clear_square(dst)
