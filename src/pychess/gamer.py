@@ -16,11 +16,12 @@ from .event import Signal
 class Game:
     MOVE_RESULT = collections.namedtuple(
         'MOVE_RESULT',
-        ['success', 'moved_piece']
+        ['success', 'moved_piece', 'is_castling']
     )
 
     MOVE_SIGNAL = Signal()
     INVALID_MOVE_SPEC_SIGNAL = Signal()
+    MATE_SIGNAL = Signal()
 
     def __init__(self):
         self._board = Board()
@@ -35,6 +36,11 @@ class Game:
         self._winner = None
         self._is_game_over = False
         self._description = []
+
+        self._black_king_moved = False
+        self._black_rook_moved = False
+        self._white_king_moved = False
+        self._white_rook_moved = False
 
     @property
     def board(self):
@@ -203,24 +209,48 @@ class Game:
             self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
-        with self._try_move(src, dst):
-            king = Piece(c.PieceType.king, color=self._current_player)
-            if self._is_capturable(king):
-                return
+        if self._move_causes_discovered_check(src, dst):
+            return
 
         result = self._perform_move(src, dst)
         if not result.success:
             self.INVALID_MOVE_SPEC_SIGNAL.emit()
             return
 
+        self._record_move(result.moved_piece, src, dst)
         self.MOVE_SIGNAL.emit()
-        self._move_history.append(Move(result.moved_piece, src, dst))
+
         if self._is_mate():
             self._winner = self._current_player
             self._is_game_over = True
+            self.MATE_SIGNAL.emit()
             return
 
         self._toggle_player()
+
+    def _move_causes_discovered_check(self, src, dst):
+        with self._try_move(src, dst):
+            king = Piece(c.PieceType.king, color=self._current_player)
+            if self._is_capturable(king):
+                return True
+            else:
+                return False
+
+    def _record_move(self, piece, src, dst):
+        mv = Move(piece, src, dst)
+        self._move_history.append(mv)
+
+        if piece.type == c.PieceType.king:
+            if piece.color == c.Color.black:
+                self._black_king_moved = True
+            else:
+                self._white_king_moved = True
+
+        if piece.type == c.PieceType.rook:
+            if piece.color == c.Color.black:
+                self._black_rook_moved = True
+            else:
+                self._white_rook_moved = True
 
     def _not_players_turn(self, src, dst):
         src_piece = self.board.get_piece(src)
@@ -229,10 +259,57 @@ class Game:
         return src_piece.color != self._current_player
 
     def _perform_move(self, src, dst):
+        castling_result = False
         is_legal = self._is_move_legal(src, dst)
         if not is_legal:
-            return self.MOVE_RESULT(success=False, moved_piece=None)
+            return self.MOVE_RESULT(
+                success=False,
+                moved_piece=None,
+                is_castling=castling_result,
+            )
 
+        piece_to_move = self.board.get_piece(src)
+        if Move(piece_to_move, src, dst).is_valid_castling:
+            if self._can_castle(piece_to_move, src, dst):
+                castling_result = True
+                rook_src = None
+                rook_dst = None
+                if dst.x == 6:  # short castle
+                    rook_src = Square((7, src.y))
+                    rook_dst = Square((5, src.y))
+
+                if dst.x == 2:  # long castle
+                    rook_src = Square((0, src.y))
+                    rook_dst = Square((3, src.y))
+
+                # Make rook move
+                self._move_piece(rook_src, rook_dst)
+
+                # Make king move
+                moved_piece = self._move_piece(src, dst)
+            else:
+                # This was try to move the king at e1 or e8 to correct
+                # castling squares but other conditions required for a legal
+                # castling are not met and thus ultimately this move cannot be
+                # made
+                return self.MOVE_RESULT(
+                    success=False,
+                    moved_piece=None,
+                    is_castling=castling_result,
+                )
+        else:
+            # No castling was asked for, let us proceed with a normal move
+            moved_piece = self._move_piece(src, dst)
+
+        self._update_capturables()
+
+        return self.MOVE_RESULT(
+            success=True,
+            moved_piece=moved_piece,
+            is_castling=castling_result,
+        )
+
+    def _move_piece(self, src, dst):
         dst_piece = self.board.clear_square(dst)
         if dst_piece is not None:
             if dst_piece.color == c.Color.black:
@@ -242,8 +319,67 @@ class Game:
 
         src_piece = self.board.clear_square(src)
         self.board.add_piece(src_piece, dst)
-        self._update_capturables()
-        return self.MOVE_RESULT(success=True, moved_piece=src_piece)
+        return src_piece
+
+    def _can_castle(self, king, src, dst):
+        if king.type != c.PieceType.king:
+            return False
+
+        prev_moves = (
+            [self._black_king_moved, self._black_rook_moved]
+            if king.color == c.Color.black
+            else [self._white_king_moved, self._white_rook_moved]
+        )
+
+        if any(prev_moves):
+            return False
+
+        if self._is_capturable(king):
+            return False
+
+        in_betweens = self._get_castling_in_betweens(src, dst)
+        if not all(map(lambda x: self.board.is_empty(x), in_betweens)):
+            return False
+
+        if self._in_betweens_under_attack(in_betweens):
+            return False
+
+        return True
+
+    def _in_betweens_under_attack(self, in_betweens):
+        src_y = in_betweens[0].y
+        src_x = None
+        if len(in_betweens) == 3:
+            # Long castle, rook at 'a'
+            src_x = 0
+        elif len(in_betweens) == 2:
+            # Short castle rook at 'h'
+            src_x = 7
+
+        src = Square((src_x, src_y))
+        rook_for_testing = self.board.get_piece(src)
+        for dst in in_betweens:
+            # Skip over 'b' file as this is not needed to be checked
+            # although a in between square but only squares where king
+            # jumps overs should be checked
+            if dst.x == 1:
+                continue
+
+            with self._try_move(src, dst):
+                if self._is_capturable(rook_for_testing):
+                    return True
+
+        return False
+
+    def _get_castling_in_betweens(self, src, dst):
+        if src.x > dst.x:
+            # b, c and d squares
+            x_vals = [1, 2, 3]
+        else:
+            # f and g squares
+            x_vals = [5, 6]
+
+        return [Square((x, src.y)) for x in x_vals]
 
     def _toggle_player(self):
         if self._current_player == c.Color.black:
