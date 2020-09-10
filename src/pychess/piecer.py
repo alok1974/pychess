@@ -1,5 +1,4 @@
 import collections
-import math
 
 
 from . import constant as c
@@ -9,90 +8,35 @@ class Piece:
     piece_attr = collections.namedtuple(
         'piece_attr',
         [
-            'allowed_move_direction',
             'worth',
             'nb_pieces',
-            'travel_distance',
         ]
     )
 
     piece_data = {
         c.PieceType.pawn: piece_attr(
-            allowed_move_direction=[
-                c.Direction.n,
-                c.Direction.nw,
-                c.Direction.ne,
-            ],
             worth=1,
             nb_pieces=8,
-            travel_distance=[1, math.sqrt(2)],
         ),
         c.PieceType.knight: piece_attr(
-            allowed_move_direction=[
-                c.Direction.nnw,
-                c.Direction.nne,
-                c.Direction.wnw,
-                c.Direction.ene,
-                c.Direction.wsw,
-                c.Direction.ese,
-                c.Direction.ssw,
-                c.Direction.sse,
-            ],
             worth=3,
             nb_pieces=2,
-            travel_distance=[math.sqrt(5)],
         ),
         c.PieceType.bishop: piece_attr(
-            allowed_move_direction=[
-                c.Direction.nw,
-                c.Direction.ne,
-                c.Direction.sw,
-                c.Direction.se
-            ],
             worth=3,
             nb_pieces=2,
-            travel_distance=[0],
         ),
         c.PieceType.rook: piece_attr(
-            allowed_move_direction=[
-                c.Direction.n,
-                c.Direction.s,
-                c.Direction.e,
-                c.Direction.w
-            ],
             worth=5,
             nb_pieces=2,
-            travel_distance=[0],
         ),
         c.PieceType.queen: piece_attr(
-            allowed_move_direction=[
-                c.Direction.nw,
-                c.Direction.ne,
-                c.Direction.sw,
-                c.Direction.se,
-                c.Direction.n,
-                c.Direction.e,
-                c.Direction.w,
-                c.Direction.s,
-            ],
             worth=9,
             nb_pieces=1,
-            travel_distance=[0],
         ),
         c.PieceType.king: piece_attr(
-            allowed_move_direction=[
-                c.Direction.nw,
-                c.Direction.ne,
-                c.Direction.sw,
-                c.Direction.se,
-                c.Direction.n,
-                c.Direction.e,
-                c.Direction.w,
-                c.Direction.s,
-            ],
             worth=10,
             nb_pieces=1,
-            travel_distance=[1, math.sqrt(2)],
         ),
     }
 
@@ -110,8 +54,6 @@ class Piece:
             else c.GAME.CODE_KNIGHT
         )
         self._worth = self._attr.worth
-        self._allowed_move_direction = self._attr.allowed_move_direction
-        self._travel_distance = self._attr.travel_distance
         self._nb_pieces = self._attr.nb_pieces
         self._uid = f'{self.order}{self.code}{self.color_code}'
 
@@ -140,10 +82,6 @@ class Piece:
         return self._type
 
     @property
-    def allowed_move_direction(self):
-        return self._allowed_move_direction
-
-    @property
     def nb_pieces(self):
         return self._nb_pieces
 
@@ -154,10 +92,6 @@ class Piece:
     @property
     def uid(self):
         return self._uid
-
-    @property
-    def travel_distance(self):
-        return self._travel_distance
 
     @property
     def pretty(self):

@@ -104,38 +104,6 @@ class TestPiecer(unittest.TestCase):
 
         self.assertEqual(types, [t for t in c.PieceType])
 
-    def test_allowed_move_directions(self):
-        moves = {
-            c.PieceType.pawn: [c.Direction.n, c.Direction.nw, c.Direction.ne],
-            c.PieceType.knight: [
-                c.Direction.nnw, c.Direction.nne, c.Direction.wnw,
-                c.Direction.ene, c.Direction.wsw, c.Direction.ese,
-                c.Direction.ssw, c.Direction.sse,
-            ],
-            c.PieceType.bishop: [
-                c.Direction.nw, c.Direction.ne,
-                c.Direction.sw, c.Direction.se,
-            ],
-            c.PieceType.rook: [
-                c.Direction.n, c.Direction.s, c.Direction.e, c.Direction.w
-            ],
-            c.PieceType.queen: [
-                c.Direction.nw, c.Direction.ne, c.Direction.sw,
-                c.Direction.se, c.Direction.n, c.Direction.e,
-                c.Direction.w, c.Direction.s,
-            ],
-            c.PieceType.king: [
-                c.Direction.nw, c.Direction.ne, c.Direction.sw, c.Direction.se,
-                c.Direction.n, c.Direction.e, c.Direction.w, c.Direction.s,
-            ],
-        }
-
-        pieces = [Piece(p, c.Color.black) for p in moves.keys()]
-
-        for p in pieces:
-            expected_result = moves.get(p.type)
-            self.assertEqual(p.allowed_move_direction, expected_result)
-
     def test_nb_pieces(self):
         expected_result = [8, 2, 2, 2, 1, 1]
 
@@ -173,24 +141,6 @@ class TestPiecer(unittest.TestCase):
         pieces = generate_pieces()
         uids = sorted([p.uid for p in pieces])
         self.assertEqual(uids, expected_result)
-
-    def test_travel_distance(self):
-        import math
-
-        travel_distance = {
-            c.PieceType.pawn: [1, math.sqrt(2)],
-            c.PieceType.knight: [math.sqrt(5)],
-            c.PieceType.bishop: [0],
-            c.PieceType.rook: [0],
-            c.PieceType.queen: [0],
-            c.PieceType.king: [1, math.sqrt(2)],
-        }
-
-        pieces = [Piece(p, c.Color.black) for p in travel_distance.keys()]
-
-        for p in pieces:
-            expected_result = travel_distance.get(p.type)
-            self.assertEqual(p.travel_distance, expected_result)
 
     def test_hash(self):
         import itertools
