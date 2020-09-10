@@ -96,6 +96,12 @@ class APP:
     BUTTON_HEIGHT = 60
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
+    HIGHLIGHT_COLOR = _declare_constants(
+        obj_name='HIGHLIGHT_COLOR',
+        src=(165, 255, 140, 100),
+        dst=(255, 240, 28, 100),
+        selected=(252, 73, 3, 100)
+    )
 
 
 class IMAGE:
