@@ -17,9 +17,12 @@ class Controller:
 
     def _connect_signals(self):
         self._main_window.MOVE_SIGNAL.connect(self._game.move)
-        self._game.MOVE_SIGNAL.connect(self._main_window.update)
-        self._game.INVALID_MOVE_SPEC_SIGNAL.connect(
-            self._main_window.clear_moves
+        self._game.MOVE_SIGNAL.connect(self._main_window.update_move)
+        self._game.INVALID_MOVE_SIGNAL.connect(
+            self._main_window.update_invalid_move
+        )
+        self._game.PLAYER_CHANGED_SIGNAL.connect(
+            self._main_window.set_current_player
         )
 
     def run(self):

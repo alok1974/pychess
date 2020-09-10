@@ -19,9 +19,10 @@ class Game:
         ['success', 'moved_piece', 'is_castling']
     )
 
-    MOVE_SIGNAL = Signal()
-    INVALID_MOVE_SPEC_SIGNAL = Signal()
+    MOVE_SIGNAL = Signal(tuple)
+    INVALID_MOVE_SIGNAL = Signal()
     MATE_SIGNAL = Signal()
+    PLAYER_CHANGED_SIGNAL = Signal(c.Color)
 
     def __init__(self):
         self._board = Board()
@@ -212,11 +213,11 @@ class Game:
         try:
             src, dst = self.parse_move_spec(move_spec)
         except RuntimeError:
-            self.INVALID_MOVE_SPEC_SIGNAL.emit()
+            self.INVALID_MOVE_SIGNAL.emit()
             return
 
         if self._not_players_turn(src, dst):
-            self.INVALID_MOVE_SPEC_SIGNAL.emit()
+            self.INVALID_MOVE_SIGNAL.emit()
             return
 
         if self._move_causes_discovered_check(src, dst):
@@ -224,11 +225,11 @@ class Game:
 
         result = self._perform_move(src, dst)
         if not result.success:
-            self.INVALID_MOVE_SPEC_SIGNAL.emit()
+            self.INVALID_MOVE_SIGNAL.emit()
             return
 
         self._record_move(result.moved_piece, src, dst)
-        self.MOVE_SIGNAL.emit()
+        self.MOVE_SIGNAL.emit((src, dst))
 
         if self._is_mate():
             self._winner = self._current_player
@@ -426,6 +427,8 @@ class Game:
         else:
             self._current_player = c.Color.black
             self._next_player = c.Color.white
+
+        self.PLAYER_CHANGED_SIGNAL.emit(self._current_player)
 
     def _is_move_legal(self, src, dst):
         piece_to_move = self.board.get_piece(src)

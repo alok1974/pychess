@@ -7,6 +7,7 @@ from .squarer import Square
 
 class MainWindow(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
+    SQUARE_SELECTED = QtCore.Signal(Square)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -17,6 +18,8 @@ class MainWindow(QtWidgets.QDialog):
 
         self._first_square = None
         self._second_square = None
+
+        self._current_player = c.Color.white
 
         self._setup_ui()
         self._timer = QtCore.QTimer()
@@ -95,76 +98,83 @@ class MainWindow(QtWidgets.QDialog):
         self._image_label.mousePressEvent = self._on_image_clicked
 
     def _on_image_clicked(self, event):
-        x, y = event.x(), event.y()
-        square = self._pixel_to_square(x, y)
-        if square is None:
+        button = event.button()
+        if button != QtCore.Qt.MouseButton.LeftButton:
             return
 
+        x, y = event.x(), event.y()
+        square = self._board_image.pixel_to_square(x, y)
         if self._first_square is None:
+            if not self._is_selection_valid(square):
+                return
+
             self._first_square = square
-        elif self._second_square is None:
-            self._second_square = square
+            self._highlight(
+                square,
+                highlight_color=c.APP.HIGHLIGHT_COLOR.selected
+            )
         else:
-            pass
-            # Both squares are filled and we are ready to move
+            self._second_square = square
 
         both_cell_selected = all([self._first_square, self._second_square])
-
-        button = event.button()
-        signal = None
-        if button == QtCore.Qt.MouseButton.RightButton:
-            pass
-        else:
-            signal = self.MOVE_SIGNAL
-
-        if signal is not None and both_cell_selected:
+        if both_cell_selected:
             move = f'{self._first_square.address}{self._second_square.address}'
-            signal.emit(move)
-            self.clear_moves()
+            self.MOVE_SIGNAL.emit(move)
+
+    def _is_selection_valid(self, square):
+        if square is None:
+            return False
+
+        if self._board_image.board.is_empty(square):
+            return False
+
+        selected_color = self._board_image.board.get_piece(square).color
+        if selected_color != self._current_player:
+            return False
+
+        return True
 
     def clear_moves(self):
         self._first_square = None
         self._second_square = None
 
-    def update(self):
-        self._board_image.update()
-        self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
-        self._image_label.setPixmap(self._pixmap)
-
-    def _pixel_to_square(self, x, y):
-        resize_factor = float(
-            self._board_image.height / c.IMAGE.BASE_IMAGE_SIZE
-        )
-
-        square_size = int(c.IMAGE.SQUARE_SIZE * resize_factor)
-        border_size = int(c.IMAGE.BORDER_SIZE * resize_factor)
-
-        pixel_on_border = self._pixel_on_border(
-            square_size=square_size,
-            nb_squares=c.IMAGE.NB_SQUARES,
-            border_size=border_size,
-            x=x,
-            y=y,
-        )
-
-        if pixel_on_border:
-            self._first_square = None
-            self._second_square = None
+    def update_invalid_move(self):
+        if not self._is_selection_valid(self._second_square):
             return
 
-        square_x = int((x - border_size) / square_size)
-        square_y = c.IMAGE.NB_SQUARES - 1 - int(
-            (y - border_size) / square_size
+        self._remove_highlight(self._first_square)
+        self._first_square = self._second_square
+        self._second_square = None
+        self._highlight(
+            self._first_square,
+            highlight_color=c.APP.HIGHLIGHT_COLOR.selected
         )
-        return Square((square_x, square_y))
 
-    def _pixel_on_border(self, square_size, nb_squares, border_size, x, y):
-        return (
-            (x - border_size) < 0 or
-            (y - border_size) < 0 or
-            (x > (border_size + (nb_squares * square_size))) or
-            (y > (border_size + (nb_squares * square_size)))
-        )
+    def _highlight(self, square, highlight_color):
+        self._board_image.highlight(square, highlight_color=highlight_color)
+        self._update_image_label()
+
+    def _remove_highlight(self, square):
+        self._board_image.remove_highlight(square)
+        self._update_image_label()
+
+    def _update(self):
+        self._board_image.update()
+        self._update_image_label()
+
+    def update_move(self, move):
+        src, dst = move
+        self._update()
+        self._highlight(src, highlight_color=c.APP.HIGHLIGHT_COLOR.src)
+        self._highlight(dst, highlight_color=c.APP.HIGHLIGHT_COLOR.dst)
+        self.clear_moves()
+
+    def set_current_player(self, color):
+        self._current_player = color
+
+    def _update_image_label(self):
+        self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
+        self._image_label.setPixmap(self._pixmap)
 
     def mousePressEvent(self, event):
         # NOTE: This event will be fired only when
