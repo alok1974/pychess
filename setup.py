@@ -27,7 +27,6 @@ setup(
     scripts=glob('src/scripts/*'),
     install_requires=[
         'Pillow >=7.2.0',
-        'svglib >=1.0.0',
         'PySide2 >=5.15.0',
     ],
     license='MIT',
