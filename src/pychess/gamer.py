@@ -30,7 +30,7 @@ class Game:
 
     MOVE_SIGNAL = Signal(GAME_DATA)
     INVALID_MOVE_SIGNAL = Signal()
-    MATE_SIGNAL = Signal()
+    MATE_SIGNAL = Signal(c.Color)
     PLAYER_CHANGED_SIGNAL = Signal(c.Color)
 
     def __init__(self):
@@ -120,7 +120,7 @@ class Game:
         self._promotion_piece = piece_type
 
     def reset(self):
-        self.board.reset()
+        self._board.reset()
         self._captured_white = []
         self._captured_black = []
         self._move_history = []
@@ -132,6 +132,13 @@ class Game:
         self._winner = None
         self._is_game_over = False
         self._description = []
+
+        self._black_king_moved = False
+        self._black_rook_moved = False
+        self._white_king_moved = False
+        self._white_rook_moved = False
+
+        self._promption_piece_type = c.PieceType.queen
 
     @property
     def is_game_over(self):
@@ -254,7 +261,8 @@ class Game:
         if self._is_mate():
             self._winner = self._current_player
             self._is_game_over = True
-            self.MATE_SIGNAL.emit()
+            self.MATE_SIGNAL.emit(self._winner)
+            self.reset()
             return
 
         self._toggle_player()

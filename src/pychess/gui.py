@@ -24,7 +24,6 @@ class MainWindow(QtWidgets.QDialog):
 
         self._first_square = None
         self._second_square = None
-
         self._current_player = c.Color.white
 
         self._timer_white = QtCore.QTimer()
@@ -36,6 +35,7 @@ class MainWindow(QtWidgets.QDialog):
         self._time_black = 0
 
         self._is_paused = True
+        self._is_game_over = False
 
         self._resize_factor = (
             self._board_image.width / c.IMAGE.BASE_IMAGE_SIZE
@@ -43,6 +43,37 @@ class MainWindow(QtWidgets.QDialog):
 
         self._setup_ui()
         self._connect_signals()
+
+    def _reset(self):
+        self._board_image = imager.BoardImage(
+            self._board,
+            size=c.IMAGE.DEFAULT_SIZE,
+        )
+        self._captured_image = imager.CapturedImage(
+            size=c.IMAGE.DEFAULT_SIZE,
+        )
+
+        self._first_square = None
+        self._second_square = None
+
+        self._current_player = c.Color.white
+
+        self._time_white = 0
+        self._time_black = 0
+
+        self._is_paused = True
+        self._is_game_over = False
+
+        self._timer_white.stop()
+        self._timer_black.stop()
+
+        self._board_image.update()
+        self._update_image_label()
+
+        self._update_caputred_image_labels()
+
+        self._white_timer_lcd.display('00:00:00')
+        self._black_timer_lcd.display('00:00:00')
 
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
@@ -150,7 +181,7 @@ class MainWindow(QtWidgets.QDialog):
             self._captured_image.qt_image_black
         )
         self._captured_label_black = QtWidgets.QLabel()
-        self._captured_label_black.setPixmap(self._captured_pixmap_white)
+        self._captured_label_black.setPixmap(self._captured_pixmap_black)
 
         self._white_timer_lcd = QtWidgets.QLCDNumber()
         self._white_timer_lcd.setDigitCount(8)
@@ -188,7 +219,7 @@ class MainWindow(QtWidgets.QDialog):
         self._timer_black.timeout.connect(self._timer_black_timeout)
 
     def _on_image_clicked(self, event):
-        if self._is_paused:
+        if self._is_paused or self._is_game_over:
             return
 
         button = event.button()
@@ -214,6 +245,13 @@ class MainWindow(QtWidgets.QDialog):
             move = f'{self._first_square.address}{self._second_square.address}'
             self.MOVE_SIGNAL.emit(move)
 
+    def game_over(self, winner):
+        self._is_game_over = True
+        self._captured_image.draw_winner(winner)
+        self._update_caputred_image_labels()
+        self._start_btn.setText('RESTART')
+        self._stop_all_timers()
+
     def _timer_white_timeout(self):
         self._time_white += 1
         time_str = self._format_time(self._time_white)
@@ -225,6 +263,9 @@ class MainWindow(QtWidgets.QDialog):
         self._black_timer_lcd.display(time_str)
 
     def _on_start_btn_clicked(self):
+        if self._is_game_over:
+            self._reset()
+
         if self._is_paused:
             self._start_btn.setText('PAUSE')
             self._start_current_player_time()

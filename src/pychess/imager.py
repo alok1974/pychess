@@ -334,6 +334,32 @@ class CapturedImage:
             align="center",
         )
 
+    def draw_winner(self, winner):
+        image_to_use = None
+        if winner == c.Color.black:
+            image_to_use = self._captured_image_white
+        else:
+            image_to_use = self._captured_image_black
+
+        text = f'{winner.name.upper()}\nWINS!'
+        draw_context = ImageDraw.Draw(image_to_use)
+        font = ImageFont.truetype(
+            c.APP.FONT_FILE_PATH,
+            size=16,
+            layout_engine=ImageFont.LAYOUT_BASIC,
+        )
+        font_widht, font_height = font.getsize(text)
+        draw_context.text(
+            (
+                image_to_use.width - 75,
+                1,
+            ),
+            text,
+            font=font,
+            fill=(230, 230, 230, 255),
+            align="center",
+        )
+
     def _get_y_coordinate(self, piece_type):
         non_pawn_y_coord = int((self._image_height - self._pawn_height) / 2)
         offset = self._non_pawn_height - self._pawn_height

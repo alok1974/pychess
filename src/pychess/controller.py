@@ -24,6 +24,9 @@ class Controller:
         self._game.PLAYER_CHANGED_SIGNAL.connect(
             self._main_window.toggle_player
         )
+        self._game.MATE_SIGNAL.connect(
+            self._main_window.game_over
+        )
 
     def run(self):
         self._main_window.init_board(board=self._game.board)
