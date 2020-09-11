@@ -1,7 +1,8 @@
 import os
+import collections
 
 
-from PIL import Image, ImageQt
+from PIL import Image, ImageQt, ImageDraw, ImageFont
 
 
 from . import constant as c
@@ -139,16 +140,22 @@ class BoardImage:
     def _load_image(self, image_path):
         if image_path not in self._image_store:
             image = Image.open(image_path)
-            image = image.resize(
-                (
-                    int(image.width * self._resize_factor),
-                    int(image.height * self._resize_factor),
-                ),
-                resample=Image.LANCZOS,
-            )
+            image = self._resize_image(image)
             self._image_store[image_path] = image
 
         return self._image_store[image_path]
+
+    def _resize_image(self, image):
+        if self._resize_factor == float(1):
+            return image
+
+        return image.resize(
+            (
+                int(image.width * self._resize_factor),
+                int(image.height * self._resize_factor),
+            ),
+            resample=Image.LANCZOS,
+        )
 
     @staticmethod
     def _get_piece_image_path(piece):
@@ -195,4 +202,174 @@ class BoardImage:
             (y - border_size) < 0 or
             (x > (border_size + (nb_squares * square_size))) or
             (y > (border_size + (nb_squares * square_size)))
+        )
+
+
+class CapturedImage:
+    def __init__(self, size=c.IMAGE.DEFAULT_SIZE):
+        self._image_store = {}
+        self.init(size=size)
+
+    @property
+    def qt_image_white(self):
+        return ImageQt.ImageQt(self._captured_image_white)
+
+    @property
+    def qt_image_black(self):
+        return ImageQt.ImageQt(self._captured_image_black)
+
+    @property
+    def image_white(self):
+        return self._captured_image_white
+
+    @property
+    def image_black(self):
+        return self._captured_image_black
+
+    def init(self, size=c.IMAGE.DEFAULT_SIZE):
+        self._resize_factor = int(size / c.IMAGE.DEFAULT_SIZE)
+
+        self._image_width = int(
+            c.IMAGE.CAPTURABLES_IMAGE_WIDTH * self._resize_factor
+        )
+
+        self._image_height = int(
+            c.APP.LCD_HEIGHT * self._resize_factor
+        )
+
+        self._pawn_height = int(
+            c.IMAGE.PAWN_SMALL_IMAGE_SIZE * self._resize_factor
+        )
+
+        self._non_pawn_height = int(
+            c.IMAGE.NON_PAWN_SMALL_IMAGE_SIZE * self._resize_factor
+        )
+
+        self._lead_font_size = int(
+            c.IMAGE.LEAD_FONT_SIZE * self._resize_factor
+        )
+
+        self._x_coord_black = None
+        self._x_coord_white = None
+        self._init_captured_images()
+
+    def _init_captured_images(self):
+        self._captured_image_white = Image.new(
+            'RGBA',
+            (self._image_width, self._image_height),
+            color=(0, 0, 0, 0),
+        )
+
+        self._captured_image_black = Image.new(
+            'RGBA',
+            (self._image_width, self._image_height),
+            color=(0, 0, 0, 0),
+        )
+
+    def update(self, captured_white, captured_black, leader, lead):
+        self._init_captured_images()
+        self._draw_captured(captured_white)
+        self._draw_captured(captured_black)
+        self._draw_lead(leader, lead)
+
+    def _draw_captured(self, captured):
+        if not captured:
+            return
+
+        color = captured[0].color
+        if color == c.Color.black:
+            image_to_use = self._captured_image_black
+        else:
+            image_to_use = self._captured_image_white
+
+        x = 10
+        groups = collections.Counter([p.type for p in captured])
+        for piece_type in c.PieceType:
+            if piece_type not in groups:
+                continue
+            count = groups[piece_type]
+            piece_image_path = self._get_piece_image_path(piece_type, color)
+            piece_image = self._load_image(piece_image_path)
+            y = self._get_y_coordinate(piece_type)
+            for _ in range(count):
+                image_to_use.alpha_composite(
+                    piece_image,
+                    (x, y),
+                )
+                x += 6
+
+            x += piece_image.width + 6
+
+        if color == c.Color.black:
+            self._x_coord_black = x
+        else:
+            self._x_coord_white = x
+
+    def _draw_lead(self, leader, lead):
+        if leader is None:
+            return
+
+        if leader == c.Color.black:
+            image_to_use = self._captured_image_white
+            x_coord = self._x_coord_white
+        else:
+            image_to_use = self._captured_image_black
+            x_coord = self._x_coord_black
+
+        text = f'+{lead}'
+        draw_context = ImageDraw.Draw(image_to_use)
+        font = ImageFont.truetype(
+            c.APP.FONT_FILE_PATH,
+            size=self._lead_font_size,
+        )
+        _, font_height = font.getsize(text)
+        draw_context.text(
+            (
+                x_coord,
+                int((image_to_use.height - font_height) / 2),
+            ),
+            text,
+            font=font,
+            fill=(230, 230, 230, 255),
+            align="center",
+        )
+
+    def _get_y_coordinate(self, piece_type):
+        non_pawn_y_coord = int((self._image_height - self._pawn_height) / 2)
+        offset = self._non_pawn_height - self._pawn_height
+        if piece_type != c.PieceType.pawn:
+            return non_pawn_y_coord
+        else:
+            return non_pawn_y_coord + offset
+
+    @staticmethod
+    def _get_piece_image_path(piece_type, color):
+        piece_name = f'{piece_type.name}_{c.IMAGE.SMALL_PIECE_STR}'
+        color_name = color.name
+        piece_images = getattr(c.IMAGE.PIECE_IMAGE, piece_name)
+        image_name = getattr(piece_images, color_name)
+        image_path = os.path.join(c.IMAGE.IMAGE_DIR, image_name)
+
+        error_msg = f'Image path {image_path} does not exist!'
+        assert(os.path.exists(image_path)), error_msg
+        return image_path
+
+    def _load_image(self, image_path):
+        if image_path not in self._image_store:
+            image = Image.open(image_path)
+            image = self._resize_image(image)
+            self._image_store[image_path] = image
+
+        return self._image_store[image_path]
+
+    def _resize_image(self, image):
+        if self._resize_factor == float(1):
+            return image
+
+        return image.resize(
+            (
+                int(image.width * self._resize_factor),
+                int(image.height * self._resize_factor),
+            ),
+            resample=Image.LANCZOS,
         )

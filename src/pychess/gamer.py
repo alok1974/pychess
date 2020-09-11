@@ -13,13 +13,22 @@ from .squarer import Square
 from .event import Signal
 
 
+GAME_DATA = collections.namedtuple(
+    'GAME_DATA',
+    [
+        'src', 'dst', 'captured_white', 'captured_black',
+        'leader', 'lead', 'move_history',
+    ]
+)
+
+
 class Game:
     MOVE_RESULT = collections.namedtuple(
         'MOVE_RESULT',
         ['success', 'moved_piece', 'is_castling']
     )
 
-    MOVE_SIGNAL = Signal(tuple)
+    MOVE_SIGNAL = Signal(GAME_DATA)
     INVALID_MOVE_SIGNAL = Signal()
     MATE_SIGNAL = Signal()
     PLAYER_CHANGED_SIGNAL = Signal(c.Color)
@@ -221,6 +230,7 @@ class Game:
             return
 
         if self._move_causes_discovered_check(src, dst):
+            self.INVALID_MOVE_SIGNAL.emit()
             return
 
         result = self._perform_move(src, dst)
@@ -229,7 +239,17 @@ class Game:
             return
 
         self._record_move(result.moved_piece, src, dst)
-        self.MOVE_SIGNAL.emit((src, dst))
+
+        game_data = GAME_DATA(
+            src=src,
+            dst=dst,
+            captured_white=self.captured_white,
+            captured_black=self.captured_black,
+            leader=self.leader,
+            lead=self.lead,
+            move_history=self.move_history,
+        )
+        self.MOVE_SIGNAL.emit(game_data)
 
         if self._is_mate():
             self._winner = self._current_player
@@ -344,7 +364,10 @@ class Game:
     def _create_promoted_piece(self, piece_type, color):
         pieces = self._get_pieces(color)
         existing_pieces = [p for p in pieces if p.type == piece_type]
-        highest_order = max([p.order for p in existing_pieces])
+        if not existing_pieces:
+            highest_order = -1
+        else:
+            highest_order = max([p.order for p in existing_pieces])
 
         return Piece(piece_type, color, highest_order + 1)
 

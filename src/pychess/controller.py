@@ -22,7 +22,7 @@ class Controller:
             self._main_window.update_invalid_move
         )
         self._game.PLAYER_CHANGED_SIGNAL.connect(
-            self._main_window.set_current_player
+            self._main_window.toggle_player
         )
 
     def run(self):

@@ -94,13 +94,14 @@ class APP:
     NAME = "Pychess"
     STYLESHEET = STYLESHEET.dark_01
     BUTTON_HEIGHT = 60
+    LCD_HEIGHT = 40
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
     HIGHLIGHT_COLOR = _declare_constants(
         obj_name='HIGHLIGHT_COLOR',
-        src=(165, 255, 140, 100),
-        dst=(255, 240, 28, 100),
-        selected=(252, 73, 3, 100)
+        src=(165, 255, 140, 50),
+        dst=(255, 240, 28, 50),
+        selected=(252, 73, 3, 50)
     )
 
 
@@ -117,25 +118,50 @@ class IMAGE:
             white='pawn.png',
             black='pawn_b.png'
         ),
+        pawn_small=_declare_constants(
+            obj_name='PAWN_SMALL_IMAGES',
+            white='pawn_small.png',
+            black='pawn_small_b.png'
+        ),
         knight=_declare_constants(
             obj_name='KNIGHT_IMAGES',
             white='knight.png',
             black='knight_b.png'
+        ),
+        knight_small=_declare_constants(
+            obj_name='KNIGHT_SMALL_IMAGES',
+            white='knight_small.png',
+            black='knight_small_b.png'
         ),
         bishop=_declare_constants(
             obj_name='BISHOP_IMAGES',
             white='bishop.png',
             black='bishop_b.png'
         ),
+        bishop_small=_declare_constants(
+            obj_name='BISHOP_SMALL_IMAGES',
+            white='bishop_small.png',
+            black='bishop_small_b.png'
+        ),
         rook=_declare_constants(
             obj_name='ROOK_IMAGES',
             white='rook.png',
             black='rook_b.png'
         ),
+        rook_small=_declare_constants(
+            obj_name='ROOK_SMALL_IMAGES',
+            white='rook_small.png',
+            black='rook_small_b.png'
+        ),
         queen=_declare_constants(
             obj_name='PAWN_IMAGES',
             white='queen.png',
             black='queen_b.png'
+        ),
+        queen_small=_declare_constants(
+            obj_name='PAWN_SMALL_IMAGES',
+            white='queen_small.png',
+            black='queen_small_b.png'
         ),
         king=_declare_constants(
             obj_name='PAWN_IMAGES',
@@ -144,10 +170,16 @@ class IMAGE:
         ),
     )
 
-    BASE_IMAGE_SIZE = 900
-    SQUARE_SIZE = 102
-    BORDER_SIZE = 42
-    NON_PAWN_IMAGE_SIZE = 72
-    PAWN_IMAGE_SIZE = 64
-    SUPPORTED_SIZE = [150, 300, 450, 600, 900, 1200]
-    DEFAULT_SIZE = 450
+    BASE_IMAGE_SIZE = 600
+    SQUARE_SIZE = 68
+    BORDER_SIZE = 28
+    NON_PAWN_IMAGE_SIZE = 48
+    PAWN_IMAGE_SIZE = 42
+    SUPPORTED_SIZE = [450, 600, 900]
+    DEFAULT_SIZE = 600
+    CAPTURABLES_IMAGE_WIDTH = 444
+    LEAD_FONT_SIZE = 18
+
+    NON_PAWN_SMALL_IMAGE_SIZE = int(NON_PAWN_IMAGE_SIZE / 2)
+    PAWN_SMALL_IMAGE_SIZE = int(PAWN_IMAGE_SIZE / 2)
+    SMALL_PIECE_STR = 'small'
