@@ -78,40 +78,45 @@ class MainWindow(QtWidgets.QDialog):
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
         self.setStyleSheet(c.APP.STYLESHEET)
-
-        self.setFixedSize(
-            self._board_image.width + 40,
-            self._board_image.height +
-            (2 * c.APP.LCD_HEIGHT * self._resize_factor) +
-            (c.APP.BUTTON_HEIGHT * self._resize_factor) +
-            80,
-        )
+        self.setFixedWidth(self._board_image.width + 40)
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
 
-        # Add top layout
-        self._top_layout = self._create_top_layout()
-        self._main_layout.addLayout(self._top_layout)
-
         # Add black panel layout
         self._black_panel_layout = self._create_black_panel_layout()
-        self._main_layout.addLayout(self._black_panel_layout, 1)
+        self._main_layout.addLayout(self._black_panel_layout)
 
         # Add image layout
         self._image_layout_outer = self._create_image_layout()
-        self._main_layout.addLayout(self._image_layout_outer, 1)
+        self._main_layout.addLayout(self._image_layout_outer)
 
         # Add white panel layout
         self._white_panel_layout = self._create_white_panel_layout()
-        self._main_layout.addLayout(self._white_panel_layout, 1)
+        self._main_layout.addLayout(self._white_panel_layout)
 
         # Add bottom layout
         self._bottom_layout = self._create_bottom_layout()
-        self._main_layout.addLayout(self._bottom_layout, 10)
+        self._main_layout.addLayout(self._bottom_layout, 3)
 
-    def _create_top_layout(self):
-        self._top_layout = QtWidgets.QHBoxLayout()
-        return self._top_layout
+    def _create_central_widget(self):
+        self._central_widget = QtWidgets.QWidget()
+        self._central_layout = QtWidgets.QVBoxLayout(self._central_widget)
+
+        # Add black panel layout
+        self._black_panel_layout = self._create_black_panel_layout()
+        self._central_layout.addLayout(self._black_panel_layout, 1)
+
+        # Add image layout
+        self._image_layout_outer = self._create_image_layout()
+        self._central_layout.addLayout(self._image_layout_outer, 1)
+
+        # Add white panel layout
+        self._white_panel_layout = self._create_white_panel_layout()
+        self._central_layout.addLayout(self._white_panel_layout, 1)
+
+        # Add bottom layout
+        self._bottom_layout = self._create_bottom_layout()
+        self._central_layout.addLayout(self._bottom_layout, 10)
 
     def _create_black_panel_layout(self):
         self._black_panel_layout = QtWidgets.QHBoxLayout()
@@ -140,8 +145,6 @@ class MainWindow(QtWidgets.QDialog):
         return self._black_panel_layout
 
     def _create_image_layout(self):
-        self._image_layout_inner = QtWidgets.QHBoxLayout()
-
         # Create Pixmap
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
 
@@ -156,6 +159,7 @@ class MainWindow(QtWidgets.QDialog):
 
         # Create an innner layout to prohibit horizontal stretching of the
         # image label
+        self._image_layout_inner = QtWidgets.QHBoxLayout()
         self._image_layout_inner.addWidget(self._image_label)
 
         # Adding a spacer to the right of the label to make sure that the
@@ -208,7 +212,11 @@ class MainWindow(QtWidgets.QDialog):
         self._start_btn.setMinimumHeight(
             int(c.APP.BUTTON_HEIGHT * self._resize_factor)
         )
-        self._bottom_layout.addWidget(self._start_btn)
+        self._start_btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding
+        )
+        self._bottom_layout.addWidget(self._start_btn, 1)
 
         return self._bottom_layout
 
