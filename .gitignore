@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# c extensions
 *.so
 
 # Distribution / packaging
@@ -127,3 +127,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# VS Code
+.vscode/
+
+
+# macOS
+.DS_Store
+
+# mindnode
+pychess.mindnode/
+
