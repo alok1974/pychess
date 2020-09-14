@@ -19,8 +19,6 @@ class Move:
 
         return self._legal_move(self._piece)
 
-        # return self._is_distance_legal() and self._is_direction_legal()
-
     @property
     def is_valid_castling(self):
         return self._is_trying_castling() and self._is_legal_castling()
@@ -52,37 +50,15 @@ class Move:
     def _legal_move(self, piece):
         x = self.dst.x - self.src.x
         y = self.dst.y - self.src.y
+        legal_coords = [c for pth in piece.move_paths for c in pth]
         if piece.type == c.PieceType.pawn:
-            first_row_pawn = self.src.y == 1
+            if self.src.y == piece.first_row:
+                legal_coords.append((0, 2))
+
             if piece.color == c.Color.black:
                 y = -1 * y
-                first_row_pawn = self.src.y == 6
-            return (
-                (x in [-1, 0, 1] and y == 1) or
-                (first_row_pawn and x == 0 and y == 2)
-            )
-        elif piece.type == c.PieceType.rook:
-            return (x == 0 and y != 0) or (x != 0 and y == 0)
-        elif piece.type == c.PieceType.bishop:
-            return abs(x) == abs(y)
-        elif piece.type == c.PieceType.knight:
-            return (x, y) in [
-                (1, 2), (1, -2), (-1, 2), (-1, -2),
-                (2, 1), (2, -1), (-2, 1), (-2, -1),
-            ]
-        elif piece.type == c.PieceType.queen:
-            return (
-                (x == 0 and y != 0) or (x != 0 and y == 0) or
-                (abs(x) == abs(y))
-            )
-        elif piece.type == c.PieceType.king:
-            return (x, y) in [
-                (0, 1), (1, 1), (1, 0), (1, -1),
-                (0, -1), (-1, -1), (-1, 0), (-1, 1),
-            ]
-        else:
-            error_msg = (f'Unknown piece type {piece.type}')
-            raise ValueError(error_msg)
+
+        return (x, y) in legal_coords
 
     @property
     def path(self):

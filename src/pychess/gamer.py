@@ -17,7 +17,7 @@ GAME_DATA = collections.namedtuple(
     'GAME_DATA',
     [
         'src', 'dst', 'captured_white', 'captured_black',
-        'leader', 'lead', 'move_history',
+        'leader', 'lead', 'move_history', 'capturables'
     ]
 )
 
@@ -246,7 +246,6 @@ class Game:
             return
 
         self._record_move(result.moved_piece, src, dst)
-
         game_data = GAME_DATA(
             src=src,
             dst=dst,
@@ -255,7 +254,9 @@ class Game:
             leader=self.leader,
             lead=self.lead,
             move_history=self.move_history,
+            capturables=self.capturables
         )
+
         self.MOVE_SIGNAL.emit(game_data)
 
         if self._is_mate():

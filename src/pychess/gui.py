@@ -243,7 +243,8 @@ class MainWindow(QtWidgets.QDialog):
             self._first_square = square
             self._highlight(
                 square,
-                highlight_color=c.APP.HIGHLIGHT_COLOR.selected
+                highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
+                is_first_selected=True,
             )
         else:
             self._second_square = square
@@ -325,11 +326,16 @@ class MainWindow(QtWidgets.QDialog):
         self._second_square = None
         self._highlight(
             self._first_square,
-            highlight_color=c.APP.HIGHLIGHT_COLOR.selected
+            highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
+            is_first_selected=True,
         )
 
-    def _highlight(self, square, highlight_color):
-        self._board_image.highlight(square, highlight_color=highlight_color)
+    def _highlight(self, square, highlight_color, is_first_selected=False):
+        self._board_image.highlight(
+            square,
+            highlight_color=highlight_color,
+            is_first_selected=is_first_selected,
+        )
         self._update_image_label()
 
     def _remove_highlight(self, square):

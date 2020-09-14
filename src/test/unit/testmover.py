@@ -1,6 +1,5 @@
 import unittest
 import collections
-import math
 
 
 from pychess.mover import Move
@@ -1369,54 +1368,6 @@ class TestMover(unittest.TestCase):
                     dst=dst,
                 )
                 self.assertEqual(m.dst, dst)
-
-    # def test_distance(self):
-    #     black_queen = generate_piece(
-    #         piece_type=c.PieceType.queen,
-    #         color=c.Color.black,
-    #     )
-
-    #     src = Square((4, 1))
-    #     dst = Square((1, 5))
-    #     m = Move(
-    #         piece=black_queen,
-    #         src=src,
-    #         dst=dst,
-    #     )
-
-    #     self.assertEqual(m.distance, 5.0)
-
-    # def test_angle(self):
-    #     white_bishop = generate_piece(
-    #         piece_type=c.PieceType.bishop,
-    #         color=c.Color.white,
-    #     )
-
-    #     src = Square((0, 0))
-    #     dst = Square('h8')
-    #     m = Move(
-    #         piece=white_bishop,
-    #         src=src,
-    #         dst=dst,
-    #     )
-
-    #     self.assertEqual(m.angle, math.radians(45.0))
-
-    # def test_direction(self):
-    #     white_knight = generate_piece(
-    #         piece_type=c.PieceType.knight,
-    #         color=c.Color.white,
-    #     )
-
-    #     src = Square((3, 5))
-    #     dst = Square((4, 7))
-    #     m = Move(
-    #         piece=white_knight,
-    #         src=src,
-    #         dst=dst,
-    #     )
-
-    #     self.assertEqual(m.direction, c.Direction.nne)
 
     def test_repr(self):
         for piece in generate_pieces():

@@ -10,6 +10,9 @@ from .squarer import Square
 
 
 class BoardImage:
+    COLOR_MOVE_HINT_CAPTURE = (255, 42, 14)
+    COLOR_MOVE_HINT_EMPTY = (127, 127, 127)
+
     def __init__(self, board, size=c.IMAGE.DEFAULT_SIZE):
         self._image_store = {}
         self.init(board=board, size=size)
@@ -65,24 +68,63 @@ class BoardImage:
     def show(self):
         self._board_image.show()
 
-    def highlight(self, square, highlight_color):
+    def highlight(self, square, highlight_color, is_first_selected=False):
         x, y = self.square_to_pixel(square)
         size = (self._square_size, self._square_size)
         highlight_image = Image.new('RGBA', size, color=highlight_color)
         self._board_image.alpha_composite(highlight_image, (x, y))
         self._draw_piece(self.board.get_piece(square))
+        if is_first_selected:
+            self._draw_move_hint(square)
+
+    def _draw_move_hint(self, square, width=0.03, circle=False):
+        incr_min = int(self._square_size * (0.5 - width))
+        incr_max = int(self._square_size * (0.5 + width))
+        possible_destinations = self.board.move_hint(square)
+
+        draw_context = ImageDraw.Draw(self._board_image)
+        for dst, piece in possible_destinations:
+            x, y = self.square_to_pixel(dst)
+            fill = self.COLOR_MOVE_HINT_EMPTY
+            if piece is not None:
+                fill = self.COLOR_MOVE_HINT_CAPTURE
+
+            if circle:
+                draw_context.ellipse(
+                    [
+                        (x + incr_min, y + incr_min),
+                        (x + incr_max, y + incr_max),
+                    ],
+                    fill=fill,
+                )
+            else:
+                draw_context.polygon(
+                    [
+                        (x + incr_min, y + incr_min),
+                        (x + incr_max, y + incr_min),
+                        (x + incr_max, y + incr_max),
+                        (x + incr_min, y + incr_max),
+                    ],
+                    fill=fill,
+                )
 
     def remove_highlight(self, square):
         if square is None:
             return
 
-        x, y = self.square_to_pixel(square)
-        size = (self._square_size, self._square_size)
-        orig_color = self._initial_square_colors[square]
-        orig_square_image = Image.new('RGBA', size, color=orig_color)
-        self._board_image.alpha_composite(orig_square_image, (x, y))
-        piece = self.board.get_piece(square)
-        self._draw_piece(piece)
+        possible_destinations = [s for s, _ in self.board.move_hint(square)]
+        possible_destinations.append(square)
+        self._restore_color(possible_destinations)
+
+    def _restore_color(self, squares):
+        for square in squares:
+            x, y = self.square_to_pixel(square)
+            size = (self._square_size, self._square_size)
+            orig_color = self._initial_square_colors[square]
+            orig_square_image = Image.new('RGBA', size, color=orig_color)
+            self._board_image.alpha_composite(orig_square_image, (x, y))
+            piece = self.board.get_piece(square)
+            self._draw_piece(piece)
 
     def _init_board_image(self):
         self._base_image = self._load_image(c.IMAGE.BOARD_IMAGE_FILE_PATH)

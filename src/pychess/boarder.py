@@ -36,6 +36,52 @@ class Board:
     def squares(self):
         return list(self.data.keys())
 
+    def move_hint(self, square):
+        if self.is_empty(square):
+            return []
+
+        piece = self.get_piece(square)
+        mult = 1
+        move_paths = list(piece.move_paths)
+        if piece.type == c.PieceType.pawn:
+            if square.y == piece.first_row:
+                move_paths.append(((0, 2),))
+
+            if piece.color == c.Color.black:
+                mult = -1
+
+        possible_dst = []
+        for pth in move_paths:
+            # Filter outside 0 and 7 range
+            pth = list(
+                filter(
+                    lambda x:  (
+                        0 <= square.x + x[0] <= 7 and
+                        0 <= square.y + (mult * x[1]) <= 7
+                    ),
+                    pth,
+                )
+            )
+
+            for x_i, y_i in pth:
+                s = Square((square.x + x_i, square.y + (mult * y_i)))
+                if self.is_empty(s):
+                    if piece.type == c.PieceType.pawn and x_i != 0:
+                        pass
+                    else:
+                        possible_dst.append((s, None))
+                else:
+                    # Add hint for opponent's piece as it can be captured
+                    hit_piece = self.get_piece(s)
+                    if hit_piece.color != piece.color:
+                        if piece.type == c.PieceType.pawn and x_i == 0:
+                            pass
+                        else:
+                            possible_dst.append((s, hit_piece))
+                    break
+
+        return possible_dst
+
     def get_piece(self, square):
         return self.data[square]
 
