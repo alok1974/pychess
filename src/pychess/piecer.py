@@ -20,7 +20,7 @@ class Piece:
         c.PieceType.pawn: piece_attr(
             worth=1,
             nb_pieces=8,
-            move_paths=[((-1, 1), ), ((0, 1), ), ((1, 1), )],
+            move_paths=(((-1, 1), ), ((0, 1), ), ((1, 1), )),
             first_row_white=1,
             first_row_black=6,
         ),
