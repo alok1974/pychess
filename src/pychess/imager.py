@@ -180,12 +180,13 @@ class BoardImage:
         return self._border_size + base_offset + image_offset
 
     def _load_image(self, image_path):
-        if image_path not in self._image_store:
+        size = int(self._resize_factor * c.IMAGE.DEFAULT_SIZE)
+        if (image_path, size) not in self._image_store:
             image = Image.open(image_path)
             image = self._resize_image(image)
-            self._image_store[image_path] = image
+            self._image_store[(image_path, size)] = image
 
-        return self._image_store[image_path]
+        return self._image_store[(image_path, size)]
 
     def _resize_image(self, image):
         if self._resize_factor == float(1):
@@ -423,12 +424,13 @@ class CapturedImage:
         return image_path
 
     def _load_image(self, image_path):
-        if image_path not in self._image_store:
+        size = int(self._resize_factor * c.IMAGE.DEFAULT_SIZE)
+        if (image_path, size) not in self._image_store:
             image = Image.open(image_path)
             image = self._resize_image(image)
-            self._image_store[image_path] = image
+            self._image_store[(image_path, size)] = image
 
-        return self._image_store[image_path]
+        return self._image_store[(image_path, size)]
 
     def _resize_image(self, image):
         if self._resize_factor == float(1):
