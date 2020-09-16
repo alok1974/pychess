@@ -263,7 +263,6 @@ class Game:
             self._winner = self._current_player
             self._is_game_over = True
             self.MATE_SIGNAL.emit(self._winner)
-            self.reset()
             return
 
         self._toggle_player()

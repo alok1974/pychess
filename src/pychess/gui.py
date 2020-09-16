@@ -2,12 +2,11 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from . import constant as c, imager
-from .squarer import Square
 
 
 class MainWindow(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
-    SQUARE_SELECTED = QtCore.Signal(Square)
+    GAME_RESET_SIGNAL = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -45,6 +44,7 @@ class MainWindow(QtWidgets.QDialog):
         self._connect_signals()
 
     def _reset(self):
+        self.GAME_RESET_SIGNAL.emit()
         self._board_image = imager.BoardImage(
             self._board,
             size=c.IMAGE.DEFAULT_SIZE,
