@@ -59,6 +59,7 @@ class TestBoarder(unittest.TestCase):
             Square('g7'): Piece(c.PieceType.pawn, c.Color.black, order=6),
             Square('h7'): Piece(c.PieceType.pawn, c.Color.black, order=7),
         }
+        self.reverse = {v: k for k, v in self.data.items()}
 
     def test_data(self):
         b = Board()
@@ -231,6 +232,67 @@ class TestBoarder(unittest.TestCase):
             '    a b c d e f g h'
         )
         self.assertEqual(repr(b), expected_result)
+
+    def test_reverse(self):
+        b = Board()
+        self.assertEqual(b.reverse, self.reverse)
+
+    def test_set_reverse(self):
+        b = Board()
+        reverse_copy = copy.deepcopy(b.reverse)
+        piece = b.clear_square(Square('e2'))
+        b.add_piece(piece, Square('e4'))
+        self.assertNotEqual(b.reverse, reverse_copy)
+
+        b.reverse = reverse_copy
+        self.assertEqual(b.reverse, reverse_copy)
+
+    def test_move_hint_1(self):
+        b = Board()
+        expected_hints = {
+            Square('e2'): [(Square('e3'), None), (Square('e4'), None)],
+            Square('a7'): [(Square('a6'), None), (Square('a5'), None)],
+            Square('e1'): [],
+            Square('g1'): [(Square('h3'), None), (Square('f3'), None)],
+        }
+
+        for s, hints in expected_hints.items():
+            self.assertEqual(b.move_hint(s), hints)
+
+    def test_move_hint_2(self):
+        b = Board()
+
+        piece = b.clear_square(Square('e2'))
+        b.add_piece(piece, Square('e4'))
+
+        piece = b.clear_square(Square('d7'))
+        b.add_piece(piece, Square('d5'))
+
+        expected_hints = {
+            Square('d1'): [
+                (Square('e2'), None),
+                (Square('f3'), None),
+                (Square('g4'), None),
+                (Square('h5'), None),
+            ],
+            Square('e4'): [
+                (
+                    Square('d5'),
+                    Piece(c.PieceType.pawn, c.Color.black, 3),
+                ),
+                (Square('e5'), None),
+            ],
+            Square('c8'): [
+                (Square('d7'), None),
+                (Square('e6'), None),
+                (Square('f5'), None),
+                (Square('g4'), None),
+                (Square('h3'), None),
+            ],
+        }
+
+        for s, hints in expected_hints.items():
+            self.assertEqual(b.move_hint(s), hints)
 
 
 if __name__ == "__main__":
