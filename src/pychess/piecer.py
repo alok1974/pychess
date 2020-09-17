@@ -120,6 +120,11 @@ class Piece:
         ),
     }
 
+    __slots__ = (
+        '_name', '_code', '_move_paths', '_color', '_color_code', '_worth',
+        '_type', '_nb_pieces', '_order', '_uid', '_first_row', '_attr'
+    )
+
     def __init__(self, piece_type, color, order=0):
         self._type = piece_type
         self._color = color
@@ -137,6 +142,11 @@ class Piece:
         self._nb_pieces = self._attr.nb_pieces
         self._move_paths = self._attr.move_paths
         self._uid = f'{self.order}{self.code}{self.color_code}'
+        self._first_row = (
+            self._attr.first_row_black
+            if self.color == c.Color.black
+            else self._attr.first_row_white
+        )
 
     @property
     def name(self):
@@ -168,9 +178,7 @@ class Piece:
 
     @property
     def first_row(self):
-        if self.color == c.Color.black:
-            return self._attr.first_row_black
-        return self._attr.first_row_white
+        return self._first_row
 
     @property
     def nb_pieces(self):
