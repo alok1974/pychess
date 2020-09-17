@@ -36,12 +36,19 @@ class MainWindow(QtWidgets.QDialog):
         self._is_paused = True
         self._is_game_over = False
 
+        self._gamedata = None
+        self._show_threatened = False
+
         self._resize_factor = (
             self._board_image.width / c.IMAGE.BASE_IMAGE_SIZE
         )
 
         self._setup_ui()
         self._connect_signals()
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_C:
+            self._toggle_show_threatened()
 
     def _reset(self):
         self.GAME_RESET_SIGNAL.emit()
@@ -64,13 +71,16 @@ class MainWindow(QtWidgets.QDialog):
         self._is_paused = True
         self._is_game_over = False
 
+        self._gamedata = None
+        self._show_threatened = False
+
         self._timer_white.stop()
         self._timer_black.stop()
 
         self._board_image.update()
         self._update_image_label()
 
-        self._update_caputred_image_labels()
+        self._update_captured_image_labels()
 
         self._white_timer_lcd.display('00:00:00')
         self._black_timer_lcd.display('00:00:00')
@@ -257,7 +267,7 @@ class MainWindow(QtWidgets.QDialog):
     def game_over(self, winner):
         self._is_game_over = True
         self._captured_image.draw_winner(winner)
-        self._update_caputred_image_labels()
+        self._update_captured_image_labels()
         self._start_btn.setText('RESTART')
         self._stop_all_timers()
 
@@ -347,6 +357,8 @@ class MainWindow(QtWidgets.QDialog):
         self._update_image_label()
 
     def update_move(self, game_data):
+        self._gamedata = game_data
+
         self._update()
 
         src = game_data.src
@@ -364,18 +376,43 @@ class MainWindow(QtWidgets.QDialog):
             lead=game_data.lead
         )
 
-        self._update_caputred_image_labels()
+        self._update_captured_image_labels()
 
     def toggle_player(self, color):
         self._stop_current_player_time()
         self._current_player = color
         self._start_current_player_time()
 
+        if self._show_threatened:
+            self._display_threatened()
+
+    def _display_threatened(self):
+        threatened = self._get_threatened(self._current_player)
+        self._board_image.draw_threatened(threatened)
+        self._update_image_label()
+
+    def _hide_threatened(self):
+        self._board_image.clear_threatened_squares()
+        self._update_image_label()
+
+    def _get_threatened(self, color):
+        if self._gamedata is None:
+            return []
+
+        total_threatened = []
+        capturables = self._gamedata.capturables[color]
+        for _, threatened in capturables.items():
+            total_threatened.extend(threatened)
+
+        total_threatened = list(set(total_threatened))
+
+        return total_threatened
+
     def _update_image_label(self):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
         self._image_label.setPixmap(self._pixmap)
 
-    def _update_caputred_image_labels(self):
+    def _update_captured_image_labels(self):
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_white)
         self._captured_label_white.setPixmap(self._captured_pixmap_white)
@@ -406,3 +443,11 @@ class MainWindow(QtWidgets.QDialog):
         seconds = str(seconds).zfill(2)
 
         return f'{hours}:{minutes}:{seconds}'
+
+    def _toggle_show_threatened(self):
+        self._show_threatened = not self._show_threatened
+
+        if not self._show_threatened:
+            self._hide_threatened()
+        else:
+            self._display_threatened()

@@ -39,6 +39,8 @@ class BoardImage:
 
     def init(self, board, size=c.IMAGE.DEFAULT_SIZE):
         self._board = board
+        self._threatened_squares = []
+        self._selected_square = None
         self.resize(size=size)
         self.update()
 
@@ -68,14 +70,62 @@ class BoardImage:
     def show(self):
         self._board_image.show()
 
+    def clear_threatened_squares(self):
+        selected_in_threatened = (
+            self._selected_square in self._threatened_squares
+        )
+        self._restore_color(self._threatened_squares)
+        self._threatened_squares = []
+
+        if selected_in_threatened:
+            self.highlight(
+                self._selected_square,
+                highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
+                is_first_selected=True,
+            )
+
     def highlight(self, square, highlight_color, is_first_selected=False):
+        if is_first_selected:
+            self._selected_square = square
+            self._draw_move_hint(square)
+
+        if self._selected_square in self._threatened_squares:
+            # This square is already highlighted under the rule of
+            # show threatened
+            return
+
         x, y = self.square_to_pixel(square)
         size = (self._square_size, self._square_size)
         highlight_image = Image.new('RGBA', size, color=highlight_color)
         self._board_image.alpha_composite(highlight_image, (x, y))
         self._draw_piece(self.board.get_piece(square))
-        if is_first_selected:
-            self._draw_move_hint(square)
+
+    def draw_threatened(self, pieces):
+        to_draw = [self.board.get_square(p) for p in pieces]
+        for s in to_draw:
+            if s not in self._threatened_squares:
+                self._threatened_squares.append(s)
+
+        outline_image = Image.new(
+            'RGBA',
+            (self._square_size, self._square_size),
+            (0, 0, 0, 0)
+        )
+        draw_context = ImageDraw.Draw(outline_image)
+        draw_context.rectangle(
+            [
+                (0, 0),
+                (self._square_size, self._square_size),
+            ],
+            fill=c.APP.HIGHLIGHT_COLOR.threatened,
+            outline=(255, 0, 0, 100),
+            width=4,
+        )
+        for piece in pieces:
+            s = self.board.get_square(piece)
+            x, y = self.square_to_pixel(s)
+            self._board_image.alpha_composite(outline_image, (x, y))
+            self._draw_piece(piece)
 
     def _draw_move_hint(self, square, width=0.03, circle=False):
         incr_min = int(self._square_size * (0.5 - width))
@@ -112,9 +162,15 @@ class BoardImage:
         if square is None:
             return
 
-        possible_destinations = [s for s, _ in self.board.move_hint(square)]
-        possible_destinations.append(square)
-        self._restore_color(possible_destinations)
+        hints = [s for s, _ in self.board.move_hint(square)]
+        hints.append(square)
+        hints = list(
+            filter(
+                lambda s: s not in self._threatened_squares,
+                hints,
+            )
+        )
+        self._restore_color(hints)
 
     def _restore_color(self, squares):
         for square in squares:

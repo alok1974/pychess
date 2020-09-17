@@ -101,7 +101,8 @@ class APP:
         obj_name='HIGHLIGHT_COLOR',
         src=(165, 255, 140, 50),
         dst=(255, 240, 28, 50),
-        selected=(252, 73, 3, 50)
+        selected=(252, 73, 3, 50),
+        threatened=(255, 24, 14, 20),
     )
 
 
