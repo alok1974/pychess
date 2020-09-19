@@ -32,6 +32,7 @@ class Game:
     INVALID_MOVE_SIGNAL = Signal()
     MATE_SIGNAL = Signal(c.Color)
     PLAYER_CHANGED_SIGNAL = Signal(c.Color)
+    NON_STANDARD_BOARD_SET_SIGNAL = Signal()
 
     def __init__(self):
         self._board = Board()
@@ -52,7 +53,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
-        self._promption_piece_type = c.PieceType.queen
+        self._black_promotion_piece_type = c.PieceType.queen
+        self._white_promotion_piece_type = c.PieceType.queen
 
     @property
     def board(self):
@@ -111,13 +113,18 @@ class Game:
     def capturables(self):
         return self._capturables
 
-    @property
-    def promotion_piece_type(self):
-        return self._promption_piece_type
+    def set_game_options(self, options):
+        if self._move_history:
+            return
 
-    @promotion_piece_type.setter
-    def promotion_piece_type(self, piece_type):
-        self._promotion_piece = piece_type
+        (
+            self._black_promotion_piece_type,
+            self._white_promotion_piece_type,
+            self._is_standard_type,
+        ) = options
+
+        self._board.set_pieces(self._is_standard_type)
+        self.NON_STANDARD_BOARD_SET_SIGNAL.emit()
 
     def reset(self):
         self._board.reset()
@@ -138,7 +145,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
-        self._promption_piece_type = c.PieceType.queen
+        self._black_promotion_piece_type = c.PieceType.queen
+        self._white_promotion_piece_type = c.PieceType.queen
 
     @property
     def is_game_over(self):
@@ -361,8 +369,13 @@ class Game:
         if dst.y != last_row:
             return
 
+        if moved_piece.color == c.Color.black:
+            piece_type = self._black_promotion_piece_type
+        else:
+            piece_type = self._white_promotion_piece_type
+
         promoted_piece = self._create_promoted_piece(
-            piece_type=self._promption_piece_type,
+            piece_type=piece_type,
             color=moved_piece.color,
         )
 

@@ -16,8 +16,14 @@ class Controller:
         self._connect_signals()
 
     def _connect_signals(self):
+        # Singals from the gui
         self._main_window.MOVE_SIGNAL.connect(self._game.move)
         self._main_window.GAME_RESET_SIGNAL.connect(self._game.reset)
+        self._main_window.GAME_OPTIONS_SET_SIGNAL.connect(
+            self._game.set_game_options
+        )
+
+        # Signals from the game
         self._game.MOVE_SIGNAL.connect(self._main_window.update_move)
         self._game.INVALID_MOVE_SIGNAL.connect(
             self._main_window.update_invalid_move
@@ -27,6 +33,9 @@ class Controller:
         )
         self._game.MATE_SIGNAL.connect(
             self._main_window.game_over
+        )
+        self._game.NON_STANDARD_BOARD_SET_SIGNAL.connect(
+            self._main_window.board_updated
         )
 
     def run(self):

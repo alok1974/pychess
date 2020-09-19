@@ -1,12 +1,403 @@
+import os
+import contextlib
+
+
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from . import constant as c, imager
 
 
+@contextlib.contextmanager
+def block_signals(widgets):
+    signal_states = []
+    for widget in widgets:
+        signal_states.append(
+            (widget, widget.signalsBlocked())
+        )
+    try:
+        yield
+    finally:
+        for widget, is_signal_blocked in signal_states:
+            widget.blockSignals(is_signal_blocked)
+
+
+class OptionWidget(QtWidgets.QDialog):
+    PROMOTION_PIECES = [
+        c.PieceType.queen,
+        c.PieceType.rook,
+        c.PieceType.bishop,
+        c.PieceType.knight,
+    ]
+
+    DONE_SIGNAL = QtCore.Signal()
+
+    def __init__(self, size=c.IMAGE.DEFAULT_SIZE, parent=None):
+        super().__init__(parent=parent)
+        self._size = size
+
+        self._default_play_time = 10
+        self._default_bonus_time = 0
+
+        self._play_time = self._default_play_time
+        self._bonus_time = self._default_bonus_time
+
+        self._default_white_promotion = c.PieceType.queen
+        self._default_black_promotion = c.PieceType.queen
+
+        self._is_standard_type = True
+        self._white_promotion = self._default_white_promotion
+        self._black_promotion = self._default_black_promotion
+
+        self._resize_factor = float(size / c.IMAGE.DEFAULT_SIZE)
+        self._image_store = {}
+
+        self._font_id = QtGui.QFontDatabase().addApplicationFont(
+            c.APP.FONT_FILE_PATH
+        )
+        if self._font_id == -1:
+            error_msg = f'Could not load font from {c.APP.FONT_FILE_PATH}'
+            raise RuntimeError(error_msg)
+        self._font = QtGui.QFont(c.APP.FONT_FAMILY)
+
+        self._setup_ui()
+        self._connect_signals()
+
+    def reset(self):
+        self._play_time = self._default_play_time
+        self._bonus_time = self._default_bonus_time
+        self._is_standard_type = True
+        self._white_promotion = c.PieceType.queen
+        self._black_promotion = c.PieceType.queen
+
+        widgets = [
+            self._play_time_slider, self._bonus_time_slider,
+            self._standard_button, self._chess960_button,
+            self._white_promotion_combobox, self._black_promotion_combobox,
+
+        ]
+
+        with block_signals(widgets):
+            self._play_time_slider.setValue(self._default_play_time)
+            self._bonus_time_slider.setValue(self._default_bonus_time)
+
+            self._standard_button.setChecked(True)
+            self._chess960_button.setChecked(False)
+
+            self._white_promotion_combobox.setCurrentIndex(
+                self._get_piece_type_index(
+                    self._default_white_promotion
+                )
+            )
+
+            self._black_promotion_combobox.setCurrentIndex(
+                self._get_piece_type_index(
+                    self._default_black_promotion
+                )
+            )
+
+    def _get_piece_type_index(self, piece_type):
+        return self.PROMOTION_PIECES.index(piece_type)
+
+    @property
+    def play_time(self):
+        return self._play_time
+
+    @property
+    def bonus_time(self):
+        return self._bonus_time
+
+    @property
+    def is_standard_type(self):
+        return self._is_standard_type
+
+    @property
+    def white_promotion(self):
+        return self._white_promotion
+
+    @property
+    def black_promotion(self):
+        return self._black_promotion
+
+    def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
+        self.setFixedSize(self._size, self._size)
+        self.setModal(True)
+
+        self._main_layout = QtWidgets.QVBoxLayout(self)
+
+        time_widget = self._create_time_widget()
+        self._main_layout.addWidget(time_widget)
+
+        self._main_layout.addSpacerItem(
+            QtWidgets.QSpacerItem(1, int(self._resize_factor * 20)),
+        )
+
+        game_widget = self._create_game_widget()
+        self._main_layout.addWidget(game_widget)
+
+        self._main_layout.addSpacerItem(
+            QtWidgets.QSpacerItem(1, int(self._resize_factor * 20)),
+        )
+
+        promotion_widget = self._create_promotion_widget()
+        self._main_layout.addWidget(promotion_widget)
+
+    def _create_time_widget(self):
+        widget = QtWidgets.QWidget()
+        widget.setMaximumHeight(
+            int(self._resize_factor * 220)
+        )
+        widget.setStyleSheet(
+            'QWidget { border: 1px solid #5A5A5A }'
+        )
+
+        layout = QtWidgets.QVBoxLayout(widget)
+        layout_label = self._create_label('GAME TIME', 300, 24)
+        layout.addWidget(layout_label)
+
+        self._play_time_slider_value_label = self._create_label(
+            f'{str(self._default_play_time).zfill(2)} min',
+            50,
+        )
+        self._play_time_slider = self._create_slider(
+            min_val=1,
+            max_val=60,
+            default_val=self._default_play_time,
+            step=1,
+        )
+        play_time_layout = self._create_time_layout(
+            slider=self._play_time_slider,
+            value_label=self._play_time_slider_value_label,
+            title='TIME EACH PLAYER ',
+        )
+
+        self._bonus_time_slider_value_label = self._create_label(
+            f'{str(self._default_bonus_time).zfill(2)} sec',
+            50,
+        )
+        self._bonus_time_slider = self._create_slider(
+            min_val=0,
+            max_val=60,
+            default_val=self._default_bonus_time,
+            step=1,
+        )
+        bonus_time_layout = self._create_time_layout(
+            slider=self._bonus_time_slider,
+            value_label=self._bonus_time_slider_value_label,
+            title='BONUS PER MOVE',
+        )
+
+        layout.addLayout(play_time_layout)
+        layout.addSpacerItem(
+            QtWidgets.QSpacerItem(1, int(self._resize_factor * 20))
+        )
+        layout.addLayout(bonus_time_layout)
+
+        return widget
+
+    def _create_game_widget(self):
+        widget = QtWidgets.QWidget()
+        widget.setMaximumHeight(
+            int(self._resize_factor * 100)
+        )
+        widget.setStyleSheet(
+            'QWidget { border: 1px solid #5A5A5A }'
+        )
+
+        layout = QtWidgets.QVBoxLayout(widget)
+        layout_label = self._create_label('GAME TYPE', 200, 24)
+        layout.addWidget(layout_label)
+
+        layout.addStretch(1)
+
+        btn_layout = QtWidgets.QHBoxLayout()
+        self._standard_button = self._create_radio_button(
+            c.GAME.TYPE.std,
+            True,
+        )
+        self._chess960_button = self._create_radio_button(
+            c.GAME.TYPE.c9lx,
+            False,
+        )
+
+        btn_layout.addWidget(self._standard_button)
+        btn_layout.addWidget(self._chess960_button)
+
+        layout.addLayout(btn_layout)
+
+        return widget
+
+    def _create_promotion_widget(self):
+        widget = QtWidgets.QWidget()
+        widget.setMaximumHeight(
+            int(self._resize_factor * 150)
+        )
+        widget.setStyleSheet(
+            'QWidget { border: 1px solid #5A5A5A }'
+        )
+
+        layout = QtWidgets.QVBoxLayout(widget)
+        layout_label = self._create_label('PAWN PROMOTIONS', 200, 24)
+        layout.addWidget(layout_label)
+
+        layout.addStretch(1)
+
+        combo_layout = QtWidgets.QHBoxLayout()
+
+        widgets = self._create_promotion_layout(c.Color.white)
+        self._white_promotion_layout, self._white_promotion_combobox = widgets
+        combo_layout.addLayout(self._white_promotion_layout)
+
+        combo_layout.addStretch(1)
+
+        widgets = self._create_promotion_layout(c.Color.black)
+        self._black_promotion_layout, self._black_promotion_combobox = widgets
+        combo_layout.addLayout(self._black_promotion_layout)
+
+        layout.addLayout(combo_layout)
+
+        return widget
+
+    def _create_time_layout(self, slider, value_label, title):
+        layout = QtWidgets.QVBoxLayout()
+
+        label_layout = QtWidgets.QHBoxLayout()
+        slider_label = self._create_label(title)
+
+        label_layout.addWidget(slider_label)
+        label_layout.addStretch(1)
+        label_layout.addWidget(value_label)
+
+        layout.addLayout(label_layout)
+        layout.addWidget(slider)
+
+        return layout
+
+    def _create_promotion_layout(self, color):
+        layout = QtWidgets.QHBoxLayout()
+        label = self._create_label(
+            f'{color.name.upper()}',
+            int(self._resize_factor * 100),
+        )
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        combobox = QtWidgets.QComboBox()
+        combobox.setMinimumWidth(
+            int(self._resize_factor * 150)
+        )
+        combobox.setMinimumHeight(
+            int(self._resize_factor * 30)
+        )
+
+        for item in [t.name for t in self.PROMOTION_PIECES]:
+            combobox.addItem(
+                self._create_icon(f'{item}_small', color),
+                '',
+            )
+
+        layout.addWidget(label)
+        layout.addWidget(combobox)
+        layout.addStretch(1)
+
+        return layout, combobox
+
+    def _create_icon(self, piece_name, color):
+        def _get_piece_image_path(piece_name, color):
+            color_name = color.name
+            piece_images = getattr(c.IMAGE.PIECE_IMAGE, piece_name)
+            image_name = getattr(piece_images, color_name)
+            image_path = os.path.join(c.IMAGE.IMAGE_DIR, image_name)
+
+            error_msg = f'Image path {image_path} does not exist!'
+            assert(os.path.exists(image_path)), error_msg
+            return image_path
+
+        icon = QtGui.QIcon()
+        image_path = _get_piece_image_path(piece_name, color)
+        icon.addFile(image_path)
+        return icon
+
+    def _create_label(self, name, width=150, font_size=14):
+        label = QtWidgets.QLabel(name)
+        label.setFixedWidth(int(self._resize_factor * width))
+        label.setStyleSheet('QWidget { border: none }')
+        self._font.setPointSize(int(self._resize_factor * font_size))
+        label.setFont(self._font)
+
+        return label
+
+    def _create_slider(self, min_val, max_val, default_val, step=1):
+        slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        slider.setMinimum(min_val)
+        slider.setMaximum(max_val)
+        slider.setSingleStep(step)
+        slider.setMinimumWidth(int(self._resize_factor * 300))
+        slider.setValue(default_val)
+        return slider
+
+    def _create_radio_button(self, name, check_state):
+        btn = QtWidgets.QRadioButton(name)
+        btn.setChecked(check_state)
+        # btn.setMinimumHeight(self._resize_factor * 50)
+        btn.setStyleSheet('QWidget { border: none }')
+        self._font.setPointSize(int(self._resize_factor * 14))
+        btn.setFont(self._font)
+        return btn
+
+    def _connect_signals(self):
+        self._play_time_slider.valueChanged.connect(
+            self._on_play_time_slider_changed
+        )
+
+        self._bonus_time_slider.valueChanged.connect(
+            self._on_bonus_time_slider_changed
+        )
+
+        self._chess960_button.toggled.connect(
+            lambda: self._on_game_type_btn_toggled(self._chess960_button)
+        )
+
+        self._standard_button.toggled.connect(
+            lambda: self._on_game_type_btn_toggled(self._standard_button)
+        )
+
+        self._black_promotion_combobox.currentIndexChanged.connect(
+            self._on_black_combo_index_changed,
+        )
+
+        self._white_promotion_combobox.currentIndexChanged.connect(
+            self._on_white_combo_index_changed,
+        )
+
+    def _on_play_time_slider_changed(self, val):
+        self._play_time = val
+        self._play_time_slider_value_label.setText(f'{str(val).zfill(2)} min')
+
+    def _on_bonus_time_slider_changed(self, val):
+        self._bonus_time = val
+        self._bonus_time_slider_value_label.setText(f'{str(val).zfill(2)} sec')
+
+    def _on_game_type_btn_toggled(self, btn):
+        if btn.text() == c.GAME.TYPE.std:
+            self._is_standard_type = btn.isChecked()
+
+        if btn.text() == c.GAME.TYPE.c9lx:
+            self._is_standard_type = not btn.isChecked()
+
+    def _on_white_combo_index_changed(self, index):
+        self._white_promotion = self.PROMOTION_PIECES[index]
+
+    def _on_black_combo_index_changed(self, index):
+        self._black_promotion = self.PROMOTION_PIECES[index]
+
+    def closeEvent(self, event):
+        self.DONE_SIGNAL.emit()
+
+
 class MainWindow(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
     GAME_RESET_SIGNAL = QtCore.Signal()
+    GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -21,20 +412,29 @@ class MainWindow(QtWidgets.QDialog):
             size=c.IMAGE.DEFAULT_SIZE,
         )
 
+        self._option_widget = OptionWidget(
+            size=c.IMAGE.DEFAULT_SIZE,
+        )
+
         self._first_square = None
         self._second_square = None
         self._current_player = c.Color.white
 
+        self._bonus_time = self._option_widget.bonus_time
+
         self._timer_white = QtCore.QTimer()
         self._timer_white.setInterval(1000)  # timeout per 1 second
         self._time_white = 0
+        self._remaining_time_white = self._option_widget.play_time * 60
 
         self._timer_black = QtCore.QTimer()
         self._timer_black.setInterval(1000)  # timeout per 1 second
         self._time_black = 0
+        self._remaining_time_black = self._option_widget.play_time * 60
 
         self._is_paused = True
         self._is_game_over = False
+        self._has_game_started = False
 
         self._gamedata = None
         self._show_threatened = False
@@ -50,8 +450,13 @@ class MainWindow(QtWidgets.QDialog):
         if event.key() == QtCore.Qt.Key_C:
             self._toggle_show_threatened()
 
+    def board_updated(self):
+        self._update()
+
     def _reset(self):
+        self._option_widget.reset()
         self.GAME_RESET_SIGNAL.emit()
+        self._start_btn.setText('START')
         self._board_image = imager.BoardImage(
             self._board,
             size=c.IMAGE.DEFAULT_SIZE,
@@ -65,11 +470,17 @@ class MainWindow(QtWidgets.QDialog):
 
         self._current_player = c.Color.white
 
+        self._bonus_time = self._option_widget.bonus_time
+
         self._time_white = 0
+        self._remaining_time_white = self._option_widget.play_time * 60
+
         self._time_black = 0
+        self._remaining_time_black = self._option_widget.play_time * 60
 
         self._is_paused = True
         self._is_game_over = False
+        self._has_game_started = False
 
         self._gamedata = None
         self._show_threatened = False
@@ -82,8 +493,12 @@ class MainWindow(QtWidgets.QDialog):
 
         self._update_captured_image_labels()
 
-        self._white_timer_lcd.display('00:00:00')
-        self._black_timer_lcd.display('00:00:00')
+        self._white_timer_lcd.display(
+            self._format_time(self._remaining_time_white)
+        )
+        self._black_timer_lcd.display(
+            self._format_time(self._remaining_time_black)
+        )
 
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
@@ -108,26 +523,6 @@ class MainWindow(QtWidgets.QDialog):
         self._bottom_layout = self._create_bottom_layout()
         self._main_layout.addLayout(self._bottom_layout, 3)
 
-    def _create_central_widget(self):
-        self._central_widget = QtWidgets.QWidget()
-        self._central_layout = QtWidgets.QVBoxLayout(self._central_widget)
-
-        # Add black panel layout
-        self._black_panel_layout = self._create_black_panel_layout()
-        self._central_layout.addLayout(self._black_panel_layout, 1)
-
-        # Add image layout
-        self._image_layout_outer = self._create_image_layout()
-        self._central_layout.addLayout(self._image_layout_outer, 1)
-
-        # Add white panel layout
-        self._white_panel_layout = self._create_white_panel_layout()
-        self._central_layout.addLayout(self._white_panel_layout, 1)
-
-        # Add bottom layout
-        self._bottom_layout = self._create_bottom_layout()
-        self._central_layout.addLayout(self._bottom_layout, 10)
-
     def _create_black_panel_layout(self):
         self._black_panel_layout = QtWidgets.QHBoxLayout()
 
@@ -138,7 +533,9 @@ class MainWindow(QtWidgets.QDialog):
 
         self._black_timer_lcd = QtWidgets.QLCDNumber()
         self._black_timer_lcd.setDigitCount(8)
-        self._black_timer_lcd.display('00:00:00')
+        self._black_timer_lcd.display(
+            self._format_time(self._remaining_time_black)
+        )
         self._black_timer_lcd.setFixedHeight(
             int(c.APP.LCD_HEIGHT * self._resize_factor)
         )
@@ -199,7 +596,9 @@ class MainWindow(QtWidgets.QDialog):
 
         self._white_timer_lcd = QtWidgets.QLCDNumber()
         self._white_timer_lcd.setDigitCount(8)
-        self._white_timer_lcd.display('00:00:00')
+        self._white_timer_lcd.display(
+            self._format_time(self._remaining_time_white)
+        )
         self._white_timer_lcd.setFixedHeight(
             int(c.APP.LCD_HEIGHT * self._resize_factor)
         )
@@ -218,21 +617,35 @@ class MainWindow(QtWidgets.QDialog):
     def _create_bottom_layout(self):
         self._bottom_layout = QtWidgets.QHBoxLayout()
 
-        self._start_btn = QtWidgets.QPushButton('START')
-        self._start_btn.setMinimumHeight(
-            int(c.APP.BUTTON_HEIGHT * self._resize_factor)
-        )
-        self._start_btn.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding
-        )
+        self._options_btn = self._create_btn('OPTIONS')
+        self._bottom_layout.addWidget(self._options_btn, 1)
+
+        self._reset_btn = self._create_btn('RESET')
+        self._bottom_layout.addWidget(self._reset_btn, 1)
+
+        self._start_btn = self._create_btn('START')
         self._bottom_layout.addWidget(self._start_btn, 1)
 
         return self._bottom_layout
 
+    def _create_btn(self, text):
+        btn = QtWidgets.QPushButton(str(text).upper())
+        btn.setMinimumHeight(
+            int(c.APP.BUTTON_HEIGHT * self._resize_factor)
+        )
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding
+        )
+
+        return btn
+
     def _connect_signals(self):
         self._image_label.mousePressEvent = self._on_image_clicked
+        self._options_btn.clicked.connect(self._on_options_btn_clicked)
+        self._reset_btn.clicked.connect(self._on_reset_btn_clicked)
         self._start_btn.clicked.connect(self._on_start_btn_clicked)
+        self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
 
@@ -264,6 +677,35 @@ class MainWindow(QtWidgets.QDialog):
             move = f'{self._first_square.address}{self._second_square.address}'
             self.MOVE_SIGNAL.emit(move)
 
+    def _on_options_btn_clicked(self):
+        if self._has_game_started:
+            return
+
+        self._option_widget.show()
+
+    def _on_reset_btn_clicked(self):
+        self._reset()
+
+    def _on_options_selected(self):
+        self._bonus_time = self._option_widget.bonus_time
+        self._remaining_time_white = self._option_widget.play_time * 60
+        self._white_timer_lcd.display(
+            self._format_time(self._remaining_time_white)
+        )
+
+        self._remaining_time_black = self._option_widget.play_time * 60
+        self._black_timer_lcd.display(
+            self._format_time(self._remaining_time_black)
+        )
+
+        self.GAME_OPTIONS_SET_SIGNAL.emit(
+            (
+                self._option_widget.white_promotion,
+                self._option_widget.black_promotion,
+                self._option_widget.is_standard_type,
+            )
+        )
+
     def game_over(self, winner):
         self._is_game_over = True
         self._captured_image.draw_winner(winner)
@@ -273,15 +715,24 @@ class MainWindow(QtWidgets.QDialog):
 
     def _timer_white_timeout(self):
         self._time_white += 1
-        time_str = self._format_time(self._time_white)
+        self._remaining_time_white -= 1
+        if self._remaining_time_white == 0:
+            self.game_over(winner=c.Color.black)
+
+        time_str = self._format_time(self._remaining_time_white)
         self._white_timer_lcd.display(time_str)
 
     def _timer_black_timeout(self):
         self._time_black += 1
-        time_str = self._format_time(self._time_black)
+        self._remaining_time_black -= 1
+        if self._remaining_time_black == 0:
+            self.game_over(winner=c.Color.white)
+
+        time_str = self._format_time(self._remaining_time_black)
         self._black_timer_lcd.display(time_str)
 
     def _on_start_btn_clicked(self):
+        self._has_game_started = True
         if self._is_game_over:
             self._reset()
 
@@ -379,12 +830,29 @@ class MainWindow(QtWidgets.QDialog):
         self._update_captured_image_labels()
 
     def toggle_player(self, color):
+        # It has been a successful move
+        # Before changing the current player, let us add bonus
+        # time to the player who made the move
+        self._add_bonus_time()
+
         self._stop_current_player_time()
         self._current_player = color
         self._start_current_player_time()
 
         if self._show_threatened:
             self._display_threatened()
+
+    def _add_bonus_time(self):
+        if self._current_player == c.Color.white:
+            self._remaining_time_white += self._bonus_time
+            self._white_timer_lcd.display(
+                self._format_time(self._remaining_time_white)
+            )
+        else:
+            self._remaining_time_black += self._bonus_time
+            self._black_timer_lcd.display(
+                self._format_time(self._remaining_time_white)
+            )
 
     def _display_threatened(self):
         threatened = self._get_threatened(self._current_player)

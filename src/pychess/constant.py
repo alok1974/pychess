@@ -30,6 +30,11 @@ class GAME:
         queen=1,
         king=1,
     )
+    TYPE = _declare_constants(
+        obj_name='TYPE',
+        std='STANDARD',
+        c9lx='CHESS 960',
+    )
 
 
 @enum.unique
