@@ -38,7 +38,10 @@ class Game:
         self._board = Board()
         self._captured_white = []
         self._captured_black = []
+
         self._move_history = []
+        self._game_started = False
+
         self._capturables = {}
         self._pieces_checking_black = []
         self._pieces_checking_white = []
@@ -114,7 +117,7 @@ class Game:
         return self._capturables
 
     def set_game_options(self, options):
-        if self._move_history:
+        if self._game_started:
             return
 
         (
@@ -130,7 +133,10 @@ class Game:
         self._board.reset()
         self._captured_white = []
         self._captured_black = []
+
         self._move_history = []
+
+        self._game_started = False
         self._capturables = {}
         self._pieces_checking_black = []
         self._pieces_checking_white = []
@@ -286,6 +292,8 @@ class Game:
     def _record_move(self, piece, src, dst):
         mv = Move(piece, src, dst)
         self._move_history.append(mv)
+
+        self._game_started = True
 
         if piece.type == c.PieceType.king:
             if piece.color == c.Color.black:

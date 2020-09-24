@@ -6,6 +6,7 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from . import constant as c, imager
+from .history import Player
 
 
 @contextlib.contextmanager
@@ -436,8 +437,11 @@ class MainWindow(QtWidgets.QDialog):
         self._is_game_over = False
         self._has_game_started = False
 
-        self._gamedata = None
+        self._game_data = None
+        self._history_player = None
         self._show_threatened = False
+
+        self._inspecting_history = False
 
         self._resize_factor = (
             self._board_image.width / c.IMAGE.BASE_IMAGE_SIZE
@@ -482,8 +486,11 @@ class MainWindow(QtWidgets.QDialog):
         self._is_game_over = False
         self._has_game_started = False
 
-        self._gamedata = None
+        self._game_data = None
+        self._history_player = None
         self._show_threatened = False
+
+        self._inspecting_history = False
 
         self._timer_white.stop()
         self._timer_black.stop()
@@ -615,16 +622,30 @@ class MainWindow(QtWidgets.QDialog):
         return self._white_panel_layout
 
     def _create_bottom_layout(self):
-        self._bottom_layout = QtWidgets.QHBoxLayout()
+        self._bottom_layout = QtWidgets.QVBoxLayout()
+
+        self._moves_label = QtWidgets.QLabel()
+        self._moves_label.setVisible(False)
+        self._bottom_layout.addWidget(self._moves_label)
+
+        self._btn_layout = QtWidgets.QHBoxLayout()
 
         self._options_btn = self._create_btn('OPTIONS')
-        self._bottom_layout.addWidget(self._options_btn, 1)
+        self._btn_layout.addWidget(self._options_btn, 1)
 
         self._reset_btn = self._create_btn('RESET')
-        self._bottom_layout.addWidget(self._reset_btn, 1)
+        self._btn_layout.addWidget(self._reset_btn, 1)
 
         self._start_btn = self._create_btn('START')
-        self._bottom_layout.addWidget(self._start_btn, 1)
+        self._btn_layout.addWidget(self._start_btn, 1)
+
+        self._back_btn = self._create_btn('<')
+        self._btn_layout.addWidget(self._back_btn, 1)
+
+        self._forward_btn = self._create_btn('>')
+        self._btn_layout.addWidget(self._forward_btn, 1)
+
+        self._bottom_layout.addLayout(self._btn_layout)
 
         return self._bottom_layout
 
@@ -645,12 +666,14 @@ class MainWindow(QtWidgets.QDialog):
         self._options_btn.clicked.connect(self._on_options_btn_clicked)
         self._reset_btn.clicked.connect(self._on_reset_btn_clicked)
         self._start_btn.clicked.connect(self._on_start_btn_clicked)
+        self._forward_btn.clicked.connect(self._on_forward_btn_clicked)
+        self._back_btn.clicked.connect(self._on_back_btn_clicked)
         self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
 
     def _on_image_clicked(self, event):
-        if self._is_paused or self._is_game_over:
+        if self._is_paused or self._is_game_over or self._inspecting_history:
             return
 
         button = event.button()
@@ -685,6 +708,44 @@ class MainWindow(QtWidgets.QDialog):
 
     def _on_reset_btn_clicked(self):
         self._reset()
+
+    def _on_forward_btn_clicked(self):
+        self._inspect_history(cursor_step=1)
+
+    def _on_back_btn_clicked(self):
+        self._inspect_history(cursor_step=-1)
+
+    def _inspect_history(self, cursor_step):
+        if self._history_player is None:
+            return
+
+        if cursor_step == 1:
+            result = self._history_player.move_forward()
+        elif cursor_step == -1:
+            result = self._history_player.move_backward()
+        else:
+            error_msg = f'Unknown cursor step: {cursor_step}'
+            raise RuntimeError(error_msg)
+
+        if result.board is None:
+            return
+
+        self._inspecting_history = not self._history_player.is_at_end
+        self._board.data = result.board.data
+        self._board.reverse = result.board.reverse
+
+        self._update()
+
+        if result.move is not None:
+            self._highlight(
+                result.move.src,
+                highlight_color=c.APP.HIGHLIGHT_COLOR.src,
+            )
+
+            self._highlight(
+                result.move.dst,
+                highlight_color=c.APP.HIGHLIGHT_COLOR.dst,
+            )
 
     def _on_options_selected(self):
         self._bonus_time = self._option_widget.bonus_time
@@ -808,7 +869,8 @@ class MainWindow(QtWidgets.QDialog):
         self._update_image_label()
 
     def update_move(self, game_data):
-        self._gamedata = game_data
+        self._game_data = game_data
+        self._history_player = Player(self._game_data.move_history)
 
         self._update()
 
@@ -864,11 +926,11 @@ class MainWindow(QtWidgets.QDialog):
         self._update_image_label()
 
     def _get_threatened(self, color):
-        if self._gamedata is None:
+        if self._game_data is None:
             return []
 
         total_threatened = []
-        capturables = self._gamedata.capturables[color]
+        capturables = self._game_data.capturables[color]
         for _, threatened in capturables.items():
             total_threatened.extend(threatened)
 
