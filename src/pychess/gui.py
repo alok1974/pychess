@@ -1,10 +1,9 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
-from . import constant as c, imager
+from . import constant as c, imager, pgn
 from .widget import OptionWidget, MovesWidget
 from .history import Player
-from .pgn import Parser
 
 
 class MainWindow(QtWidgets.QDialog):
@@ -17,7 +16,6 @@ class MainWindow(QtWidgets.QDialog):
 
     def init_board(self, board):
         self._board = board
-        self._pgn_parser = Parser(self._board)
         self._board_image = imager.BoardImage(
             self._board,
             size=c.IMAGE.DEFAULT_SIZE,
@@ -492,7 +490,7 @@ class MainWindow(QtWidgets.QDialog):
         self._game_data = game_data
         self._history_player = Player(self._game_data.move_history)
 
-        moves = self._pgn_parser.parse_move_history(
+        moves = pgn.parse_move_history(
             self._game_data.move_history
         )
         self._moves_widget.setVisible(True)

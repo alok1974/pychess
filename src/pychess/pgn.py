@@ -1,44 +1,67 @@
 from . import constant as c
 
 
-class Parser:
-    def __init__(self, board):
-        self._board = board
+def parse_move_history(move_history):
+    moves = [
+        parse_move(m)
+        for m in move_history
+    ]
 
-    def parse_move_history(self, move_history):
-        moves = [
-            self._parse_move(m)
-            for m in move_history
-        ]
+    return _pair_moves(moves)
 
-        return self._pair_moves(moves)
 
-    def _parse_move(self, move):
-        piece_str = (
-            ''
-            if move.piece.type == c.PieceType.pawn
-            else move.piece.code.upper()
-        )
-        address_str = move.dst.address
+def parse_move(move):
+    if move.castling_done:
+        if move.is_king_side_castling:
+            return 'O-O'
+        else:
+            return 'O-O-O'
 
-        return f'{piece_str}{address_str}'
+    check = (
+        '+'
+        if move.is_check
+        else ''
+    )
 
-    # def _pair_moves(self, moves):
-    #     pairs = list(zip(moves[::2], moves[1::2]))
-    #     if len(moves) % 2 != 0:
-    #         pairs.append((moves[-1], ''))
+    mate = (
+        '#'
+        if move.is_mate
+        else ''
+    )
 
-    #     return [
-    #         f'{index + 1}. {x[0]} {x[1]}'
-    #         for index, x in enumerate(pairs)
-    #     ]
+    capture = 'x' if move.is_capture else ''
 
-    def _pair_moves(self, moves):
-        pairs = list(zip(moves[::2], moves[1::2]))
-        if len(moves) % 2 != 0:
-            pairs.append((moves[-1], ''))
+    promoted_piece = move.promoted_piece
+    if promoted_piece is not None:
+        promotion = promoted_piece.code.upper()
+        return f'{move.dst.address}={promotion}{capture}{check}{mate}'
 
-        return [
-            (index + 1, x[0], x[1])
-            for index, x in enumerate(pairs)
-        ]
+    if move.piece.type == c.PieceType.pawn:
+        piece_str = ''
+        if move.is_capture:
+            capture = f'{move.src.x_address}{capture}'
+    else:
+        piece_str = move.piece.code.upper()
+
+    disambiguate = (
+        move.disambiguate
+        if move.disambiguate is not None
+        else ''
+    )
+
+    return f'{piece_str}{disambiguate}{capture}{move.dst.address}{check}{mate}'
+
+
+def _pair_moves(moves):
+    pairs = list(zip(moves[::2], moves[1::2]))
+    if len(moves) % 2 != 0:
+        pairs.append((moves[-1], ''))
+
+    return [
+        (index + 1, x[0], x[1])
+        for index, x in enumerate(pairs)
+    ]
+
+
+def parse_pgn(pgn_text):
+    pass

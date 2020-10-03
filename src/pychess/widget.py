@@ -424,7 +424,6 @@ class MovesWidget(QtWidgets.QWidget):
             )
 
     def _clear_labels(self):
-        print('clearing widget')
         nb_move_num_labels = len(self._move_num_labels)
         for i in range(nb_move_num_labels):
             move_label = self._move_num_labels.pop()
