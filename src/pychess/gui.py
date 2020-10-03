@@ -2,8 +2,9 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from . import constant as c, imager
-from .widget import OptionWidget
+from .widget import OptionWidget, MovesWidget
 from .history import Player
+from .pgn import Parser
 
 
 class MainWindow(QtWidgets.QDialog):
@@ -16,6 +17,7 @@ class MainWindow(QtWidgets.QDialog):
 
     def init_board(self, board):
         self._board = board
+        self._pgn_parser = Parser(self._board)
         self._board_image = imager.BoardImage(
             self._board,
             size=c.IMAGE.DEFAULT_SIZE,
@@ -26,6 +28,7 @@ class MainWindow(QtWidgets.QDialog):
 
         self._option_widget = OptionWidget(
             size=c.IMAGE.DEFAULT_SIZE,
+            parent=self,
         )
 
         self._first_square = None
@@ -70,6 +73,7 @@ class MainWindow(QtWidgets.QDialog):
 
     def _reset(self):
         self._option_widget.reset()
+        self._moves_widget.reset()
         self.GAME_RESET_SIGNAL.emit()
         self._start_btn.setText('START')
         self._board_image = imager.BoardImage(
@@ -235,9 +239,11 @@ class MainWindow(QtWidgets.QDialog):
     def _create_bottom_layout(self):
         self._bottom_layout = QtWidgets.QVBoxLayout()
 
-        self._moves_label = QtWidgets.QLabel()
-        self._moves_label.setVisible(False)
-        self._bottom_layout.addWidget(self._moves_label)
+        self._moves_widget = MovesWidget(
+            resize_factor=self._resize_factor,
+            parent=self,
+        )
+        self._bottom_layout.addWidget(self._moves_widget)
 
         self._btn_layout = QtWidgets.QHBoxLayout()
 
@@ -357,6 +363,9 @@ class MainWindow(QtWidgets.QDialog):
                 result.move.dst,
                 highlight_color=c.APP.HIGHLIGHT_COLOR.dst,
             )
+
+        index = self._history_player.current_index
+        self._moves_widget.set_active_label(index, set_scroll=True)
 
     def _on_options_selected(self):
         self._bonus_time = self._option_widget.bonus_time
@@ -482,6 +491,12 @@ class MainWindow(QtWidgets.QDialog):
     def update_move(self, game_data):
         self._game_data = game_data
         self._history_player = Player(self._game_data.move_history)
+
+        moves = self._pgn_parser.parse_move_history(
+            self._game_data.move_history
+        )
+        self._moves_widget.setVisible(True)
+        self._moves_widget.display_moves(moves)
 
         self._update()
 

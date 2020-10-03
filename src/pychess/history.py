@@ -22,6 +22,10 @@ class Player:
     def is_at_beginning(self):
         return self._current_index == self._first_index
 
+    @property
+    def current_index(self):
+        return self._current_index
+
     def move_forward(self):
         return self._perform_move(step=1)
 

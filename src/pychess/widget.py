@@ -120,7 +120,7 @@ class OptionWidget(QtWidgets.QDialog):
         return self._black_promotion
 
     def _setup_ui(self):
-        self.setStyleSheet(c.APP.STYLESHEET)
+        # self.setStyleSheet(c.APP.STYLESHEET)
         self.setFixedSize(self._size, self._size)
         self.setModal(True)
 
@@ -392,3 +392,237 @@ class OptionWidget(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         self.DONE_SIGNAL.emit()
+
+
+class MovesWidget(QtWidgets.QWidget):
+    def __init__(self, resize_factor, parent=None):
+        super().__init__(parent=parent)
+        self._resize_factor = resize_factor
+        self._init_scroll_height = 20
+        self._scroll_bar_height = 10
+        self._scroll_bar_active = False
+        self._labels = []
+        self._labels_scroll_pos = {}
+        self._move_num_labels = []
+        self._setup_ui()
+        self._connect_signals()
+
+    def reset(self):
+        self._clear_labels()
+        self._init_scroll_height = 20
+        self._scroll_bar_height = 10
+        self._scroll_bar_active = False
+        self._labels = []
+        self._labels_scroll_pos = {}
+        self._move_num_labels = []
+
+    def paintEvent(self, event):
+        max_val = self._horizontal_scroll_bar.maximum()
+        if self._labels and max_val:
+            self._labels_scroll_pos[len(self._labels) - 1] = (
+                max_val + self._labels[-1].width()
+            )
+
+    def _clear_labels(self):
+        print('clearing widget')
+        nb_move_num_labels = len(self._move_num_labels)
+        for i in range(nb_move_num_labels):
+            move_label = self._move_num_labels.pop()
+            move_label.deleteLater()
+
+        nb_labels = len(self._labels)
+        for i in range(nb_labels):
+            label = self._labels.pop()
+            label.deleteLater()
+
+        self.repaint()
+
+    def display_moves(self, moves):
+        label_order = 0
+        move_num_label_order = 0
+        for move in moves:
+            move_num, m1, m2 = move
+            move_num_label_order += 1
+            if len(self._move_num_labels) < move_num_label_order:
+                move_label = self._create_label(f'   {str(move_num)}.')
+                self._move_num_labels.append(move_label)
+                self._labels_layout.insertWidget(
+                    self._labels_layout.count() - 1,
+                    move_label,
+                )
+
+            label_order += 1
+            if len(self._labels) < label_order:
+                m1_label = self._create_label(m1)
+                self._labels.append(m1_label)
+                self._labels_layout.insertWidget(
+                    self._labels_layout.count() - 1,
+                    m1_label,
+                )
+                self.set_active_label(len(self._labels) - 1)
+
+            if m2:
+                label_order += 1
+                if len(self._labels) < label_order:
+                    m2_label = self._create_label(m2)
+                    self._labels.append(m2_label)
+                    self._labels_layout.insertWidget(
+                        self._labels_layout.count() - 1,
+                        m2_label,
+                    )
+                    self.set_active_label(len(self._labels) - 1)
+
+    def _setup_ui(self):
+        self._main_layout = QtWidgets.QVBoxLayout(self)
+        self._main_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._labels_widget = QtWidgets.QWidget()
+        self._labels_widget.setStyleSheet(
+            'QWidget { border: none }'
+        )
+        self._labels_layout = QtWidgets.QHBoxLayout(self._labels_widget)
+        self._labels_layout.setContentsMargins(0, 0, 0, 0)
+        self._labels_layout.addStretch(1)
+        self._scroll_area = QtWidgets.QScrollArea()
+        new_height = self._init_scroll_height + self._scroll_bar_height + 20
+        self._scroll_area.setMinimumHeight(
+            self._resize_factor * new_height
+        )
+
+        self._scroll_area.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        self._scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+
+        self._scroll_area.setWidget(self._labels_widget)
+        self._scroll_area.setWidgetResizable(True)
+        self._scroll_area.setStyleSheet(
+            'QScrollArea { border: none }'
+        )
+
+        self._horizontal_scroll_bar = self._create_horizontal_scroll_bar(
+            self._scroll_area
+        )
+
+        self._main_layout.addWidget(self._scroll_area)
+
+    def _connect_signals(self):
+        self._horizontal_scroll_bar.rangeChanged.connect(
+            self._horizontal_range_changed
+        )
+
+    def _horizontal_range_changed(self):
+        self._scroll_bar_active = True
+        self._horizontal_scroll_bar.setValue(
+            self._horizontal_scroll_bar.maximum()
+        )
+
+    def _create_horizontal_scroll_bar(self, scroll_area):
+        hbar = scroll_area.horizontalScrollBar()
+        hbar.setMinimumHeight(self._resize_factor * self._scroll_bar_height)
+        hbar.setStyleSheet(
+            """
+            QScrollBar::add-line:horizontal {
+                border: none;
+                background: none;
+                width: 0px;
+                height: 0px;
+            }
+            QScrollBar::sub-line:horizontal {
+                border: none;
+                background: none;
+                width: 0px;
+                height: 0px;
+            }
+            QScrollBar::right-arrow:horizontal
+            {
+                border: none;
+                background: none;
+                color: none;
+                width: 0px;
+                height: 0px;
+            }
+            QScrollBar::left-arrow:horizontal
+            {
+                border: none;
+                background: none;
+                color: none;
+                width: 0px;
+                height: 0px;
+            }
+            """
+        )
+        # hbar.rangeChanged.connect(lambda: hbar.setValue(hbar.maximum()))
+
+        return hbar
+
+    def _create_label(self, text):
+        label = QtWidgets.QLabel(text)
+        label.setFixedHeight(self._init_scroll_height)
+        # label.setSizePolicy(
+        #     QtWidgets.QSizePolicy.Preferred,
+        #     QtWidgets.QSizePolicy.Preferred,
+        # )
+        return label
+
+    def set_active_label(self, index, set_scroll=False):
+        if index < 0:
+            self._horizontal_scroll_bar.setValue(0)
+            first_label = self._labels[0]
+            self._set_label_style(label=first_label, active=False)
+            return
+
+        for i, label in enumerate(self._labels):
+            active = True if i == index else False
+            self._set_label_style(label=label, active=active)
+
+        self._scroll_to_label(index, set_scroll=set_scroll)
+
+    def _scroll_to_label(self, index, set_scroll):
+        if not set_scroll:
+            return
+
+        if not self._scroll_bar_active:
+            return
+
+        if self._is_label_fully_visible(self._labels[index]):
+            return
+
+        if index in self._labels_scroll_pos:
+            self._horizontal_scroll_bar.setValue(
+                self._labels_scroll_pos[index]
+            )
+        else:
+            self._horizontal_scroll_bar.setValue(0)
+
+    def _set_label_style(self, label, active):
+        if active:
+            label.setStyleSheet(
+                """
+                QLabel {
+                    color: black;
+                    background: yellow;
+                    border: 1px solid red;
+                }
+                """
+            )
+        else:
+            label.setStyleSheet(
+                """
+                QLabel {
+                    color: white;
+                    background: #191919;
+                    border: none;
+                }
+                """
+            )
+
+    def _is_label_fully_visible(self, label):
+        visible_region = label.visibleRegion()
+        if not visible_region.isEmpty():
+            visible_region_width = visible_region.rects()[0].width()
+            return visible_region_width >= label.width()
+
+        return False

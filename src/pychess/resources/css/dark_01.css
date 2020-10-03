@@ -45,7 +45,7 @@ QGroupBox::title {
 	left: 7px;
 }
 
-QScrollBar {
+/* QScrollBar {
 	border: 1px solid #5A5A5A;
 	background: #191919;
 }
@@ -121,7 +121,7 @@ QScrollBar:left-arrow, QScrollBar::right-arrow, QScrollBar::up-arrow, QScrollBar
 
 QScrollBar::add-page, QScrollBar::sub-page {
 	background: none;
-}
+} */
 
 QAbstractButton:hover {
 	background: #353535;
