@@ -166,8 +166,14 @@ class MainWindow(QtWidgets.QDialog):
             'border: none;'
         )
 
-        self._black_panel_layout.addWidget(self._captured_label_white, 3)
-        self._black_panel_layout.addWidget(self._black_timer_lcd, 1)
+        self._black_resign_btn = QtWidgets.QPushButton("  RESIGN  ")
+        self._black_resign_btn.setFixedHeight(
+            int(c.APP.LCD_HEIGHT * self._resize_factor)
+        )
+
+        self._black_panel_layout.addWidget(self._captured_label_white, 4)
+        self._black_panel_layout.addWidget(self._black_resign_btn, 1)
+        self._black_panel_layout.addWidget(self._black_timer_lcd, 2)
 
         return self._black_panel_layout
 
@@ -229,8 +235,14 @@ class MainWindow(QtWidgets.QDialog):
             'border: none;'
         )
 
-        self._white_panel_layout.addWidget(self._captured_label_black, 3)
-        self._white_panel_layout.addWidget(self._white_timer_lcd, 1)
+        self._white_resign_btn = QtWidgets.QPushButton("  RESIGN  ")
+        self._white_resign_btn.setFixedHeight(
+            int(c.APP.LCD_HEIGHT * self._resize_factor)
+        )
+
+        self._white_panel_layout.addWidget(self._captured_label_black, 4)
+        self._white_panel_layout.addWidget(self._white_resign_btn, 1)
+        self._white_panel_layout.addWidget(self._white_timer_lcd, 2)
 
         return self._white_panel_layout
 
@@ -286,6 +298,18 @@ class MainWindow(QtWidgets.QDialog):
         self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
+        self._white_resign_btn.clicked.connect(
+            lambda: self._resign_btn_clicked(c.Color.black)
+        )
+        self._black_resign_btn.clicked.connect(
+            lambda: self._resign_btn_clicked(c.Color.white)
+        )
+
+    def _resign_btn_clicked(self, winning_color):
+        if not self._has_game_started:
+            return
+
+        self.game_over(winning_color)
 
     def _on_image_clicked(self, event):
         if self._is_paused or self._is_game_over or self._inspecting_history:
