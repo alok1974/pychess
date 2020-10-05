@@ -11,31 +11,70 @@ def parse_move_history(move_history):
 
 
 def parse_move(move):
-    if move.castling_done:
-        if move.is_king_side_castling:
-            return 'O-O'
-        else:
-            return 'O-O-O'
+    castling = _get_castling_symbol(move)
+    if castling is not None:
+        return castling
 
-    check = (
-        '+'
-        if move.is_check
-        else ''
+    promotion_string = _get_promotion_string(move)
+    if promotion_string is not None:
+        return promotion_string
+
+    return _get_standard_move_string(move)
+
+
+def _get_standard_move_string(move):
+    check_mate = _get_check_mate_symbol(move)
+    piece_str, capture = _get_piece_and_capture(move)
+    disambiguate = _get_disambiguation(move)
+
+    return f'{piece_str}{disambiguate}{capture}{move.dst.address}{check_mate}'
+
+
+def _get_check_mate_symbol(move):
+    if move.is_mate:
+        return '#'
+    elif move.is_check:
+        return '+'
+    else:
+        return ''
+
+
+def _get_capture_symbol(move):
+    return 'x' if move.is_capture else ''
+
+
+def _get_castling_symbol(move):
+    if not move.castling_done:
+        return
+
+    return (
+        'O-O'
+        if move.is_king_side_castling
+        else 'O-O-O'
     )
 
-    mate = (
-        '#'
-        if move.is_mate
-        else ''
-    )
 
-    capture = 'x' if move.is_capture else ''
-
+def _get_promotion_string(move):
     promoted_piece = move.promoted_piece
-    if promoted_piece is not None:
-        promotion = promoted_piece.code.upper()
-        return f'{move.dst.address}={promotion}{capture}{check}{mate}'
+    if promoted_piece is None:
+        return
 
+    promotion = promoted_piece.code.upper()
+    check_mate = _get_check_mate_symbol(move)
+    capture = _get_capture_symbol(move)
+    return f'{move.dst.address}={promotion}{capture}{check_mate}'
+
+
+def _get_disambiguation(move):
+    return (
+        move.disambiguate
+        if move.disambiguate is not None
+        else ''
+    )
+
+
+def _get_piece_and_capture(move):
+    capture = _get_capture_symbol(move)
     if move.piece.type == c.PieceType.pawn:
         piece_str = ''
         if move.is_capture:
@@ -43,13 +82,7 @@ def parse_move(move):
     else:
         piece_str = move.piece.code.upper()
 
-    disambiguate = (
-        move.disambiguate
-        if move.disambiguate is not None
-        else ''
-    )
-
-    return f'{piece_str}{disambiguate}{capture}{move.dst.address}{check}{mate}'
+    return piece_str, capture
 
 
 def _pair_moves(moves):
