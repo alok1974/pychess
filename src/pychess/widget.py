@@ -120,7 +120,6 @@ class OptionWidget(QtWidgets.QDialog):
         return self._black_promotion
 
     def _setup_ui(self):
-        # self.setStyleSheet(c.APP.STYLESHEET)
         self.setFixedSize(self._size, self._size)
         self.setModal(True)
 
@@ -338,7 +337,6 @@ class OptionWidget(QtWidgets.QDialog):
     def _create_radio_button(self, name, check_state):
         btn = QtWidgets.QRadioButton(name)
         btn.setChecked(check_state)
-        # btn.setMinimumHeight(self._resize_factor * 50)
         btn.setStyleSheet('QWidget { border: none }')
         self._font.setPointSize(int(self._resize_factor * 14))
         btn.setFont(self._font)
@@ -565,17 +563,12 @@ class MovesWidget(QtWidgets.QWidget):
             }
             """
         )
-        # hbar.rangeChanged.connect(lambda: hbar.setValue(hbar.maximum()))
 
         return hbar
 
     def _create_label(self, text):
         label = QtWidgets.QLabel(text)
         label.setFixedHeight(self._init_scroll_height)
-        # label.setSizePolicy(
-        #     QtWidgets.QSizePolicy.Preferred,
-        #     QtWidgets.QSizePolicy.Preferred,
-        # )
         return label
 
     def set_active_label(self, index, set_scroll=False):

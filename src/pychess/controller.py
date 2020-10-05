@@ -16,7 +16,7 @@ class Controller:
         self._connect_signals()
 
     def _connect_signals(self):
-        # Singals from the gui
+        # Signals from the gui
         self._main_window.MOVE_SIGNAL.connect(self._game.move)
         self._main_window.GAME_RESET_SIGNAL.connect(self._game.reset)
         self._main_window.GAME_OPTIONS_SET_SIGNAL.connect(
