@@ -61,7 +61,3 @@ def _pair_moves(moves):
         (index + 1, x[0], x[1])
         for index, x in enumerate(pairs)
     ]
-
-
-def parse_pgn(pgn_text):
-    pass
