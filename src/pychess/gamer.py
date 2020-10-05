@@ -36,6 +36,7 @@ PLAYED_MOVE = collections.namedtuple(
         'promoted_piece',
         'is_check',
         'is_mate',
+        'winner',
     ]
 )
 
@@ -308,12 +309,21 @@ class Game:
         self.MOVE_SIGNAL.emit(game_data)
 
         if move.is_mate:
-            self._winner = self._current_player
-            self._is_game_over = True
-            self.MATE_SIGNAL.emit(self._winner)
+            white_wins = True
+            if self._current_player == c.Color.black:
+                white_wins = False
+            self.game_over(white_wins=white_wins)
             return
 
         self._toggle_player()
+
+    def game_over(self, white_wins):
+        winner = c.Color.white
+        if not white_wins:
+            winner = c.Color.black
+        self._winner = winner
+        self._is_game_over = True
+        self.MATE_SIGNAL.emit(self._winner)
 
     def _move_causes_discovered_check(self, src, dst):
         with self._try_move(src, dst):
@@ -326,6 +336,11 @@ class Game:
     def _record_move(self, result, src, dst):
         piece = result.moved_piece
         check_mate_result = self._detect_check_mate()
+
+        winner = None
+        if check_mate_result.is_mate:
+            winner = self._current_player
+
         move = PLAYED_MOVE(
             piece=piece,
             src=src,
@@ -337,7 +352,8 @@ class Game:
             disambiguate=result.disambiguation,
             promoted_piece=result.promoted_piece,
             is_check=check_mate_result.is_check,
-            is_mate=check_mate_result.is_mate
+            is_mate=check_mate_result.is_mate,
+            winner=winner,
         )
 
         self._move_history.append(move)

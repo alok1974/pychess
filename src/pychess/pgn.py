@@ -11,15 +11,24 @@ def parse_move_history(move_history):
 
 
 def parse_move(move):
+    winning_string = ''
+    if move.winner is not None:
+        if move.winner == c.Color.white:
+            winning_string = ' 1-0'
+        else:
+            winning_string = ' 0-1'
+
     castling = _get_castling_symbol(move)
     if castling is not None:
         return castling
 
     promotion_string = _get_promotion_string(move)
     if promotion_string is not None:
-        return promotion_string
+        return f'{promotion_string}{winning_string}'
 
-    return _get_standard_move_string(move)
+    std_string = _get_standard_move_string(move)
+
+    return f'{std_string}{winning_string}'
 
 
 def _get_standard_move_string(move):

@@ -10,6 +10,7 @@ class MainWindow(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
     GAME_RESET_SIGNAL = QtCore.Signal()
     GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
+    GAME_OVER_SIGNAL = QtCore.Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -310,6 +311,12 @@ class MainWindow(QtWidgets.QDialog):
             return
 
         self.game_over(winning_color)
+        white_wins = True
+        if winning_color == c.Color.black:
+            white_wins = False
+
+        self.GAME_OVER_SIGNAL.emit(white_wins)
+        self._moves_widget.display_win(winning_color)
 
     def _on_image_clicked(self, event):
         if self._is_paused or self._is_game_over or self._inspecting_history:
@@ -421,6 +428,9 @@ class MainWindow(QtWidgets.QDialog):
         self._remaining_time_white -= 1
         if self._remaining_time_white == 0:
             self.game_over(winner=c.Color.black)
+            white_wins = False
+            self.GAME_OVER_SIGNAL.emit(white_wins)
+            self._moves_widget.display_win(c.Color.black)
 
         time_str = self._format_time(self._remaining_time_white)
         self._white_timer_lcd.display(time_str)
@@ -430,6 +440,9 @@ class MainWindow(QtWidgets.QDialog):
         self._remaining_time_black -= 1
         if self._remaining_time_black == 0:
             self.game_over(winner=c.Color.white)
+            white_wins = True
+            self.GAME_OVER_SIGNAL.emit(white_wins)
+            self._moves_widget.display_win(c.Color.white)
 
         time_str = self._format_time(self._remaining_time_black)
         self._black_timer_lcd.display(time_str)

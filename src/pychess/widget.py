@@ -471,6 +471,18 @@ class MovesWidget(QtWidgets.QWidget):
                     )
                     self.set_active_label(len(self._labels) - 1)
 
+    def display_win(self, winner):
+        winning_text = '1-0'
+        if winner == c.Color.black:
+            winning_text = '0-1'
+
+        move_label = self._create_label(winning_text)
+        self._move_num_labels.append(move_label)
+        self._labels_layout.insertWidget(
+            self._labels_layout.count() - 1,
+            move_label,
+        )
+
     def _setup_ui(self):
         self._main_layout = QtWidgets.QVBoxLayout(self)
         self._main_layout.setContentsMargins(0, 0, 0, 0)
