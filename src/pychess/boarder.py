@@ -1,4 +1,5 @@
 import itertools
+import random
 
 
 from .squarer import Square
@@ -36,6 +37,52 @@ class Board:
     def squares(self):
         return list(self.data.keys())
 
+    def move_hint(self, square):
+        if self.is_empty(square):
+            return []
+
+        piece = self.get_piece(square)
+        mult = 1
+        move_paths = list(piece.move_paths)
+        if piece.type == c.PieceType.pawn:
+            if square.y == piece.first_row:
+                move_paths.append(((0, 2),))
+
+            if piece.color == c.Color.black:
+                mult = -1
+
+        possible_dst = []
+        for pth in move_paths:
+            # Filter outside 0 and 7 range
+            pth = list(
+                filter(
+                    lambda x:  (
+                        0 <= square.x + x[0] <= 7 and
+                        0 <= square.y + (mult * x[1]) <= 7
+                    ),
+                    pth,
+                )
+            )
+
+            for x_i, y_i in pth:
+                s = Square((square.x + x_i, square.y + (mult * y_i)))
+                if self.is_empty(s):
+                    if piece.type == c.PieceType.pawn and x_i != 0:
+                        pass
+                    else:
+                        possible_dst.append((s, None))
+                else:
+                    # Add hint for opponent's piece as it can be captured
+                    hit_piece = self.get_piece(s)
+                    if hit_piece.color != piece.color:
+                        if piece.type == c.PieceType.pawn and x_i == 0:
+                            pass
+                        else:
+                            possible_dst.append((s, hit_piece))
+                    break
+
+        return possible_dst
+
     def get_piece(self, square):
         return self.data[square]
 
@@ -70,13 +117,16 @@ class Board:
         return self.data[square] is None
 
     def clear(self):
-        self._clear_board()
+        self._clear()
 
     def reset(self):
-        self._clear_board()
-        self._set_board()
+        self._clear()
+        self._set_pieces()
 
-    def _clear_board(self):
+    def set_pieces(self, is_standard):
+        self._set_pieces(is_standard=is_standard)
+
+    def _clear(self):
         self._data = dict(
             [
                 (Square(t), None)
@@ -86,25 +136,68 @@ class Board:
 
         self.reverse = {}
 
-    def _set_board(self):
-        self._set_color_pieces(color=c.Color.white)
-        self._set_color_pieces(color=c.Color.black)
+    def _set_pieces(self, is_standard=True):
+        order = list(range(8))
+        if not is_standard:
+            random.shuffle(order)
 
-    def _set_color_pieces(self, color):
+        self._set_color_pieces(color=c.Color.white, order=order)
+        self._set_color_pieces(color=c.Color.black, order=order)
+
+    def _set_color_pieces(self, color, order):
         row_1 = 0
         row_2 = 1
         if color == c.Color.black:
             row_1 = 7
             row_2 = 6
 
-        self._data[Square((0, row_1))] = Piece(c.PieceType.rook, color, 0)
-        self._data[Square((1, row_1))] = Piece(c.PieceType.knight, color, 0)
-        self._data[Square((2, row_1))] = Piece(c.PieceType.bishop, color, 0)
-        self._data[Square((3, row_1))] = Piece(c.PieceType.queen, color, 0)
-        self._data[Square((4, row_1))] = Piece(c.PieceType.king, color, 0)
-        self._data[Square((5, row_1))] = Piece(c.PieceType.bishop, color, 1)
-        self._data[Square((6, row_1))] = Piece(c.PieceType.knight, color, 1)
-        self._data[Square((7, row_1))] = Piece(c.PieceType.rook, color, 1)
+        self._data[Square((order[0], row_1))] = Piece(
+            c.PieceType.rook,
+            color,
+            0,
+        )
+
+        self._data[Square((order[1], row_1))] = Piece(
+            c.PieceType.knight,
+            color,
+            0,
+        )
+
+        self._data[Square((order[2], row_1))] = Piece(
+            c.PieceType.bishop,
+            color,
+            0,
+        )
+
+        self._data[Square((order[3], row_1))] = Piece(
+            c.PieceType.queen,
+            color,
+            0,
+        )
+
+        self._data[Square((order[4], row_1))] = Piece(
+            c.PieceType.king,
+            color,
+            0,
+        )
+
+        self._data[Square((order[5], row_1))] = Piece(
+            c.PieceType.bishop,
+            color,
+            1,
+        )
+
+        self._data[Square((order[6], row_1))] = Piece(
+            c.PieceType.knight,
+            color,
+            1,
+        )
+
+        self._data[Square((order[7], row_1))] = Piece(
+            c.PieceType.rook,
+            color,
+            1,
+        )
 
         for i in range(8):
             self._data[Square((i, row_2))] = Piece(c.PieceType.pawn, color, i)

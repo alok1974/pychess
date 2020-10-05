@@ -29,7 +29,6 @@ def parse_moves(move_string=None, game_file=None):
     moves = None
     if move_string is not None:
         moves = move_string.split('\n')
-        print(moves)
         for move in moves:
             Game.parse_move_spec(move)
 

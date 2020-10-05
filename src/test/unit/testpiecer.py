@@ -233,6 +233,103 @@ class TestPiecer(unittest.TestCase):
             row_place = get_piece_row_place(piece)
             self.assertEqual(row_place, expected_result)
 
+    def test_first_row(self):
+        pieces = generate_pieces()
+        expected_result = None
+        for p in pieces:
+            if p.color == c.Color.black:
+                expected_result = 7
+                if p.type == c.PieceType.pawn:
+                    expected_result = 6
+            else:
+                expected_result = 0
+                if p.type == c.PieceType.pawn:
+                    expected_result = 1
+            self.assertEqual(p.first_row, expected_result)
+
+    def test_move_path(self):
+        expected_paths = {
+            c.PieceType.pawn: (((-1, 1), ), ((0, 1), ), ((1, 1), )),
+            c.PieceType.knight: (
+                ((1, 2), ), ((1, -2), ), ((-1, 2), ), ((-1, -2), ),
+                ((2, 1), ), ((2, -1), ), ((-2, 1), ), ((-2, -1), ),
+            ),
+            c.PieceType.bishop: (
+                (
+                    (-1, -1), (-2, -2), (-3, -3), (-4, -4), (-5, -5), (-6, -6),
+                    (-7, -7),
+                ),
+                (
+                    (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7),
+                ),
+                (
+                    (-1, 1), (-2, 2), (-3, 3), (-4, 4), (-5, 5), (-6, 6),
+                    (-7, 7),
+                ),
+                (
+                    (1, -1), (2, -2), (3, -3), (4, -4), (5, -5), (6, -6),
+                    (7, -7),
+                ),
+            ),
+            c.PieceType.rook: (
+                ((0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7)),
+                (
+                    (0, -1), (0, -2), (0, -3), (0, -4), (0, -5), (0, -6),
+                    (0, -7)
+                ),
+                ((1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0)),
+                (
+                    (-1, 0), (-2, 0), (-3, 0), (-4, 0), (-5, 0), (-6, 0),
+                    (-7, 0)
+                ),
+            ),
+            c.PieceType.queen: (
+                (
+                    (-1, -1), (-2, -2),
+                    (-3, -3), (-4, -4), (-5, -5), (-6, -6),
+                    (-7, -7),
+                ),
+                (
+                    (1, 1), (2, 2), (3, 3), (4, 4), (5, 5),
+                    (6, 6), (7, 7),
+                ),
+                (
+                    (-1, 1), (-2, 2), (-3, 3), (-4, 4),
+                    (-5, 5), (-6, 6),
+                    (-7, 7),
+                ),
+                (
+                    (1, -1), (2, -2), (3, -3), (4, -4),
+                    (5, -5), (6, -6),
+                    (7, -7),
+                ),
+                (
+                    (0, 1), (0, 2), (0, 3), (0, 4), (0, 5),
+                    (0, 6), (0, 7)
+                ),
+                (
+                    (0, -1), (0, -2), (0, -3), (0, -4), (0, -5),
+                    (0, -6), (0, -7)
+                ),
+                (
+                    (1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
+                    (6, 0), (7, 0)
+                ),
+                (
+                    (-1, 0), (-2, 0), (-3, 0), (-4, 0),
+                    (-5, 0), (-6, 0), (-7, 0)
+                ),
+            ),
+            c.PieceType.king: (
+                ((-1, 1), ), ((0, 1), ), ((1, 1), ), ((1, 0), ),
+                ((1, -1), ), ((0, -1), ), ((-1, -1), ), ((-1, 0), ),
+            ),
+
+        }
+        for p in generate_pieces():
+            expected_result = expected_paths[p.type]
+            self.assertEqual(p.move_paths, expected_result)
+
 
 if __name__ == "__main__":
     unittest.main()

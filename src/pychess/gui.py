@@ -1,13 +1,16 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
-from . import constant as c, imager
-from .squarer import Square
+from . import constant as c, imager, pgn
+from .widget import OptionWidget, MovesWidget
+from .history import Player
 
 
 class MainWindow(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
-    SQUARE_SELECTED = QtCore.Signal(Square)
+    GAME_RESET_SIGNAL = QtCore.Signal()
+    GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
+    GAME_OVER_SIGNAL = QtCore.Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -22,20 +25,36 @@ class MainWindow(QtWidgets.QDialog):
             size=c.IMAGE.DEFAULT_SIZE,
         )
 
+        self._option_widget = OptionWidget(
+            size=c.IMAGE.DEFAULT_SIZE,
+            parent=self,
+        )
+
         self._first_square = None
         self._second_square = None
         self._current_player = c.Color.white
 
+        self._bonus_time = self._option_widget.bonus_time
+
         self._timer_white = QtCore.QTimer()
         self._timer_white.setInterval(1000)  # timeout per 1 second
         self._time_white = 0
+        self._remaining_time_white = self._option_widget.play_time * 60
 
         self._timer_black = QtCore.QTimer()
         self._timer_black.setInterval(1000)  # timeout per 1 second
         self._time_black = 0
+        self._remaining_time_black = self._option_widget.play_time * 60
 
         self._is_paused = True
         self._is_game_over = False
+        self._has_game_started = False
+
+        self._game_data = None
+        self._history_player = None
+        self._show_threatened = False
+
+        self._inspecting_history = False
 
         self._resize_factor = (
             self._board_image.width / c.IMAGE.BASE_IMAGE_SIZE
@@ -44,7 +63,18 @@ class MainWindow(QtWidgets.QDialog):
         self._setup_ui()
         self._connect_signals()
 
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_C:
+            self._toggle_show_threatened()
+
+    def board_updated(self):
+        self._update()
+
     def _reset(self):
+        self._option_widget.reset()
+        self._moves_widget.reset()
+        self.GAME_RESET_SIGNAL.emit()
+        self._start_btn.setText('START')
         self._board_image = imager.BoardImage(
             self._board,
             size=c.IMAGE.DEFAULT_SIZE,
@@ -58,11 +88,23 @@ class MainWindow(QtWidgets.QDialog):
 
         self._current_player = c.Color.white
 
+        self._bonus_time = self._option_widget.bonus_time
+
         self._time_white = 0
+        self._remaining_time_white = self._option_widget.play_time * 60
+
         self._time_black = 0
+        self._remaining_time_black = self._option_widget.play_time * 60
 
         self._is_paused = True
         self._is_game_over = False
+        self._has_game_started = False
+
+        self._game_data = None
+        self._history_player = None
+        self._show_threatened = False
+
+        self._inspecting_history = False
 
         self._timer_white.stop()
         self._timer_black.stop()
@@ -70,10 +112,14 @@ class MainWindow(QtWidgets.QDialog):
         self._board_image.update()
         self._update_image_label()
 
-        self._update_caputred_image_labels()
+        self._update_captured_image_labels()
 
-        self._white_timer_lcd.display('00:00:00')
-        self._black_timer_lcd.display('00:00:00')
+        self._white_timer_lcd.display(
+            self._format_time(self._remaining_time_white)
+        )
+        self._black_timer_lcd.display(
+            self._format_time(self._remaining_time_black)
+        )
 
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
@@ -98,26 +144,6 @@ class MainWindow(QtWidgets.QDialog):
         self._bottom_layout = self._create_bottom_layout()
         self._main_layout.addLayout(self._bottom_layout, 3)
 
-    def _create_central_widget(self):
-        self._central_widget = QtWidgets.QWidget()
-        self._central_layout = QtWidgets.QVBoxLayout(self._central_widget)
-
-        # Add black panel layout
-        self._black_panel_layout = self._create_black_panel_layout()
-        self._central_layout.addLayout(self._black_panel_layout, 1)
-
-        # Add image layout
-        self._image_layout_outer = self._create_image_layout()
-        self._central_layout.addLayout(self._image_layout_outer, 1)
-
-        # Add white panel layout
-        self._white_panel_layout = self._create_white_panel_layout()
-        self._central_layout.addLayout(self._white_panel_layout, 1)
-
-        # Add bottom layout
-        self._bottom_layout = self._create_bottom_layout()
-        self._central_layout.addLayout(self._bottom_layout, 10)
-
     def _create_black_panel_layout(self):
         self._black_panel_layout = QtWidgets.QHBoxLayout()
 
@@ -128,7 +154,9 @@ class MainWindow(QtWidgets.QDialog):
 
         self._black_timer_lcd = QtWidgets.QLCDNumber()
         self._black_timer_lcd.setDigitCount(8)
-        self._black_timer_lcd.display('00:00:00')
+        self._black_timer_lcd.display(
+            self._format_time(self._remaining_time_black)
+        )
         self._black_timer_lcd.setFixedHeight(
             int(c.APP.LCD_HEIGHT * self._resize_factor)
         )
@@ -139,8 +167,14 @@ class MainWindow(QtWidgets.QDialog):
             'border: none;'
         )
 
-        self._black_panel_layout.addWidget(self._captured_label_white, 3)
-        self._black_panel_layout.addWidget(self._black_timer_lcd, 1)
+        self._black_resign_btn = QtWidgets.QPushButton("  RESIGN  ")
+        self._black_resign_btn.setFixedHeight(
+            int(c.APP.LCD_HEIGHT * self._resize_factor)
+        )
+
+        self._black_panel_layout.addWidget(self._captured_label_white, 4)
+        self._black_panel_layout.addWidget(self._black_resign_btn, 1)
+        self._black_panel_layout.addWidget(self._black_timer_lcd, 2)
 
         return self._black_panel_layout
 
@@ -189,7 +223,9 @@ class MainWindow(QtWidgets.QDialog):
 
         self._white_timer_lcd = QtWidgets.QLCDNumber()
         self._white_timer_lcd.setDigitCount(8)
-        self._white_timer_lcd.display('00:00:00')
+        self._white_timer_lcd.display(
+            self._format_time(self._remaining_time_white)
+        )
         self._white_timer_lcd.setFixedHeight(
             int(c.APP.LCD_HEIGHT * self._resize_factor)
         )
@@ -200,34 +236,90 @@ class MainWindow(QtWidgets.QDialog):
             'border: none;'
         )
 
-        self._white_panel_layout.addWidget(self._captured_label_black, 3)
-        self._white_panel_layout.addWidget(self._white_timer_lcd, 1)
+        self._white_resign_btn = QtWidgets.QPushButton("  RESIGN  ")
+        self._white_resign_btn.setFixedHeight(
+            int(c.APP.LCD_HEIGHT * self._resize_factor)
+        )
+
+        self._white_panel_layout.addWidget(self._captured_label_black, 4)
+        self._white_panel_layout.addWidget(self._white_resign_btn, 1)
+        self._white_panel_layout.addWidget(self._white_timer_lcd, 2)
 
         return self._white_panel_layout
 
     def _create_bottom_layout(self):
-        self._bottom_layout = QtWidgets.QHBoxLayout()
+        self._bottom_layout = QtWidgets.QVBoxLayout()
 
-        self._start_btn = QtWidgets.QPushButton('START')
-        self._start_btn.setMinimumHeight(
-            int(c.APP.BUTTON_HEIGHT * self._resize_factor)
+        self._moves_widget = MovesWidget(
+            resize_factor=self._resize_factor,
+            parent=self,
         )
-        self._start_btn.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding
-        )
-        self._bottom_layout.addWidget(self._start_btn, 1)
+        self._bottom_layout.addWidget(self._moves_widget)
+
+        self._btn_layout = QtWidgets.QHBoxLayout()
+
+        self._options_btn = self._create_btn('OPTIONS')
+        self._btn_layout.addWidget(self._options_btn, 1)
+
+        self._reset_btn = self._create_btn('RESET')
+        self._btn_layout.addWidget(self._reset_btn, 1)
+
+        self._start_btn = self._create_btn('START')
+        self._btn_layout.addWidget(self._start_btn, 1)
+
+        self._back_btn = self._create_btn('<')
+        self._btn_layout.addWidget(self._back_btn, 1)
+
+        self._forward_btn = self._create_btn('>')
+        self._btn_layout.addWidget(self._forward_btn, 1)
+
+        self._bottom_layout.addLayout(self._btn_layout)
 
         return self._bottom_layout
 
+    def _create_btn(self, text):
+        btn = QtWidgets.QPushButton(str(text).upper())
+        btn.setMinimumHeight(
+            int(c.APP.BUTTON_HEIGHT * self._resize_factor)
+        )
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding
+        )
+
+        return btn
+
     def _connect_signals(self):
         self._image_label.mousePressEvent = self._on_image_clicked
+        self._options_btn.clicked.connect(self._on_options_btn_clicked)
+        self._reset_btn.clicked.connect(self._on_reset_btn_clicked)
         self._start_btn.clicked.connect(self._on_start_btn_clicked)
+        self._forward_btn.clicked.connect(self._on_forward_btn_clicked)
+        self._back_btn.clicked.connect(self._on_back_btn_clicked)
+        self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
+        self._white_resign_btn.clicked.connect(
+            lambda: self._resign_btn_clicked(c.Color.black)
+        )
+        self._black_resign_btn.clicked.connect(
+            lambda: self._resign_btn_clicked(c.Color.white)
+        )
+
+    def _resign_btn_clicked(self, winning_color):
+        if not self._has_game_started:
+            return
+
+        self.game_over(winning_color)
+        white_wins = True
+        if winning_color == c.Color.black:
+            white_wins = False
+
+        self.GAME_OVER_SIGNAL.emit(white_wins)
+        self._moves_widget.display_win(winning_color)
 
     def _on_image_clicked(self, event):
-        if self._is_paused or self._is_game_over:
+        if self._is_paused or self._is_game_over or self._inspecting_history:
             return
 
         button = event.button()
@@ -243,7 +335,8 @@ class MainWindow(QtWidgets.QDialog):
             self._first_square = square
             self._highlight(
                 square,
-                highlight_color=c.APP.HIGHLIGHT_COLOR.selected
+                highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
+                is_first_selected=True,
             )
         else:
             self._second_square = square
@@ -253,24 +346,109 @@ class MainWindow(QtWidgets.QDialog):
             move = f'{self._first_square.address}{self._second_square.address}'
             self.MOVE_SIGNAL.emit(move)
 
+    def _on_options_btn_clicked(self):
+        if self._has_game_started:
+            return
+
+        self._option_widget.show()
+
+    def _on_reset_btn_clicked(self):
+        self._reset()
+
+    def _on_forward_btn_clicked(self):
+        self._inspect_history(cursor_step=1)
+
+    def _on_back_btn_clicked(self):
+        self._inspect_history(cursor_step=-1)
+
+    def _inspect_history(self, cursor_step):
+        if self._history_player is None:
+            return
+
+        if cursor_step == 1:
+            result = self._history_player.move_forward()
+        elif cursor_step == -1:
+            result = self._history_player.move_backward()
+        else:
+            error_msg = f'Unknown cursor step: {cursor_step}'
+            raise RuntimeError(error_msg)
+
+        if result.board is None:
+            return
+
+        self._inspecting_history = not self._history_player.is_at_end
+        self._board.data = result.board.data
+        self._board.reverse = result.board.reverse
+
+        self._update()
+
+        if result.move is not None:
+            self._highlight(
+                result.move.src,
+                highlight_color=c.APP.HIGHLIGHT_COLOR.src,
+            )
+
+            self._highlight(
+                result.move.dst,
+                highlight_color=c.APP.HIGHLIGHT_COLOR.dst,
+            )
+
+        index = self._history_player.current_index
+        self._moves_widget.set_active_label(index, set_scroll=True)
+
+    def _on_options_selected(self):
+        self._bonus_time = self._option_widget.bonus_time
+        self._remaining_time_white = self._option_widget.play_time * 60
+        self._white_timer_lcd.display(
+            self._format_time(self._remaining_time_white)
+        )
+
+        self._remaining_time_black = self._option_widget.play_time * 60
+        self._black_timer_lcd.display(
+            self._format_time(self._remaining_time_black)
+        )
+
+        self.GAME_OPTIONS_SET_SIGNAL.emit(
+            (
+                self._option_widget.white_promotion,
+                self._option_widget.black_promotion,
+                self._option_widget.is_standard_type,
+            )
+        )
+
     def game_over(self, winner):
         self._is_game_over = True
         self._captured_image.draw_winner(winner)
-        self._update_caputred_image_labels()
+        self._update_captured_image_labels()
         self._start_btn.setText('RESTART')
         self._stop_all_timers()
 
     def _timer_white_timeout(self):
         self._time_white += 1
-        time_str = self._format_time(self._time_white)
+        self._remaining_time_white -= 1
+        if self._remaining_time_white == 0:
+            self.game_over(winner=c.Color.black)
+            white_wins = False
+            self.GAME_OVER_SIGNAL.emit(white_wins)
+            self._moves_widget.display_win(c.Color.black)
+
+        time_str = self._format_time(self._remaining_time_white)
         self._white_timer_lcd.display(time_str)
 
     def _timer_black_timeout(self):
         self._time_black += 1
-        time_str = self._format_time(self._time_black)
+        self._remaining_time_black -= 1
+        if self._remaining_time_black == 0:
+            self.game_over(winner=c.Color.white)
+            white_wins = True
+            self.GAME_OVER_SIGNAL.emit(white_wins)
+            self._moves_widget.display_win(c.Color.white)
+
+        time_str = self._format_time(self._remaining_time_black)
         self._black_timer_lcd.display(time_str)
 
     def _on_start_btn_clicked(self):
+        self._has_game_started = True
         if self._is_game_over:
             self._reset()
 
@@ -325,11 +503,16 @@ class MainWindow(QtWidgets.QDialog):
         self._second_square = None
         self._highlight(
             self._first_square,
-            highlight_color=c.APP.HIGHLIGHT_COLOR.selected
+            highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
+            is_first_selected=True,
         )
 
-    def _highlight(self, square, highlight_color):
-        self._board_image.highlight(square, highlight_color=highlight_color)
+    def _highlight(self, square, highlight_color, is_first_selected=False):
+        self._board_image.highlight(
+            square,
+            highlight_color=highlight_color,
+            is_first_selected=is_first_selected,
+        )
         self._update_image_label()
 
     def _remove_highlight(self, square):
@@ -341,6 +524,15 @@ class MainWindow(QtWidgets.QDialog):
         self._update_image_label()
 
     def update_move(self, game_data):
+        self._game_data = game_data
+        self._history_player = Player(self._game_data.move_history)
+
+        moves = pgn.parse_move_history(
+            self._game_data.move_history
+        )
+        self._moves_widget.setVisible(True)
+        self._moves_widget.display_moves(moves)
+
         self._update()
 
         src = game_data.src
@@ -358,18 +550,60 @@ class MainWindow(QtWidgets.QDialog):
             lead=game_data.lead
         )
 
-        self._update_caputred_image_labels()
+        self._update_captured_image_labels()
 
     def toggle_player(self, color):
+        # It has been a successful move
+        # Before changing the current player, let us add bonus
+        # time to the player who made the move
+        self._add_bonus_time()
+
         self._stop_current_player_time()
         self._current_player = color
         self._start_current_player_time()
+
+        if self._show_threatened:
+            self._display_threatened()
+
+    def _add_bonus_time(self):
+        if self._current_player == c.Color.white:
+            self._remaining_time_white += self._bonus_time
+            self._white_timer_lcd.display(
+                self._format_time(self._remaining_time_white)
+            )
+        else:
+            self._remaining_time_black += self._bonus_time
+            self._black_timer_lcd.display(
+                self._format_time(self._remaining_time_white)
+            )
+
+    def _display_threatened(self):
+        threatened = self._get_threatened(self._current_player)
+        self._board_image.draw_threatened(threatened)
+        self._update_image_label()
+
+    def _hide_threatened(self):
+        self._board_image.clear_threatened_squares()
+        self._update_image_label()
+
+    def _get_threatened(self, color):
+        if self._game_data is None:
+            return []
+
+        total_threatened = []
+        capturables = self._game_data.capturables[color]
+        for _, threatened in capturables.items():
+            total_threatened.extend(threatened)
+
+        total_threatened = list(set(total_threatened))
+
+        return total_threatened
 
     def _update_image_label(self):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
         self._image_label.setPixmap(self._pixmap)
 
-    def _update_caputred_image_labels(self):
+    def _update_captured_image_labels(self):
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_white)
         self._captured_label_white.setPixmap(self._captured_pixmap_white)
@@ -400,3 +634,11 @@ class MainWindow(QtWidgets.QDialog):
         seconds = str(seconds).zfill(2)
 
         return f'{hours}:{minutes}:{seconds}'
+
+    def _toggle_show_threatened(self):
+        self._show_threatened = not self._show_threatened
+
+        if not self._show_threatened:
+            self._hide_threatened()
+        else:
+            self._display_threatened()

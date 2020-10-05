@@ -10,6 +10,9 @@ class Piece:
         [
             'worth',
             'nb_pieces',
+            'move_paths',
+            'first_row_white',
+            'first_row_black',
         ]
     )
 
@@ -17,28 +20,110 @@ class Piece:
         c.PieceType.pawn: piece_attr(
             worth=1,
             nb_pieces=8,
+            move_paths=(((-1, 1), ), ((0, 1), ), ((1, 1), )),
+            first_row_white=1,
+            first_row_black=6,
         ),
         c.PieceType.knight: piece_attr(
             worth=3,
             nb_pieces=2,
+            move_paths=(
+                ((1, 2), ), ((1, -2), ), ((-1, 2), ), ((-1, -2), ),
+                ((2, 1), ), ((2, -1), ), ((-2, 1), ), ((-2, -1), ),
+            ),
+            first_row_white=0,
+            first_row_black=7,
         ),
         c.PieceType.bishop: piece_attr(
             worth=3,
             nb_pieces=2,
+            move_paths=(
+                (
+                    (-1, -1), (-2, -2), (-3, -3), (-4, -4), (-5, -5), (-6, -6),
+                    (-7, -7),
+                ),
+                (
+                    (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7),
+                ),
+                (
+                    (-1, 1), (-2, 2), (-3, 3), (-4, 4), (-5, 5), (-6, 6),
+                    (-7, 7),
+                ),
+                (
+                    (1, -1), (2, -2), (3, -3), (4, -4), (5, -5), (6, -6),
+                    (7, -7),
+                ),
+            ),
+            first_row_white=0,
+            first_row_black=7,
         ),
         c.PieceType.rook: piece_attr(
             worth=5,
             nb_pieces=2,
+            move_paths=(
+                ((0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7)),
+                (
+                    (0, -1), (0, -2), (0, -3), (0, -4), (0, -5), (0, -6),
+                    (0, -7)
+                ),
+                ((1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0)),
+                (
+                    (-1, 0), (-2, 0), (-3, 0), (-4, 0), (-5, 0), (-6, 0),
+                    (-7, 0)
+                ),
+            ),
+            first_row_white=0,
+            first_row_black=7,
         ),
         c.PieceType.queen: piece_attr(
             worth=9,
             nb_pieces=1,
+            move_paths=(
+                (
+                    (-1, -1), (-2, -2), (-3, -3), (-4, -4), (-5, -5), (-6, -6),
+                    (-7, -7),
+                ),
+                (
+                    (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7),
+                ),
+                (
+                    (-1, 1), (-2, 2), (-3, 3), (-4, 4), (-5, 5), (-6, 6),
+                    (-7, 7),
+                ),
+                (
+                    (1, -1), (2, -2), (3, -3), (4, -4), (5, -5), (6, -6),
+                    (7, -7),
+                ),
+                ((0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7)),
+                (
+                    (0, -1), (0, -2), (0, -3), (0, -4), (0, -5), (0, -6),
+                    (0, -7)
+                ),
+                ((1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0), (7, 0)),
+                (
+                    (-1, 0), (-2, 0), (-3, 0), (-4, 0), (-5, 0), (-6, 0),
+                    (-7, 0)
+                ),
+            ),
+            first_row_white=0,
+            first_row_black=7,
         ),
         c.PieceType.king: piece_attr(
             worth=10,
             nb_pieces=1,
+            move_paths=(
+                ((-1, 1), ), ((0, 1), ), ((1, 1), ), ((1, 0), ),
+                ((1, -1), ), ((0, -1), ), ((-1, -1), ), ((-1, 0), ),
+            ),
+            first_row_white=0,
+            first_row_black=7,
         ),
     }
+
+    __slots__ = (
+        '_name', '_code', '_move_paths', '_color', '_color_code', '_worth',
+        '_type', '_nb_pieces', '_order', '_uid', '_first_row', '_attr'
+    )
 
     def __init__(self, piece_type, color, order=0):
         self._type = piece_type
@@ -55,7 +140,13 @@ class Piece:
         )
         self._worth = self._attr.worth
         self._nb_pieces = self._attr.nb_pieces
+        self._move_paths = self._attr.move_paths
         self._uid = f'{self.order}{self.code}{self.color_code}'
+        self._first_row = (
+            self._attr.first_row_black
+            if self.color == c.Color.black
+            else self._attr.first_row_white
+        )
 
     @property
     def name(self):
@@ -64,6 +155,10 @@ class Piece:
     @property
     def code(self):
         return self._code
+
+    @property
+    def move_paths(self):
+        return self._move_paths
 
     @property
     def color(self):
@@ -80,6 +175,10 @@ class Piece:
     @property
     def type(self):
         return self._type
+
+    @property
+    def first_row(self):
+        return self._first_row
 
     @property
     def nb_pieces(self):

@@ -35,18 +35,16 @@ class TestImager(unittest.TestCase):
         self.assertEqual(self.board_image.width, c.IMAGE.DEFAULT_SIZE)
 
     def test_widht(self):
-        width = 150
+        width = 450
         self.board_image.resize(size=width)
-        self.board_image.update()
         self.assertEqual(self.board_image.width, width)
 
     def test_default_height(self):
         self.assertEqual(self.board_image.height, c.IMAGE.DEFAULT_SIZE)
 
     def test_height(self):
-        height = 150
+        height = 600
         self.board_image.resize(size=height)
-        self.board_image.update()
         self.assertEqual(self.board_image.height, height)
 
     def test_resize(self):

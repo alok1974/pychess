@@ -17,7 +17,26 @@ GAME_DATA = collections.namedtuple(
     'GAME_DATA',
     [
         'src', 'dst', 'captured_white', 'captured_black',
-        'leader', 'lead', 'move_history',
+        'leader', 'lead', 'move_history', 'capturables',
+    ]
+)
+
+
+PLAYED_MOVE = collections.namedtuple(
+    'PLAYED_MOVE',
+    [
+        'piece',
+        'src',
+        'dst',
+        'is_capture',
+        'captured_piece',
+        'castling_done',
+        'is_king_side_castling',
+        'disambiguate',
+        'promoted_piece',
+        'is_check',
+        'is_mate',
+        'winner',
     ]
 )
 
@@ -25,19 +44,39 @@ GAME_DATA = collections.namedtuple(
 class Game:
     MOVE_RESULT = collections.namedtuple(
         'MOVE_RESULT',
-        ['success', 'moved_piece', 'is_castling']
+        [
+            'success',
+            'moved_piece',
+            'is_castling',
+            'captured_piece',
+            'king_side_castle',
+            'disambiguation',
+            'promoted_piece',
+        ]
+    )
+
+    CHECK_MATE_RESULT = collections.namedtuple(
+        'CHECK_MATE_RESULT',
+        [
+            'is_check',
+            'is_mate',
+        ]
     )
 
     MOVE_SIGNAL = Signal(GAME_DATA)
     INVALID_MOVE_SIGNAL = Signal()
     MATE_SIGNAL = Signal(c.Color)
     PLAYER_CHANGED_SIGNAL = Signal(c.Color)
+    NON_STANDARD_BOARD_SET_SIGNAL = Signal()
 
     def __init__(self):
         self._board = Board()
         self._captured_white = []
         self._captured_black = []
+
         self._move_history = []
+        self._game_started = False
+
         self._capturables = {}
         self._pieces_checking_black = []
         self._pieces_checking_white = []
@@ -52,7 +91,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
-        self._promption_piece_type = c.PieceType.queen
+        self._black_promotion_piece_type = c.PieceType.queen
+        self._white_promotion_piece_type = c.PieceType.queen
 
     @property
     def board(self):
@@ -111,19 +151,27 @@ class Game:
     def capturables(self):
         return self._capturables
 
-    @property
-    def promotion_piece_type(self):
-        return self._promption_piece_type
+    def set_game_options(self, options):
+        if self._game_started:
+            return
 
-    @promotion_piece_type.setter
-    def promotion_piece_type(self, piece_type):
-        self._promotion_piece = piece_type
+        (
+            self._black_promotion_piece_type,
+            self._white_promotion_piece_type,
+            self._is_standard_type,
+        ) = options
+
+        self._board.set_pieces(self._is_standard_type)
+        self.NON_STANDARD_BOARD_SET_SIGNAL.emit()
 
     def reset(self):
         self._board.reset()
         self._captured_white = []
         self._captured_black = []
+
         self._move_history = []
+
+        self._game_started = False
         self._capturables = {}
         self._pieces_checking_black = []
         self._pieces_checking_white = []
@@ -138,7 +186,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
-        self._promption_piece_type = c.PieceType.queen
+        self._black_promotion_piece_type = c.PieceType.queen
+        self._white_promotion_piece_type = c.PieceType.queen
 
     @property
     def is_game_over(self):
@@ -245,8 +294,7 @@ class Game:
             self.INVALID_MOVE_SIGNAL.emit()
             return
 
-        self._record_move(result.moved_piece, src, dst)
-
+        move = self._record_move(result, src, dst)
         game_data = GAME_DATA(
             src=src,
             dst=dst,
@@ -255,17 +303,27 @@ class Game:
             leader=self.leader,
             lead=self.lead,
             move_history=self.move_history,
+            capturables=self.capturables
         )
+
         self.MOVE_SIGNAL.emit(game_data)
 
-        if self._is_mate():
-            self._winner = self._current_player
-            self._is_game_over = True
-            self.MATE_SIGNAL.emit(self._winner)
-            self.reset()
+        if move.is_mate:
+            white_wins = True
+            if self._current_player == c.Color.black:
+                white_wins = False
+            self.game_over(white_wins=white_wins)
             return
 
         self._toggle_player()
+
+    def game_over(self, white_wins):
+        winner = c.Color.white
+        if not white_wins:
+            winner = c.Color.black
+        self._winner = winner
+        self._is_game_over = True
+        self.MATE_SIGNAL.emit(self._winner)
 
     def _move_causes_discovered_check(self, src, dst):
         with self._try_move(src, dst):
@@ -275,9 +333,32 @@ class Game:
             else:
                 return False
 
-    def _record_move(self, piece, src, dst):
-        mv = Move(piece, src, dst)
-        self._move_history.append(mv)
+    def _record_move(self, result, src, dst):
+        piece = result.moved_piece
+        check_mate_result = self._detect_check_mate()
+
+        winner = None
+        if check_mate_result.is_mate:
+            winner = self._current_player
+
+        move = PLAYED_MOVE(
+            piece=piece,
+            src=src,
+            dst=dst,
+            is_capture=bool(result.captured_piece),
+            captured_piece=result.captured_piece,
+            castling_done=result.is_castling,
+            is_king_side_castling=result.king_side_castle,
+            disambiguate=result.disambiguation,
+            promoted_piece=result.promoted_piece,
+            is_check=check_mate_result.is_check,
+            is_mate=check_mate_result.is_mate,
+            winner=winner,
+        )
+
+        self._move_history.append(move)
+
+        self._game_started = True
 
         if piece.type == c.PieceType.king:
             if piece.color == c.Color.black:
@@ -291,6 +372,8 @@ class Game:
             else:
                 self._white_rook_moved = True
 
+        return move
+
     def _not_players_turn(self, src, dst):
         src_piece = self.board.get_piece(src)
         if src_piece is None:
@@ -299,12 +382,20 @@ class Game:
 
     def _perform_move(self, src, dst):
         castling_result = False
+        captured_piece = None
+        king_side_castle = False
+        disambiguation = None
+
         is_legal = self._is_move_legal(src, dst)
         if not is_legal:
             return self.MOVE_RESULT(
                 success=False,
                 moved_piece=None,
-                is_castling=castling_result,
+                is_castling=False,
+                captured_piece=None,
+                king_side_castle=False,
+                disambiguation=None,
+                promoted_piece=None,
             )
 
         piece_to_move = self.board.get_piece(src)
@@ -316,6 +407,7 @@ class Game:
                 if dst.x == 6:  # short castle
                     rook_src = Square((7, src.y))
                     rook_dst = Square((5, src.y))
+                    king_side_castle = True
 
                 if dst.x == 2:  # long castle
                     rook_src = Square((0, src.y))
@@ -325,7 +417,7 @@ class Game:
                 self._move_piece(rook_src, rook_dst)
 
                 # Make king move
-                moved_piece = self._move_piece(src, dst)
+                moved_piece, _, _ = self._move_piece(src, dst)
             else:
                 # This was try to move the king at e1 or e8 to correct
                 # castling squares but other conditions required for a legal
@@ -334,19 +426,30 @@ class Game:
                 return self.MOVE_RESULT(
                     success=False,
                     moved_piece=None,
-                    is_castling=castling_result,
+                    is_castling=False,
+                    captured_piece=None,
+                    king_side_castle=False,
+                    disambiguation=None,
+                    promoted_piece=None,
                 )
         else:
             # No castling was asked for, let us proceed with a normal move
-            moved_piece = self._move_piece(src, dst)
+            moved_piece, captured_piece, disambiguation = self._move_piece(
+                src,
+                dst,
+            )
 
-        self._handle_promotion(moved_piece, dst)
+        promoted_piece = self._handle_promotion(moved_piece, dst)
         self._update_capturables()
 
         return self.MOVE_RESULT(
             success=True,
             moved_piece=moved_piece,
             is_castling=castling_result,
+            captured_piece=captured_piece,
+            king_side_castle=king_side_castle,
+            disambiguation=disambiguation,
+            promoted_piece=promoted_piece,
         )
 
     def _handle_promotion(self, moved_piece, dst):
@@ -361,13 +464,20 @@ class Game:
         if dst.y != last_row:
             return
 
+        if moved_piece.color == c.Color.black:
+            piece_type = self._black_promotion_piece_type
+        else:
+            piece_type = self._white_promotion_piece_type
+
         promoted_piece = self._create_promoted_piece(
-            piece_type=self._promption_piece_type,
+            piece_type=piece_type,
             color=moved_piece.color,
         )
 
         self.board.clear_square(dst)
         self.board.add_piece(promoted_piece, dst)
+
+        return promoted_piece
 
     def _create_promoted_piece(self, piece_type, color):
         pieces = self._get_pieces(color)
@@ -380,6 +490,7 @@ class Game:
         return Piece(piece_type, color, highest_order + 1)
 
     def _move_piece(self, src, dst):
+        disambiguation = self._disambiguate(self.board.get_piece(src), dst)
         dst_piece = self.board.clear_square(dst)
         if dst_piece is not None:
             if dst_piece.color == c.Color.black:
@@ -389,7 +500,41 @@ class Game:
 
         src_piece = self.board.clear_square(src)
         self.board.add_piece(src_piece, dst)
-        return src_piece
+        return src_piece, dst_piece, disambiguation
+
+    def _disambiguate(self, piece, dst):
+        if piece.type == c.PieceType.pawn:
+            return
+
+        src = self._board.get_square(piece)
+        same_color_pieces = self._get_pieces(color=piece.color)
+        identical_pieces = [
+            p for p in same_color_pieces
+            if p.type == piece.type and p != piece
+        ]
+
+        disambiguation = []
+        for ip in identical_pieces:
+            ip_src = self._board.get_square(ip)
+            is_legal_move = self._is_move_legal(
+                src=ip_src,
+                dst=dst,
+                piece_to_move=ip,
+                check_dst=False,
+            )
+
+            if is_legal_move:
+                if ip_src.x_address != src.x_address:
+                    disambiguation.append(src.x_address)
+                elif ip_src.y_address != src.y_address:
+                    disambiguation.append(src.y_address)
+
+        if not disambiguation:
+            return
+        elif len(disambiguation) == 1:
+            return disambiguation[0]
+        else:
+            return src.address
 
     def _can_castle(self, king, src, dst):
         if king.type != c.PieceType.king:
@@ -461,8 +606,8 @@ class Game:
 
         self.PLAYER_CHANGED_SIGNAL.emit(self._current_player)
 
-    def _is_move_legal(self, src, dst):
-        piece_to_move = self.board.get_piece(src)
+    def _is_move_legal(self, src, dst, piece_to_move=None, check_dst=True):
+        piece_to_move = piece_to_move or self.board.get_piece(src)
 
         # Case I: No piece to move
         if piece_to_move is None:
@@ -477,7 +622,8 @@ class Game:
         dst_piece = self.board.get_piece(dst)
         if dst_piece is not None:
             if piece_to_move.color == dst_piece.color:
-                return False
+                if check_dst:
+                    return False
 
         # Case IV: Special case for pawn as it can only capture only
         # with a diagonal move
@@ -538,7 +684,7 @@ class Game:
                                     threatening_piece
                                 )
 
-    def _is_mate(self):
+    def _detect_check_mate(self):
         self._description = []
 
         if self._current_player == c.Color.white:
@@ -552,7 +698,10 @@ class Game:
             self._description.append(
                 'No piece is checking the king and hence no mate.'
             )
-            return False
+            return self.CHECK_MATE_RESULT(
+                is_check=False,
+                is_mate=False,
+            )
         elif len(checking_pieces) == 1:
             checking_piece = checking_pieces[0]
             self._description.append(
@@ -561,20 +710,47 @@ class Game:
             if self._is_checking_piece_capturable(
                     checking_piece, king_under_check
             ):
-                return False
+                return self.CHECK_MATE_RESULT(
+                    is_check=True,
+                    is_mate=False,
+                )
 
             elif self._is_check_blockable(checking_piece, king_under_check):
-                return False
+                return self.CHECK_MATE_RESULT(
+                    is_check=True,
+                    is_mate=False,
+                )
+
             elif self._escape_square_exists(king_under_check):
-                return False
+                return self.CHECK_MATE_RESULT(
+                    is_check=True,
+                    is_mate=False,
+                )
+
             else:
-                return True
+                return self.CHECK_MATE_RESULT(
+                    is_check=True,
+                    is_mate=True,
+                )
         else:
             self._description.append(
                 f'The {king_under_check} is being checked by the following - '
                 f'{checking_pieces}'
             )
-            return not self._escape_square_exists(king_under_check)
+            no_escape_available = not self._escape_square_exists(
+                king_under_check
+            )
+
+            if no_escape_available:
+                return self.CHECK_MATE_RESULT(
+                    is_check=True,
+                    is_mate=True,
+                )
+            else:
+                return self.CHECK_MATE_RESULT(
+                    is_check=True,
+                    is_mate=False,
+                )
 
     def _is_capturable(self, piece):
         if not self._capturables:

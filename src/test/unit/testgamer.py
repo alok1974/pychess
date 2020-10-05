@@ -17,6 +17,17 @@ def _check_win(game):
 class TestGamer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Some short hands for fitting one move in one line
+        p = c.PieceType.pawn
+        b = c.PieceType.bishop
+        r = c.PieceType.rook
+        q = c.PieceType.queen
+
+        wt = c.Color.white
+        bl = c.Color.black
+        s = Square
+
+        cls.expected_move_history = []
         # A simple gameplay (even a noob would not play so bad ;)
         cls.game = Game()
 
@@ -27,10 +38,16 @@ class TestGamer(unittest.TestCase):
         # Move 1 - White opening with d4
         cls.game.move(('d2d4'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(p, wt, 3), s('d2'), s('d4'))
+        )
 
         # Move 2 - Black opening with c6
         cls.game.move(('c7c6'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(p, bl, 2), s('c7'), s('c6'))
+        )
 
         # Illegal Move - Trying to capture white pawn at d4 by white queen
         cls.game.move(('d1d4'))
@@ -39,6 +56,9 @@ class TestGamer(unittest.TestCase):
         # Move 3 - White Queen to d3
         cls.game.move(('d1d3'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(q, wt, 0), s('d1'), s('d3'))
+        )
 
         # Illegal Move - Queen trying to jump over white pawn at d4
         # nothing will happen
@@ -48,43 +68,74 @@ class TestGamer(unittest.TestCase):
         # Move 4 - Black moves pawn a6
         cls.game.move(('a7a6'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(p, bl, 0), s('a7'), s('a6'))
+        )
 
         # Move 5 - Black pawn at h7 captured by the white queen
         cls.game.move(('d3h7'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(q, wt, 0), s('d3'), s('h7'))
+        )
 
         # Move 6 - Black pawn to a5
         cls.game.move(('a6a5'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(p, bl, 0), s('a6'), s('a5'))
+        )
 
         # Move 7 - White queen to f5
         cls.game.move(('h7f5'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(q, wt, 0), s('h7'), s('f5'))
+        )
 
         # Move 8 - Black rook to h6, where it comes under attack
         # by the black bishop at c1
         cls.game.move(('h8h6'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(r, bl, 1), s('h8'), s('h6'))
+        )
 
         # Move 9 - White pawn to e4
         cls.game.move(('e2e4'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(p, wt, 4), s('e2'), s('e4'))
+        )
 
         # Move 10 - Black pawn to a4
         cls.game.move(('a5a4'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(p, bl, 0), s('a5'), s('a4'))
+        )
 
         # Move 11 - White rook to c4
         cls.game.move(('f1c4'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(b, wt, 1), s('f1'), s('c4'))
+        )
 
         # Move 12 - White rook to h5 attacking the queen
         cls.game.move(('h6h5'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(r, bl, 1), s('h6'), s('h5'))
+        )
 
         # Move 13 - White queen to f7, it's a mate!
         cls.game.move(('f5f7'))
         _check_win(cls.game)
+        cls.expected_move_history.append(
+            Move(Piece(q, wt, 0), s('f5'), s('f7'))
+
+        )
 
     def test_board(self):
         expected_result = (
@@ -138,33 +189,7 @@ class TestGamer(unittest.TestCase):
         self.assertEqual(self.game.pieces_checking_white, expected_result)
 
     def test_move_history(self):
-        # Some short hands for fitting one move in one line
-        p = c.PieceType.pawn
-        b = c.PieceType.bishop
-        r = c.PieceType.rook
-        q = c.PieceType.queen
-
-        wt = c.Color.white
-        bl = c.Color.black
-        s = Square
-
-        expected_result = [
-            Move(Piece(p, wt, 3), s('d2'), s('d4')),
-            Move(Piece(p, bl, 2), s('c7'), s('c6')),
-            Move(Piece(q, wt, 0), s('d1'), s('d3')),
-            Move(Piece(p, bl, 0), s('a7'), s('a6')),
-            Move(Piece(q, wt, 0), s('d3'), s('h7')),
-            Move(Piece(p, bl, 0), s('a6'), s('a5')),
-            Move(Piece(q, wt, 0), s('h7'), s('f5')),
-            Move(Piece(r, bl, 1), s('h8'), s('h6')),
-            Move(Piece(p, wt, 4), s('e2'), s('e4')),
-            Move(Piece(p, bl, 0), s('a5'), s('a4')),
-            Move(Piece(b, wt, 1), s('f1'), s('c4')),
-            Move(Piece(r, bl, 1), s('h6'), s('h5')),
-            Move(Piece(q, wt, 0), s('f5'), s('f7')),
-        ]
-
-        self.assertEqual(self.game.move_history, expected_result)
+        self.assertEqual(self.game.move_history, self.expected_move_history)
 
     def test_capturables(self):
         expected_result = {
