@@ -10,6 +10,15 @@ def parse_move_history(move_history):
     return _pair_moves(moves)
 
 
+def export_game(move_history):
+    game = []
+    for move_num, m1, m2 in parse_move_history(move_history):
+        line = f'{move_num}.{m1} {m2}'
+        game.append(line)
+
+    return ' '.join(game)
+
+
 def parse_move(move):
     winning_string = ''
     if move.winner is not None:

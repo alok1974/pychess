@@ -2,7 +2,7 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from . import constant as c, imager, pgn
-from .widget import OptionWidget, MovesWidget
+from .widget import OptionWidget, MovesWidget, PGNGameDataWidget
 from .history import Player
 
 
@@ -30,9 +30,15 @@ class MainWindow(QtWidgets.QDialog):
             parent=self,
         )
 
+        self._game_data_widget = PGNGameDataWidget(
+            size=c.IMAGE.DEFAULT_SIZE,
+            parent=None,
+        )
+
         self._first_square = None
         self._second_square = None
         self._current_player = c.Color.white
+        self._winner = None
 
         self._bonus_time = self._option_widget.bonus_time
 
@@ -67,8 +73,65 @@ class MainWindow(QtWidgets.QDialog):
         if event.key() == QtCore.Qt.Key_C:
             self._toggle_show_threatened()
 
+        ctrl_s = (
+            event.key() == QtCore.Qt.Key_S and
+            event.modifiers() == QtCore.Qt.ControlModifier
+        )
+
+        if ctrl_s:
+            self._handle_save_game()
+
     def board_updated(self):
         self._update()
+
+    def _handle_save_game(self):
+        if not self._has_game_started:
+            return
+        elif self._game_data is None:
+            return
+        elif not self._game_data.move_history:
+            return
+
+        self._game_data_widget.show()
+
+    def _save_game(self, game_data):
+        result = self._get_result()
+        game_data = (
+            f'[Event "{game_data.event}"]\n'
+            f'[Site "{game_data.site}"]\n'
+            f'[Date "{game_data.date}"]\n'
+            f'[Round "{game_data.round}"]\n'
+            f'[White "{game_data.white}"]\n'
+            f'[Black "{game_data.black}"]\n'
+            f'[Result "{result}"]\n'
+        )
+
+        move_history = self._game_data.move_history
+        game_moves = pgn.export_game(move_history)
+        if not game_moves.endswith(result):
+            game_moves = f'{game_moves} {result}'
+
+        game = f'{game_data}\n{game_moves}'
+
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Save game (.pgn)',
+            filter='*.pgn'
+
+        )
+        with open(file_path, 'w') as fp:
+            fp.write(game)
+
+    def _get_result(self):
+        if self._winner is None:
+            return '1/2-1/2'
+        elif self._winner == c.Color.white:
+            return '1-0'
+        elif self._winner == c.Color.black:
+            return '0-1'
+        else:
+            error_msg = 'Unknown winner type!'
+            raise RuntimeError(error_msg)
 
     def _reset(self):
         self._option_widget.reset()
@@ -87,6 +150,7 @@ class MainWindow(QtWidgets.QDialog):
         self._second_square = None
 
         self._current_player = c.Color.white
+        self._winner = None
 
         self._bonus_time = self._option_widget.bonus_time
 
@@ -299,12 +363,16 @@ class MainWindow(QtWidgets.QDialog):
         self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
+
         self._white_resign_btn.clicked.connect(
             lambda: self._resign_btn_clicked(c.Color.black)
         )
+
         self._black_resign_btn.clicked.connect(
             lambda: self._resign_btn_clicked(c.Color.white)
         )
+
+        self._game_data_widget.DONE_SIGNAL.connect(self._save_game)
 
     def _resign_btn_clicked(self, winning_color):
         if not self._has_game_started:
@@ -417,6 +485,7 @@ class MainWindow(QtWidgets.QDialog):
         )
 
     def game_over(self, winner):
+        self._winner = winner
         self._is_game_over = True
         self._captured_image.draw_winner(winner)
         self._update_captured_image_labels()
