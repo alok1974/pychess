@@ -80,7 +80,7 @@ def _get_promotion_string(move):
     promotion = promoted_piece.code.upper()
     check_mate = _get_check_mate_symbol(move)
     capture = _get_capture_symbol(move)
-    return f'{move.dst.address}={promotion}{capture}{check_mate}'
+    return f'{move.dst.address}{capture}={promotion}{check_mate}'
 
 
 def _get_disambiguation(move):
