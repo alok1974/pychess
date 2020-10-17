@@ -386,7 +386,7 @@ class Game:
         king_side_castle = False
         disambiguation = None
 
-        is_legal = self._is_move_legal(src, dst)
+        is_legal = Move.is_board_move_legal(self._board, src, dst)
         if not is_legal:
             return self.MOVE_RESULT(
                 success=False,
@@ -402,22 +402,16 @@ class Game:
         if Move(piece_to_move, src, dst).is_valid_castling:
             if self._can_castle(piece_to_move, src, dst):
                 castling_result = True
-                rook_src = None
-                rook_dst = None
-                if dst.x == 6:  # short castle
-                    rook_src = Square((7, src.y))
-                    rook_dst = Square((5, src.y))
-                    king_side_castle = True
-
-                if dst.x == 2:  # long castle
-                    rook_src = Square((0, src.y))
-                    rook_dst = Square((3, src.y))
-
-                # Make rook move
-                self._move_piece(rook_src, rook_dst)
-
-                # Make king move
-                moved_piece, _, _ = self._move_piece(src, dst)
+                is_short_castle = dst.x == 6
+                player = piece_to_move.color
+                moved_piece = piece_to_move
+                king_src, king_dst = self._board.castle(
+                    player=player,
+                    is_short_castle=is_short_castle,
+                )
+                assert(moved_piece.type == c.PieceType.king)
+                assert(moved_piece.color == player)
+                assert((king_src, king_dst) == (src, dst))
             else:
                 # This was try to move the king at e1 or e8 to correct
                 # castling squares but other conditions required for a legal
@@ -474,8 +468,7 @@ class Game:
             color=moved_piece.color,
         )
 
-        self.board.clear_square(dst)
-        self.board.add_piece(promoted_piece, dst)
+        self.board.promote(promoted_piece, dst)
 
         return promoted_piece
 
@@ -491,16 +484,15 @@ class Game:
 
     def _move_piece(self, src, dst):
         disambiguation = self._disambiguate(self.board.get_piece(src), dst)
-        dst_piece = self.board.clear_square(dst)
-        if dst_piece is not None:
-            if dst_piece.color == c.Color.black:
-                self._captured_black.append(dst_piece)
+        src_piece = self.board.get_piece(src)
+        captured_piece = self.board.move(src, dst)
+        if captured_piece is not None:
+            if captured_piece.color == c.Color.black:
+                self._captured_black.append(captured_piece)
             else:
-                self._captured_white.append(dst_piece)
+                self._captured_white.append(captured_piece)
 
-        src_piece = self.board.clear_square(src)
-        self.board.add_piece(src_piece, dst)
-        return src_piece, dst_piece, disambiguation
+        return src_piece, captured_piece, disambiguation
 
     def _disambiguate(self, piece, dst):
         if piece.type == c.PieceType.pawn:
@@ -516,10 +508,11 @@ class Game:
         disambiguation = []
         for ip in identical_pieces:
             ip_src = self._board.get_square(ip)
-            is_legal_move = self._is_move_legal(
+            is_legal_move = Move.is_board_move_legal(
+                board=self._board,
                 src=ip_src,
                 dst=dst,
-                piece_to_move=ip,
+                piece=ip,
                 check_dst=False,
             )
 
@@ -606,45 +599,6 @@ class Game:
 
         self.PLAYER_CHANGED_SIGNAL.emit(self._current_player)
 
-    def _is_move_legal(self, src, dst, piece_to_move=None, check_dst=True):
-        piece_to_move = piece_to_move or self.board.get_piece(src)
-
-        # Case I: No piece to move
-        if piece_to_move is None:
-            return False
-
-        # Case II: Illegal move for piece
-        mv = Move(piece_to_move, src, dst)
-        if not mv.is_legal:
-            return False
-
-        # Case III: Destination has piece of same color
-        dst_piece = self.board.get_piece(dst)
-        if dst_piece is not None:
-            if piece_to_move.color == dst_piece.color:
-                if check_dst:
-                    return False
-
-        # Case IV: Special case for pawn as it can only capture only
-        # with a diagonal move
-        if piece_to_move.type == c.PieceType.pawn:
-            if mv.is_orthogonal and dst_piece is not None:
-                return False
-            elif mv.is_diagonal and dst_piece is None:
-                return False
-
-        # Case V: Path to destination is not empty
-        if piece_to_move.type in [
-                c.PieceType.queen,
-                c.PieceType.rook,
-                c.PieceType.bishop,
-        ]:
-            in_between_squares = mv.path[1:-1]
-            if not all([self.board.is_empty(s) for s in in_between_squares]):
-                return False
-
-        return True
-
     def _update_capturables(self):
         self._capturables = {
             c.Color.white: {},
@@ -668,7 +622,7 @@ class Game:
                     src = self.board.get_square(threatening_piece)
                     dst = self.board.get_square(threatened_piece)
 
-                    if self._is_move_legal(src, dst):
+                    if Move.is_board_move_legal(self._board, src, dst):
                         self._capturables[color].setdefault(
                             threatening_piece, []
                         ).append(threatened_piece)
