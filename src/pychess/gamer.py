@@ -98,6 +98,10 @@ class Game:
     def board(self):
         return self._board
 
+    @board.setter
+    def board(self, val):
+        self._board = val
+
     @property
     def description(self):
         return '\n'.join(self._description)
@@ -281,11 +285,11 @@ class Game:
             self.INVALID_MOVE_SIGNAL.emit()
             return
 
-        if self._not_players_turn(src, dst):
+        if self._not_players_turn(src):
             self.INVALID_MOVE_SIGNAL.emit()
             return
 
-        if self._move_causes_discovered_check(src, dst):
+        if self.move_causes_discovered_check(src, dst, self._current_player):
             self.INVALID_MOVE_SIGNAL.emit()
             return
 
@@ -325,13 +329,10 @@ class Game:
         self._is_game_over = True
         self.MATE_SIGNAL.emit(self._winner)
 
-    def _move_causes_discovered_check(self, src, dst):
+    def move_causes_discovered_check(self, src, dst, player):
         with self._try_move(src, dst):
-            king = Piece(c.PieceType.king, color=self._current_player)
-            if self._is_capturable(king):
-                return True
-            else:
-                return False
+            king = Piece(c.PieceType.king, color=player)
+            return self._is_capturable(king)
 
     def _record_move(self, result, src, dst):
         piece = result.moved_piece
@@ -374,7 +375,7 @@ class Game:
 
         return move
 
-    def _not_players_turn(self, src, dst):
+    def _not_players_turn(self, src):
         src_piece = self.board.get_piece(src)
         if src_piece is None:
             return True
@@ -403,6 +404,7 @@ class Game:
             if self._can_castle(piece_to_move, src, dst):
                 castling_result = True
                 is_short_castle = dst.x == 6
+                king_side_castle = is_short_castle
                 player = piece_to_move.color
                 moved_piece = piece_to_move
                 king_src, king_dst = self._board.castle(
@@ -579,7 +581,8 @@ class Game:
 
         return False
 
-    def _get_castling_in_betweens(self, src, dst):
+    @staticmethod
+    def _get_castling_in_betweens(src, dst):
         if src.x > dst.x:
             # b, c and d squares
             x_vals = [1, 2, 3]
