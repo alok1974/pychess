@@ -1,7 +1,8 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
-from . import constant as c, imager, pgn
+from . import constant as c, imager
+from .pgn import MOVES2PGN
 from .widget import OptionWidget, MovesWidget, PGNGameDataWidget
 from .history import Player
 
@@ -107,7 +108,7 @@ class MainWindow(QtWidgets.QDialog):
         )
 
         move_history = self._game_data.move_history
-        game_moves = pgn.export_game(move_history)
+        game_moves = MOVES2PGN(move_history).text
         if not game_moves.endswith(result):
             game_moves = f'{game_moves} {result}'
 
@@ -596,9 +597,7 @@ class MainWindow(QtWidgets.QDialog):
         self._game_data = game_data
         self._history_player = Player(self._game_data.move_history)
 
-        moves = pgn.parse_move_history(
-            self._game_data.move_history
-        )
+        moves = MOVES2PGN(self._game_data.move_history).moves
         self._moves_widget.setVisible(True)
         self._moves_widget.display_moves(moves)
 
