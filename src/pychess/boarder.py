@@ -5,6 +5,7 @@ import random
 from .squarer import Square
 from .piecer import Piece
 from . import constant as c
+from .mover import Move
 
 
 class Board:
@@ -36,6 +37,10 @@ class Board:
     @property
     def squares(self):
         return list(self.data.keys())
+
+    @property
+    def pawn_two_square_dst(self):
+        return self._pawn_two_square_dst
 
     def move_hint(self, square):
         if self.is_empty(square):
@@ -113,6 +118,57 @@ class Board:
 
         return existing_piece
 
+    def move(self, src, dst):
+        piece_to_move = self.clear_square(src)
+        if Move.is_en_passant(piece_to_move, self, src, dst):
+            direction = 1 if piece_to_move.color == c.Color.black else -1
+            capture_sqr = Square(
+                (
+                    dst.x,
+                    dst.y + (direction * 1),
+                )
+            )
+            captured_piece = self.clear_square(capture_sqr)
+        else:
+            captured_piece = self.clear_square(dst)
+
+        self.add_piece(piece_to_move, dst)
+        self._update_pawn_two_square_dst(piece_to_move, src, dst)
+        return captured_piece
+
+    def promote(self, promoted_piece, dst):
+        self.clear_square(dst)
+        self.add_piece(promoted_piece, dst)
+
+    def castle(self, player, is_short_castle):
+        king_src_x = 'e'
+        king_dst_x = None
+        rook_src_x = None
+        rook_dst_x = None
+
+        if is_short_castle:
+            king_dst_x = 'g'
+            rook_src_x = 'h'
+            rook_dst_x = 'f'
+        else:
+            king_dst_x = 'c'
+            rook_src_x = 'a'
+            rook_dst_x = 'd'
+
+        rank = '1' if player == c.Color.white else '8'
+
+        # Move rook
+        rook_src = Square(f'{rook_src_x}{rank}')
+        rook_dst = Square(f'{rook_dst_x}{rank}')
+        self.move(rook_src, rook_dst)
+
+        # Move king
+        king_src = Square(f'{king_src_x}{rank}')
+        king_dst = Square(f'{king_dst_x}{rank}')
+        self.move(king_src, king_dst)
+
+        return king_src, king_dst
+
     def is_empty(self, square):
         return self.data[square] is None
 
@@ -120,11 +176,18 @@ class Board:
         self._clear()
 
     def reset(self):
+        self._pawn_two_square_dst = None
         self._clear()
         self._set_pieces()
 
     def set_pieces(self, is_standard):
         self._set_pieces(is_standard=is_standard)
+
+    def _update_pawn_two_square_dst(self, moved_piece, src, dst):
+        if moved_piece.type != c.PieceType.pawn or abs(dst.y - src.y) != 2:
+            self._pawn_two_square_dst = None
+        else:
+            self._pawn_two_square_dst = dst
 
     def _clear(self):
         self._data = dict(
