@@ -37,6 +37,37 @@ class BoardImage:
     def height(self):
         return self._board_image.height
 
+    def create_image_with_move(self, src, dst, move_text, save_to_path):
+        self.highlight(
+            square=src,
+            highlight_color=c.APP.HIGHLIGHT_COLOR.src,
+        )
+        self.highlight(
+            square=dst,
+            highlight_color=c.APP.HIGHLIGHT_COLOR.dst,
+        )
+        block = 16
+        compliant_dim = self.width + block - (self.width % block)
+        band_hint = int(compliant_dim * 0.1)
+        height_hint = compliant_dim + band_hint
+        true_height = height_hint + block - (height_hint % block)
+        border = int((compliant_dim - self.width) / 2)
+        size = (compliant_dim, true_height)
+        image = Image.new('RGBA', size, color=(59, 57, 55))
+        image.alpha_composite(self._board_image, (border, border))
+        font = ImageFont.truetype(
+            c.APP.FONT_FILE_PATH,
+            size=int(c.IMAGE.MOVIE_FONT_SIZE * self._resize_factor),
+        )
+        ctx = ImageDraw.Draw(image)
+        ctx.multiline_text(
+            (int(self.width * 0.05), self.height + 5),
+            move_text,
+            fill=(255, 255, 255),
+            font=font,
+        )
+        image.save(save_to_path)
+
     def init(self, board, size=c.IMAGE.DEFAULT_SIZE):
         self._board = board
         self._threatened_squares = []

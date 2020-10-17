@@ -1,5 +1,10 @@
 import re
 import collections
+import os
+import shutil
+import tempfile
+import contextlib
+import textwrap
 
 
 from . import constant as c
@@ -7,6 +12,8 @@ from .squarer import Square
 from .mover import Move
 from .piecer import Piece
 from .boarder import Board
+from .imager import BoardImage
+from .gamer import Game
 
 
 class NAMEDTUPLES:
@@ -107,7 +114,7 @@ class REGEX:
     ])
 
     MOVE = ''.join([
-        non_capturing_group_starts,  # group 1
+        non_capturing_group_starts,
 
         no_move_result,
 
@@ -127,7 +134,7 @@ class REGEX:
 
         alternative,
 
-        group_starts,  # group 2
+        group_starts,
 
         piece,
 
@@ -137,11 +144,11 @@ class REGEX:
 
         promotion,
 
+        group_ends,
+
+        group_ends,
+
         check_mate,
-
-        group_ends,  # group 2 ends
-
-        group_ends,  # group 1 ends
 
         possible_white_space,
 
@@ -161,13 +168,13 @@ class REGEX:
 
         promotion,
 
-        check_mate,
-
-        group_ends,  # group 3 ends
+        group_ends,
 
         group_ends,
 
         zero_or_one,
+
+        check_mate,
 
         possible_white_space,
 
@@ -195,9 +202,54 @@ class PGN2MOVES:
         return self._game_info
 
     def get_moves(self, game_index):
+        return self._get_moves(game_index=game_index)
+
+    def create_movie(self, game_index, movie_file_path, fps=1):
+        with self._movie_folder() as folder:
+            self._get_moves(
+                game_index=game_index,
+                image_folder=folder,
+            )
+            self._make_movie(folder, movie_file_path, fps=fps)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _movie_folder():
+        folder = tempfile.mkdtemp(prefix='pychess_movie')
+        try:
+            yield folder
+        finally:
+            shutil.rmtree(folder)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _mp4_writer(movie_file_path, fps=1):
+        import imageio
+        writer = imageio.get_writer(movie_file_path, fps=fps)
+        try:
+            yield writer
+        finally:
+            writer.close()
+
+    def _make_movie(self, image_folder, movie_file_path, fps=1):
+        images = self._gather_movie_images(image_folder)
+        with self._mp4_writer(movie_file_path, fps=fps) as writer:
+            list(map(writer.append_data, images))
+
+    @staticmethod
+    def _gather_movie_images(image_folder):
+        import imageio
+        return [
+            imageio.imread(os.path.join(image_folder, file_name))
+            for file_name in sorted(os.listdir(image_folder))
+            if file_name.endswith('.png')
+
+        ]
+
+    def _get_moves(self, game_index, image_folder=None):
         self._board = Board()
         game = self._games[game_index]
-        return self._get_game_moves(game)
+        return self._get_game_moves(game, image_folder=image_folder)
 
     def _get_game_info(self):
         info = []
@@ -218,21 +270,90 @@ class PGN2MOVES:
             for data in zip(header_data, move_data)
         ]
 
-    def _get_game_moves(self, game):
+    def _get_game_moves(self, game, image_folder=None):
         if game.moves_data[0].no_move_result is not None:
             return []
 
         moves = []
-        for move in game.moves_data:
+        for index, move in enumerate(game.moves_data):
             white_move = self._get_player_move(move, c.Color.white)
             if white_move is not None:
                 moves.append(white_move)
+                if image_folder is not None:
+                    self._create_movie_image(
+                        index=(index * 2) + 1,
+                        move=white_move,
+                        castling_string=move.white_castling,
+                        color=c.Color.white,
+                        image_folder=image_folder,
+                    )
 
             black_move = self._get_player_move(move, c.Color.black)
             if black_move is not None:
                 moves.append(black_move)
+                if image_folder is not None:
+                    self._create_movie_image(
+                        index=(index * 2) + 2,
+                        move=black_move,
+                        castling_string=move.black_castling,
+                        color=c.Color.black,
+                        image_folder=image_folder,
+                    )
 
         return moves
+
+    def _create_movie_image(
+            self, index, move,
+            castling_string, color, image_folder=None
+    ):
+
+        if image_folder is None:
+            return
+
+        src, dst, promotion = move
+        piece = self._board.get_piece(dst)
+
+        move_str = ''
+        if castling_string is not None:
+            if castling_string == 'O-O':
+                side = 'King'
+            else:
+                side = 'Queen'
+            move_str = f'{side} side castling'
+        else:
+            if promotion is not None:
+                move_str = (
+                    f'Pawn moves from {src.address} to {dst.address} '
+                    f'and is promoted as a {promotion.name}'
+                )
+            else:
+                move_str = (
+                    f'{piece.type.name.capitalize()} '
+                    f'moves from {src.address} to {dst.address}'
+                )
+
+        image_file_path = os.path.join(
+            image_folder,
+            f'pychess_img_{str(index).zfill(3)}.png'
+        )
+
+        move_no = int(index / 2) + (index % 2)
+        move_no_str = (
+            f'Move {str(move_no).zfill(3)} '
+            f'[{color.name.capitalize()}]:'
+        )
+        move_text = '\n'.join(
+            textwrap.wrap(
+                f'{move_no_str} {move_str}',
+                width=44
+            )
+        )
+        BoardImage(self._board).create_image_with_move(
+            src=src,
+            dst=dst,
+            move_text=move_text,
+            save_to_path=image_file_path,
+        )
 
     def _get_player_move(self, move, player):
         promotion = None
@@ -295,7 +416,7 @@ class PGN2MOVES:
         existing_pieces = self._get_existing_pieces(
             piece_type=piece_type,
             color=color
-            )
+        )
         if existing_pieces:
             max_order = max([p.order for p in existing_pieces]) + 1
 
@@ -416,7 +537,14 @@ class PGN2MOVES:
                 dst=dst,
                 piece=piece,
             )
-            if is_move_legal:
+            game_obj = Game()
+            game_obj.board = self._board
+            check = game_obj.move_causes_discovered_check(
+                src,
+                dst,
+                player=player,
+            )
+            if is_move_legal and not check:
                 return src.address
             else:
                 tried_moves.append(Move(piece, src, dst))
