@@ -54,7 +54,8 @@ class Player:
         for i, move in enumerate(self._history):
             if i > self._current_index:
                 break
-            self._apply_move(board, move)
+
+            board.move(move.src, move.dst)
 
         return PLAY_RESULT(
             board=board,
@@ -69,9 +70,3 @@ class Player:
 
         if self._current_index < self._first_index:
             self._current_index = self._first_index
-
-    @staticmethod
-    def _apply_move(board, move):
-        board.clear_square(move.dst)
-        piece = board.clear_square(move.src)
-        board.add_piece(piece, move.dst)
