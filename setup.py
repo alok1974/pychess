@@ -28,6 +28,8 @@ setup(
     install_requires=[
         'Pillow >=7.2.0',
         'PySide2 >=5.15.0',
+        'imageio >=2.9.0',
+        'imageio-ffmpeg >=0.4.2',
     ],
     license='MIT',
     classifiers=[
