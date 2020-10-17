@@ -70,8 +70,7 @@ class TestBoarder(unittest.TestCase):
     def test_set_data(self):
         b = Board()
         data_copy = copy.deepcopy(b.data)
-        piece = b.clear_square(Square('e2'))
-        b.add_piece(piece, Square('e4'))
+        b.move(Square('e2'), Square('e4'))
         self.assertNotEqual(b.data, data_copy)
 
         b.data = data_copy
@@ -170,11 +169,8 @@ class TestBoarder(unittest.TestCase):
         b = Board()
 
         # First move some pieces around
-        piece = b.clear_square(Square('e2'))
-        b.add_piece(piece, Square('e4'))
-
-        piece = b.clear_square(Square('e7'))
-        b.add_piece(piece, Square('e5'))
+        b.move(Square('e2'), Square('e4'))
+        b.move(Square('e7'), Square('e5'))
 
         expected_piece = Piece(
             c.PieceType.pawn,
@@ -240,8 +236,7 @@ class TestBoarder(unittest.TestCase):
     def test_set_reverse(self):
         b = Board()
         reverse_copy = copy.deepcopy(b.reverse)
-        piece = b.clear_square(Square('e2'))
-        b.add_piece(piece, Square('e4'))
+        b.move(Square('e2'), Square('e4'))
         self.assertNotEqual(b.reverse, reverse_copy)
 
         b.reverse = reverse_copy
@@ -262,11 +257,8 @@ class TestBoarder(unittest.TestCase):
     def test_move_hint_2(self):
         b = Board()
 
-        piece = b.clear_square(Square('e2'))
-        b.add_piece(piece, Square('e4'))
-
-        piece = b.clear_square(Square('d7'))
-        b.add_piece(piece, Square('d5'))
+        b.move(Square('e2'), Square('e4'))
+        b.move(Square('d7'), Square('d5'))
 
         expected_hints = {
             Square('d1'): [
