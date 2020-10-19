@@ -70,6 +70,7 @@ class Game:
     NON_STANDARD_BOARD_SET_SIGNAL = Signal()
 
     def __init__(self):
+        self._signals_blocked = False
         self._board = Board()
         self._captured_white = []
         self._captured_black = []
@@ -93,6 +94,15 @@ class Game:
 
         self._black_promotion_piece_type = c.PieceType.queen
         self._white_promotion_piece_type = c.PieceType.queen
+
+    @contextlib.contextmanager
+    def block_signals(self):
+        current_state = self._signals_blocked
+        self._signals_blocked = True
+        try:
+            yield
+        finally:
+            self._signals_blocked = current_state
 
     @property
     def board(self):
@@ -166,9 +176,12 @@ class Game:
         ) = options
 
         self._board.set_pieces(self._is_standard_type)
-        self.NON_STANDARD_BOARD_SET_SIGNAL.emit()
+
+        if not self._signals_blocked:
+            self.NON_STANDARD_BOARD_SET_SIGNAL.emit()
 
     def reset(self):
+        self._signals_blocked = False
         self._board.reset()
         self._captured_white = []
         self._captured_black = []
@@ -275,6 +288,14 @@ class Game:
 
         return src, dst
 
+    def apply_moves(self, moves):
+        with self.block_signals():
+            for move in moves[:-1]:
+                self.move(move_spec=move)
+
+        # This will send the final signal to update the UI
+        self.move(moves[-1])
+
     def move(self, move_spec):
         if self.is_game_over:
             return
@@ -282,15 +303,18 @@ class Game:
         try:
             src, dst = self.parse_move_spec(move_spec)
         except RuntimeError:
-            self.INVALID_MOVE_SIGNAL.emit()
+            if not self._signals_blocked:
+                self.INVALID_MOVE_SIGNAL.emit()
             return
 
         if self._not_players_turn(src):
-            self.INVALID_MOVE_SIGNAL.emit()
+            if not self._signals_blocked:
+                self.INVALID_MOVE_SIGNAL.emit()
             return
 
         if self.move_causes_discovered_check(src, dst, self._current_player):
-            self.INVALID_MOVE_SIGNAL.emit()
+            if not self._signals_blocked:
+                self.INVALID_MOVE_SIGNAL.emit()
             return
 
         result = self._perform_move(src, dst)
@@ -310,7 +334,8 @@ class Game:
             capturables=self.capturables
         )
 
-        self.MOVE_SIGNAL.emit(game_data)
+        if not self._signals_blocked:
+            self.MOVE_SIGNAL.emit(game_data)
 
         if move.is_mate:
             white_wins = True
@@ -327,7 +352,9 @@ class Game:
             winner = c.Color.black
         self._winner = winner
         self._is_game_over = True
-        self.MATE_SIGNAL.emit(self._winner)
+
+        if not self._signals_blocked:
+            self.MATE_SIGNAL.emit(self._winner)
 
     def move_causes_discovered_check(self, src, dst, player):
         with self._try_move(src, dst):
@@ -600,7 +627,8 @@ class Game:
             self._current_player = c.Color.black
             self._next_player = c.Color.white
 
-        self.PLAYER_CHANGED_SIGNAL.emit(self._current_player)
+        if not self._signals_blocked:
+            self.PLAYER_CHANGED_SIGNAL.emit(self._current_player)
 
     def _update_capturables(self):
         self._capturables = {

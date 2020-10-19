@@ -2,8 +2,13 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from . import constant as c, imager
-from .pgn import MOVES2PGN
-from .widget import OptionWidget, MovesWidget, PGNGameDataWidget
+from .pgn import MOVES2PGN, PGN2MOVES
+from .widget import (
+    OptionWidget,
+    MovesWidget,
+    PGNGameDataWidget,
+    LoadGameWidget
+)
 from .history import Player
 
 
@@ -12,6 +17,7 @@ class MainWindow(QtWidgets.QDialog):
     GAME_RESET_SIGNAL = QtCore.Signal()
     GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
     GAME_OVER_SIGNAL = QtCore.Signal(bool)
+    BULK_MOVE_SIGNAL = QtCore.Signal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -82,8 +88,44 @@ class MainWindow(QtWidgets.QDialog):
         if ctrl_s:
             self._handle_save_game()
 
+        ctrl_o = (
+            event.key() == QtCore.Qt.Key_O and
+            event.modifiers() == QtCore.Qt.ControlModifier
+        )
+
+        if ctrl_o:
+            self._handle_load_game()
+
     def board_updated(self):
         self._update()
+
+    def _handle_load_game(self):
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            parent=None,
+            caption='Load game (.pgn)',
+            filter='*.pgn'
+
+        )
+        if not file_path:
+            return
+
+        self._pgn2moves = PGN2MOVES(pgn_file_path=file_path)
+        if self._pgn2moves.nb_games == 1:
+            self._load_game()
+        else:
+            game_info = self._pgn2moves.game_info
+            w = LoadGameWidget(game_info=game_info)
+            w.SELECTED_GAME_SIGNAL.connect(self._load_game)
+            w.show()
+
+    def _load_game(self, game_index=0):
+        self._reset()
+        moves = self._pgn2moves.get_moves(game_index=game_index)
+        bulk_moves = [f'{src.address}{dst.address}' for src, dst, _ in moves]
+        self.BULK_MOVE_SIGNAL.emit(bulk_moves)
+        self._stop_all_timers()
+
+        self._on_go_to_start_btn_clicked()
 
     def _handle_save_game(self):
         if not self._has_game_started:
@@ -332,11 +374,17 @@ class MainWindow(QtWidgets.QDialog):
         self._start_btn = self._create_btn('START')
         self._btn_layout.addWidget(self._start_btn, 1)
 
+        self._go_to_start_btn = self._create_btn('|<')
+        self._btn_layout.addWidget(self._go_to_start_btn, 1)
+
         self._back_btn = self._create_btn('<')
         self._btn_layout.addWidget(self._back_btn, 1)
 
         self._forward_btn = self._create_btn('>')
         self._btn_layout.addWidget(self._forward_btn, 1)
+
+        self._go_to_end_btn = self._create_btn('>|')
+        self._btn_layout.addWidget(self._go_to_end_btn, 1)
 
         self._bottom_layout.addLayout(self._btn_layout)
 
@@ -359,6 +407,8 @@ class MainWindow(QtWidgets.QDialog):
         self._options_btn.clicked.connect(self._on_options_btn_clicked)
         self._reset_btn.clicked.connect(self._on_reset_btn_clicked)
         self._start_btn.clicked.connect(self._on_start_btn_clicked)
+        self._go_to_end_btn.clicked.connect(self._on_go_to_end_btn_clicked)
+        self._go_to_start_btn.clicked.connect(self._on_go_to_start_btn_clicked)
         self._forward_btn.clicked.connect(self._on_forward_btn_clicked)
         self._back_btn.clicked.connect(self._on_back_btn_clicked)
         self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
@@ -430,11 +480,21 @@ class MainWindow(QtWidgets.QDialog):
     def _on_back_btn_clicked(self):
         self._inspect_history(cursor_step=-1)
 
-    def _inspect_history(self, cursor_step):
+    def _on_go_to_start_btn_clicked(self):
+        self._inspect_history(start=True)
+
+    def _on_go_to_end_btn_clicked(self):
+        self._inspect_history(end=True)
+
+    def _inspect_history(self, cursor_step=None, start=False, end=False):
         if self._history_player is None:
             return
 
-        if cursor_step == 1:
+        if start:
+            result = self._history_player.move_to_start()
+        elif end:
+            result = self._history_player.move_to_end()
+        elif cursor_step == 1:
             result = self._history_player.move_forward()
         elif cursor_step == -1:
             result = self._history_player.move_backward()
@@ -442,7 +502,7 @@ class MainWindow(QtWidgets.QDialog):
             error_msg = f'Unknown cursor step: {cursor_step}'
             raise RuntimeError(error_msg)
 
-        if result.board is None:
+        if result is None or result.board is None:
             return
 
         self._inspecting_history = not self._history_player.is_at_end

@@ -60,6 +60,14 @@ class Move:
         if not move.is_legal:
             return False
 
+        # Case II (a): A king cannot capture another king
+        dst_piece = board.get_piece(dst)
+        if dst_piece is not None:
+            src_is_king = piece.type == c.PieceType.king
+            dst_is_king = dst_piece.type == c.PieceType.king
+            if src_is_king and dst_is_king:
+                return False
+
         # Case III: Destination has piece of same color
         if cls._is_same_color(piece, board, dst, check_dst):
             return False

@@ -463,12 +463,14 @@ class PGN2MOVES:
                 piece_type=piece_str_result.piece_type,
                 partial_addr=piece_str_result.partial_addr,
                 dst_addr=dst_addr,
+                move_no=move.move_num,
             )
         else:
             src_addr = self._get_source_from_type_and_dst(
                 player=player,
                 piece_type=piece_str_result.piece_type,
                 dst_addr=dst_addr,
+                move_no=move.move_num,
             )
 
         return NAMEDTUPLES.GAME_MOVE_RESULT(
@@ -485,7 +487,7 @@ class PGN2MOVES:
         )
 
     def _get_source_from_type_and_addr(
-            self, player, piece_type, partial_addr, dst_addr
+            self, player, piece_type, partial_addr, dst_addr, move_no
     ):
         tried_moves = []
         is_x = partial_addr in list('abcdefgh')
@@ -512,11 +514,22 @@ class PGN2MOVES:
             if is_move_legal:
                 return src.address
             else:
-                tried_moves.append(Move(piece, src, Square(dst_addr)))
+                tried_moves.append(
+                    (
+                        Move(piece, src, Square(dst_addr)),
+                        is_move_legal,
+                    )
+                )
         else:
-            move_str = '\n'.join([str(m) for m in tried_moves])
+            move_str = '\n'.join(
+                [
+                    f'{str(m)}, is_move_legal: {is_move_legal}'
+                    for m, is_move_legal in tried_moves
+                ]
+            )
             error_msg = (
-                '\n\nERROR:\nTried following moves '
+                f'\n\nERROR in move no {move_no}({player.name}):\n'
+                f'Tried following moves '
                 f'for piece_type="{piece_type}", '
                 f'with color="{player}" and partial address="{partial_addr}", '
                 f'trying to move to "{dst_addr}", '
@@ -525,7 +538,9 @@ class PGN2MOVES:
             )
             raise RuntimeError(error_msg)
 
-    def _get_source_from_type_and_dst(self, player, piece_type, dst_addr):
+    def _get_source_from_type_and_dst(
+            self, player, piece_type, dst_addr, move_no
+    ):
         tried_moves = []
         dst = Square(dst_addr)
         possible_pieces = self._get_existing_pieces(piece_type, player)
@@ -547,11 +562,26 @@ class PGN2MOVES:
             if is_move_legal and not check:
                 return src.address
             else:
-                tried_moves.append(Move(piece, src, dst))
+                tried_moves.append(
+                    (
+                        Move(piece, src, dst),
+                        is_move_legal,
+                        check,
+                    )
+                )
         else:
-            move_str = '\n'.join([str(m) for m in tried_moves])
+            move_str = '\n'.join(
+                [
+                    (
+                        f'{str(m)}, is_move_legal: {is_move_legal}, '
+                        f'causes check: {check}'
+                    )
+                    for m, is_move_legal, check in tried_moves
+                ]
+            )
             error_msg = (
-                '\n\nERROR:\nTried following moves '
+                f'\n\nERROR in move no {move_no}({player.name}):\n'
+                'Tried following moves '
                 f'for piece_type="{piece_type}", '
                 f'with color="{player}" and trying to move to "{dst_addr}", , '
                 f'none of the moves is legal:\n{move_str}\n\n'

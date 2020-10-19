@@ -2,6 +2,7 @@ import os
 import contextlib
 import collections
 import getpass
+import functools
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -529,6 +530,55 @@ class OptionWidget(QtWidgets.QDialog):
         self.DONE_SIGNAL.emit()
 
 
+class LoadGameWidget(QtWidgets.QDialog):
+    SELECTED_GAME_SIGNAL = QtCore.Signal(int)
+
+    def __init__(self, game_info, size=c.IMAGE.DEFAULT_SIZE, parent=None):
+        super().__init__(parent=parent)
+        self._game_info = game_info
+        self._size = int(size * 0.8)
+        self._selected_index = -1
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
+        self.setWindowTitle('Select Game to load')
+        self.setModal(True)
+
+        self._main_layout = QtWidgets.QVBoxLayout(self)
+
+        self._scroll_area = QtWidgets.QScrollArea()
+        self._scroll_widget = QtWidgets.QWidget()
+
+        self._scroll_area.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+        self._scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+
+        self._game_data_layout = QtWidgets.QVBoxLayout()
+        for index, game_data in enumerate(self._game_info):
+            btn = QtWidgets.QPushButton(game_data)
+            func = functools.partial(
+                self._on_btn_clicked,
+                index=index
+            )
+            btn.clicked.connect(func)
+            self._game_data_layout.addWidget(btn)
+
+        self._scroll_widget.setLayout(self._game_data_layout)
+        self._scroll_area.setWidget(self._scroll_widget)
+        self._main_layout.addWidget(self._scroll_area)
+
+    def _on_btn_clicked(self, index):
+        self._selected_index = index
+        self.close()
+
+    def closeEvent(self, event):
+        self.SELECTED_GAME_SIGNAL.emit(self._selected_index)
+
+
 class MovesWidget(QtWidgets.QWidget):
     def __init__(self, resize_factor, parent=None):
         super().__init__(parent=parent)
@@ -550,13 +600,6 @@ class MovesWidget(QtWidgets.QWidget):
         self._labels = []
         self._labels_scroll_pos = {}
         self._move_num_labels = []
-
-    def paintEvent(self, event):
-        max_val = self._horizontal_scroll_bar.maximum()
-        if self._labels and max_val:
-            self._labels_scroll_pos[len(self._labels) - 1] = (
-                max_val + self._labels[-1].width()
-            )
 
     def _clear_labels(self):
         nb_move_num_labels = len(self._move_num_labels)
@@ -660,10 +703,11 @@ class MovesWidget(QtWidgets.QWidget):
         )
 
     def _horizontal_range_changed(self):
-        self._scroll_bar_active = True
-        self._horizontal_scroll_bar.setValue(
-            self._horizontal_scroll_bar.maximum()
-        )
+        if not self._scroll_bar_active:
+            self._scroll_bar_active = True
+            self._horizontal_scroll_bar.setValue(
+                self._horizontal_scroll_bar.maximum()
+            )
 
     def _create_horizontal_scroll_bar(self, scroll_area):
         hbar = scroll_area.horizontalScrollBar()
@@ -710,9 +754,11 @@ class MovesWidget(QtWidgets.QWidget):
 
     def set_active_label(self, index, set_scroll=False):
         if index < 0:
-            self._horizontal_scroll_bar.setValue(0)
-            first_label = self._labels[0]
-            self._set_label_style(label=first_label, active=False)
+            for label in self._labels:
+                self._set_label_style(label=label, active=False)
+                self._horizontal_scroll_bar.setValue(
+                    self._horizontal_scroll_bar.minimum()
+                )
             return
 
         for i, label in enumerate(self._labels):
@@ -728,24 +774,21 @@ class MovesWidget(QtWidgets.QWidget):
         if not self._scroll_bar_active:
             return
 
-        if self._is_label_fully_visible(self._labels[index]):
-            return
+        for i in range(self._horizontal_scroll_bar.maximum()):
+            if self._is_label_fully_visible(self._labels[index]):
+                break
 
-        if index in self._labels_scroll_pos:
-            self._horizontal_scroll_bar.setValue(
-                self._labels_scroll_pos[index]
-            )
-        else:
-            self._horizontal_scroll_bar.setValue(0)
+            self._horizontal_scroll_bar.setValue(i)
 
-    def _set_label_style(self, label, active):
+    @staticmethod
+    def _set_label_style(label, active):
         if active:
             label.setStyleSheet(
                 """
                 QLabel {
                     color: black;
                     background: yellow;
-                    border: 1px solid red;
+                    /* border: 1px solid red; */
                 }
                 """
             )
@@ -760,7 +803,8 @@ class MovesWidget(QtWidgets.QWidget):
                 """
             )
 
-    def _is_label_fully_visible(self, label):
+    @staticmethod
+    def _is_label_fully_visible(label):
         visible_region = label.visibleRegion()
         if not visible_region.isEmpty():
             visible_region_width = visible_region.rects()[0].width()

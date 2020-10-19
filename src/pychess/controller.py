@@ -23,6 +23,7 @@ class Controller:
             self._game.set_game_options
         )
         self._main_window.GAME_OVER_SIGNAL.connect(self._game.game_over)
+        self._main_window.BULK_MOVE_SIGNAL.connect(self._game.apply_moves)
 
         # Signals from the game
         self._game.MOVE_SIGNAL.connect(self._main_window.update_move)

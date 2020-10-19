@@ -32,7 +32,10 @@ class Player:
     def move_backward(self):
         return self._perform_move(step=-1)
 
-    def move_to(self, index):
+    def _move_to(self, index):
+        if index == self._current_index:
+            return
+
         delta = index - self._current_index
         move_func = self.move_forward if delta > 0 else self.move_backward
 
@@ -41,6 +44,12 @@ class Player:
             play_result = move_func()
 
         return play_result
+
+    def move_to_start(self):
+        return self._move_to(self._first_index)
+
+    def move_to_end(self):
+        return self._move_to(self._last_index)
 
     def _perform_move(self, step):
         board = Board()
@@ -55,7 +64,17 @@ class Player:
             if i > self._current_index:
                 break
 
-            board.move(move.src, move.dst)
+            if move.castling_done:
+                is_short_castle = move.is_king_side_castling
+                player = move.piece.color
+                board.castle(
+                    player=player,
+                    is_short_castle=is_short_castle,
+                )
+            else:
+                board.move(move.src, move.dst)
+                if move.promoted_piece is not None:
+                    board.promote(move.promoted_piece, move.dst)
 
         return PLAY_RESULT(
             board=board,
