@@ -32,7 +32,7 @@ class Player:
     def move_backward(self):
         return self._perform_move(step=-1)
 
-    def _move_to(self, index):
+    def move_to(self, index):
         if index == self._current_index:
             return
 
@@ -46,10 +46,10 @@ class Player:
         return play_result
 
     def move_to_start(self):
-        return self._move_to(self._first_index)
+        return self.move_to(self._first_index)
 
     def move_to_end(self):
-        return self._move_to(self._last_index)
+        return self.move_to(self._last_index)
 
     def _perform_move(self, step):
         board = Board()

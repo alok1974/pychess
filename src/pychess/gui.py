@@ -414,6 +414,9 @@ class MainWindow(QtWidgets.QDialog):
         self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
+        self._moves_widget.LABEL_CLICKED_SIGNAL.connect(
+            self._on_move_widget_label_clicked
+        )
 
         self._white_resign_btn.clicked.connect(
             lambda: self._resign_btn_clicked(c.Color.black)
@@ -436,6 +439,9 @@ class MainWindow(QtWidgets.QDialog):
 
         self.GAME_OVER_SIGNAL.emit(white_wins)
         self._moves_widget.display_win(winning_color)
+
+    def _on_move_widget_label_clicked(self, index):
+        self._inspect_history(index=index)
 
     def _on_image_clicked(self, event):
         if self._is_paused or self._is_game_over or self._inspecting_history:
@@ -486,11 +492,16 @@ class MainWindow(QtWidgets.QDialog):
     def _on_go_to_end_btn_clicked(self):
         self._inspect_history(end=True)
 
-    def _inspect_history(self, cursor_step=None, start=False, end=False):
+    def _inspect_history(
+            self, cursor_step=None,
+            start=False, end=False, index=None
+    ):
         if self._history_player is None:
             return
 
-        if start:
+        if index is not None:
+            result = self._history_player.move_to(index=index)
+        elif start:
             result = self._history_player.move_to_start()
         elif end:
             result = self._history_player.move_to_end()

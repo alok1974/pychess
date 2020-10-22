@@ -580,6 +580,8 @@ class LoadGameWidget(QtWidgets.QDialog):
 
 
 class MovesWidget(QtWidgets.QWidget):
+    LABEL_CLICKED_SIGNAL = QtCore.Signal(int)
+
     def __init__(self, resize_factor, parent=None):
         super().__init__(parent=parent)
         self._resize_factor = resize_factor
@@ -630,7 +632,7 @@ class MovesWidget(QtWidgets.QWidget):
 
             label_order += 1
             if len(self._labels) < label_order:
-                m1_label = self._create_label(m1)
+                m1_label = self._create_label(m1, index=len(self._labels))
                 self._labels.append(m1_label)
                 self._labels_layout.insertWidget(
                     self._labels_layout.count() - 1,
@@ -641,7 +643,7 @@ class MovesWidget(QtWidgets.QWidget):
             if m2:
                 label_order += 1
                 if len(self._labels) < label_order:
-                    m2_label = self._create_label(m2)
+                    m2_label = self._create_label(m2, index=len(self._labels))
                     self._labels.append(m2_label)
                     self._labels_layout.insertWidget(
                         self._labels_layout.count() - 1,
@@ -747,10 +749,23 @@ class MovesWidget(QtWidgets.QWidget):
 
         return hbar
 
-    def _create_label(self, text):
+    def _create_label(self, text, index=None):
         label = QtWidgets.QLabel(text)
         label.setFixedHeight(self._init_scroll_height)
+        if index is not None:
+            label.mousePressEvent = functools.partial(
+                self._on_label_clicked,
+                index=index,
+            )
+
         return label
+
+    def _on_label_clicked(self, event, index):
+        button = event.button()
+        if button != QtCore.Qt.MouseButton.LeftButton:
+            return
+
+        self.LABEL_CLICKED_SIGNAL.emit(index)
 
     def set_active_label(self, index, set_scroll=False):
         if index < 0:
