@@ -293,11 +293,25 @@ class Game:
     def apply_moves(self, moves):
         with self.block_signals():
             for move, promotion in moves[:-1]:
-                self.move(move_spec=move, promotion=promotion)
+                result = self.move(move_spec=move, promotion=promotion)
+                if not result:
+                    error_msg = (
+                        'Error happened while trying to apply the move: '
+                        f'move {self._move_no}({self.current_player.name}): '
+                        f'{move}'
+                    )
+                    raise RuntimeError(error_msg)
 
         # This will send the final signal to update the UI
         last_move, last_promotion = moves[-1]
-        self.move(move_spec=last_move, promotion=last_promotion)
+        result = self.move(move_spec=last_move, promotion=last_promotion)
+        if not result:
+            error_msg = (
+                'Error happened while trying to apply the move: '
+                f'move {self._move_no}({self.current_player.name}): '
+                f'{last_move}'
+            )
+            raise RuntimeError(error_msg)
 
     def move(self, move_spec, promotion=None):
         if self.is_game_over:
@@ -346,17 +360,18 @@ class Game:
         if not self._signals_blocked:
             self.MOVE_SIGNAL.emit(game_data)
 
+        if self._current_player == c.Color.black:
+            self._move_no += 1
+
         if move.is_mate:
             white_wins = True
             if self._current_player == c.Color.black:
                 white_wins = False
             self.game_over(white_wins=white_wins)
-            return
-
-        if self._current_player == c.Color.black:
-            self._move_no += 1
+            return True
 
         self._toggle_player()
+        return True
 
     def game_over(self, white_wins):
         winner = c.Color.white
