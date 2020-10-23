@@ -42,6 +42,10 @@ class Board:
     def pawn_two_square_dst(self):
         return self._pawn_two_square_dst
 
+    @pawn_two_square_dst.setter
+    def pawn_two_square_dst(self, val):
+        self._pawn_two_square_dst = val
+
     def move_hint(self, square):
         if self.is_empty(square):
             return []

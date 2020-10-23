@@ -894,6 +894,7 @@ class Game:
 
     @contextlib.contextmanager
     def _try_move(self, src, dst):
+        pawn_two_square_dst = self._board.pawn_two_square_dst
         board_copy = self._board.data.copy()
         reverse_copy = self._board.reverse.copy()
         captured_black_copy = copy.copy(self._captured_black)
@@ -907,6 +908,7 @@ class Game:
         try:
             yield
         finally:
+            self._board.pawn_two_square_dst = pawn_two_square_dst
             self._board.data = board_copy.copy()
             self._board.reverse = reverse_copy.copy()
             self._captured_black = copy.copy(captured_black_copy)
