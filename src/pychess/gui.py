@@ -123,7 +123,10 @@ class MainWindow(QtWidgets.QDialog):
         self._reset()
 
         moves = self._pgn2moves.get_moves(game_index=game_index)
-        bulk_moves = [f'{src.address}{dst.address}' for src, dst, _ in moves]
+        bulk_moves = [
+            (f'{src.address}{dst.address}', promotion)
+            for src, dst, promotion in moves
+        ]
         self.BULK_MOVE_SIGNAL.emit(bulk_moves)
 
         self._game_loaded = True
@@ -131,9 +134,13 @@ class MainWindow(QtWidgets.QDialog):
         self._black_resign_btn.setVisible(False)
         self._white_timer_lcd.setVisible(False)
         self._black_timer_lcd.setVisible(False)
+        self._options_btn.setVisible(False)
+        self._start_btn.setVisible(False)
+        self._captured_label_white.setVisible(False)
+        self._captured_label_black.setVisible(False)
         self._stop_all_timers()
 
-        self._on_go_to_start_btn_clicked()
+        self._inspect_history(start=True)
 
     def _handle_save_game(self):
         if not self._has_game_started:
@@ -241,6 +248,10 @@ class MainWindow(QtWidgets.QDialog):
         self._black_resign_btn.setVisible(True)
         self._white_timer_lcd.setVisible(True)
         self._black_timer_lcd.setVisible(True)
+        self._options_btn.setVisible(True)
+        self._start_btn.setVisible(True)
+        self._captured_label_white.setVisible(True)
+        self._captured_label_black.setVisible(True)
 
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)

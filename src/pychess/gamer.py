@@ -70,6 +70,7 @@ class Game:
     NON_STANDARD_BOARD_SET_SIGNAL = Signal()
 
     def __init__(self):
+        self._move_no = 1
         self._signals_blocked = False
         self._board = Board()
         self._captured_white = []
@@ -181,6 +182,7 @@ class Game:
             self.NON_STANDARD_BOARD_SET_SIGNAL.emit()
 
     def reset(self):
+        self._move_no = 1
         self._signals_blocked = False
         self._board.reset()
         self._captured_white = []
@@ -290,15 +292,22 @@ class Game:
 
     def apply_moves(self, moves):
         with self.block_signals():
-            for move in moves[:-1]:
-                self.move(move_spec=move)
+            for move, promotion in moves[:-1]:
+                self.move(move_spec=move, promotion=promotion)
 
         # This will send the final signal to update the UI
-        self.move(moves[-1])
+        last_move, last_promotion = moves[-1]
+        self.move(move_spec=last_move, promotion=last_promotion)
 
-    def move(self, move_spec):
+    def move(self, move_spec, promotion=None):
         if self.is_game_over:
             return
+
+        if promotion is not None:
+            if self._current_player == c.Color.white:
+                self._white_promotion_piece_type = promotion
+            else:
+                self._black_promotion_piece_type = promotion
 
         try:
             src, dst = self.parse_move_spec(move_spec)
@@ -343,6 +352,9 @@ class Game:
                 white_wins = False
             self.game_over(white_wins=white_wins)
             return
+
+        if self._current_player == c.Color.black:
+            self._move_no += 1
 
         self._toggle_player()
 
