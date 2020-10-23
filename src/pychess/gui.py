@@ -120,6 +120,12 @@ class MainWindow(QtWidgets.QDialog):
 
     def _load_game(self, game_index=0):
         self._reset()
+
+        self._white_resign_btn.setVisible(False)
+        self._black_resign_btn.setVisible(False)
+        self._white_timer_lcd.setVisible(False)
+        self._black_timer_lcd.setVisible(False)
+
         moves = self._pgn2moves.get_moves(game_index=game_index)
         bulk_moves = [f'{src.address}{dst.address}' for src, dst, _ in moves]
         self.BULK_MOVE_SIGNAL.emit(bulk_moves)
@@ -227,6 +233,11 @@ class MainWindow(QtWidgets.QDialog):
         self._black_timer_lcd.display(
             self._format_time(self._remaining_time_black)
         )
+
+        self._white_resign_btn.setVisible(True)
+        self._black_resign_btn.setVisible(True)
+        self._white_timer_lcd.setVisible(True)
+        self._black_timer_lcd.setVisible(True)
 
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
