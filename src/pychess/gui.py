@@ -42,6 +42,7 @@ class MainWindow(QtWidgets.QDialog):
             parent=None,
         )
 
+        self._game_loaded = False
         self._first_square = None
         self._second_square = None
         self._current_player = c.Color.white
@@ -121,14 +122,15 @@ class MainWindow(QtWidgets.QDialog):
     def _load_game(self, game_index=0):
         self._reset()
 
+        moves = self._pgn2moves.get_moves(game_index=game_index)
+        bulk_moves = [f'{src.address}{dst.address}' for src, dst, _ in moves]
+        self.BULK_MOVE_SIGNAL.emit(bulk_moves)
+
+        self._game_loaded = True
         self._white_resign_btn.setVisible(False)
         self._black_resign_btn.setVisible(False)
         self._white_timer_lcd.setVisible(False)
         self._black_timer_lcd.setVisible(False)
-
-        moves = self._pgn2moves.get_moves(game_index=game_index)
-        bulk_moves = [f'{src.address}{dst.address}' for src, dst, _ in moves]
-        self.BULK_MOVE_SIGNAL.emit(bulk_moves)
         self._stop_all_timers()
 
         self._on_go_to_start_btn_clicked()
@@ -195,6 +197,7 @@ class MainWindow(QtWidgets.QDialog):
             size=c.IMAGE.DEFAULT_SIZE,
         )
 
+        self._game_loaded = False
         self._first_square = None
         self._second_square = None
 
@@ -454,8 +457,18 @@ class MainWindow(QtWidgets.QDialog):
     def _on_move_widget_label_clicked(self, index):
         self._inspect_history(index=index)
 
+    def _is_image_clickable(self):
+        return not any(
+            [
+                self._game_loaded,
+                self._is_paused,
+                self._is_game_over,
+                self._inspecting_history,
+            ]
+        )
+
     def _on_image_clicked(self, event):
-        if self._is_paused or self._is_game_over or self._inspecting_history:
+        if not self._is_image_clickable():
             return
 
         button = event.button()
