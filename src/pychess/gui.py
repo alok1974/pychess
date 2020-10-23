@@ -140,8 +140,6 @@ class MainWindow(QtWidgets.QDialog):
         self._captured_label_black.setVisible(False)
         self._stop_all_timers()
 
-        self._inspect_history(start=True)
-
     def _handle_save_game(self):
         if not self._has_game_started:
             return

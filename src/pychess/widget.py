@@ -705,11 +705,10 @@ class MovesWidget(QtWidgets.QWidget):
         )
 
     def _horizontal_range_changed(self):
-        if not self._scroll_bar_active:
-            self._scroll_bar_active = True
-            self._horizontal_scroll_bar.setValue(
-                self._horizontal_scroll_bar.maximum()
-            )
+        self._scroll_bar_active = True
+        self._horizontal_scroll_bar.setValue(
+            self._horizontal_scroll_bar.maximum()
+        )
 
     def _create_horizontal_scroll_bar(self, scroll_area):
         hbar = scroll_area.horizontalScrollBar()
