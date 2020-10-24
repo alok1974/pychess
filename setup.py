@@ -4,7 +4,7 @@ from glob import glob
 
 
 PACKAGE_NAME = 'pychess'
-PACKAGE_VERSION = '2.1'
+PACKAGE_VERSION = '3.0'
 
 
 setup(
@@ -24,10 +24,13 @@ setup(
     package_dir={
         'pychess': 'src/pychess'
     },
+    download_url='https://github.com/alok1974/pychess/archive/v3.0.tar.gz',
     scripts=glob('src/scripts/*'),
     install_requires=[
         'Pillow >=7.2.0',
         'PySide2 >=5.15.0',
+        'imageio >=2.9.0',
+        'imageio-ffmpeg >=0.4.2',
     ],
     license='MIT',
     classifiers=[

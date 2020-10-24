@@ -1,5 +1,8 @@
 import os
 import contextlib
+import collections
+import getpass
+import functools
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -22,6 +25,141 @@ def block_signals(widgets):
             widget.blockSignals(is_signal_blocked)
 
 
+class PGNGameDataWidget(QtWidgets.QDialog):
+    DONE_SIGNAL = QtCore.Signal(tuple)
+
+    PGN_GAME_DATA = collections.namedtuple(
+        'GAME_DATA',
+        [
+            'event', 'site', 'date', 'round', 'black', 'white'
+        ]
+    )
+
+    def __init__(self, size=c.IMAGE.DEFAULT_SIZE, parent=None):
+        super().__init__(parent=parent)
+        self._size = int(size / 2)
+
+        self._event = ''
+        self._site = ''
+        self._date = ''
+        self._round = ''
+        self._white = ''
+        self._black = ''
+
+        self._force_quit = False
+
+        self._setup_ui()
+        self._connect_signals()
+
+    def _setup_ui(self):
+        self.windowTitle = 'Enter game details'
+        self.setStyleSheet(c.APP.STYLESHEET)
+        self.setFixedSize(self._size, self._size)
+        self.setModal(True)
+
+        self._main_layout = QtWidgets.QVBoxLayout(self)
+
+        layout, self._event_text = self._create_field('Event', 'Casual')
+        self._main_layout.addLayout(layout)
+
+        layout, self._site_text = self._create_field('Site', 'Home')
+        self._main_layout.addLayout(layout)
+
+        date = self._get_current_date()
+        layout, self._date_text = self._create_field('Date', date)
+        self._main_layout.addLayout(layout)
+
+        layout, self._round_text = self._create_field('Round', '1')
+        self._main_layout.addLayout(layout)
+
+        layout, self._white_text = self._create_field('White')
+        self._main_layout.addLayout(layout)
+
+        layout, self._black_text = self._create_field('Black')
+        self._main_layout.addLayout(layout)
+
+        layout = QtWidgets.QHBoxLayout()
+        self._ok_btn = QtWidgets.QPushButton('Save Game')
+        self._cancel_btn = QtWidgets.QPushButton('Cancel')
+        layout.addWidget(self._cancel_btn)
+        layout.addWidget(self._ok_btn)
+
+        self._main_layout.addLayout(layout)
+
+    def _connect_signals(self):
+        self._ok_btn.clicked.connect(self._on_ok_btn_clicked)
+        self._cancel_btn.clicked.connect(self._on_cancel_btn_clicked)
+
+    def _on_ok_btn_clicked(self):
+        self.close()
+
+    def _on_cancel_btn_clicked(self):
+        self._force_quit = True
+        self.close()
+
+    def _get_current_date(self):
+        from datetime import datetime
+        n = datetime.now()
+        return f'{n.year}.{n.month}.{n.day}'
+
+    def _create_field(self, name, default_val=''):
+        layout = QtWidgets.QHBoxLayout()
+        label = QtWidgets.QLabel(name)
+        line_edit = QtWidgets.QLineEdit(default_val)
+        line_edit.setMinimumWidth(int(self._size * 0.7))
+        layout.addWidget(label)
+        layout.addStretch(1)
+        layout.addWidget(line_edit)
+
+        return layout, line_edit
+
+    def showEvent(self, event):
+        widgets = [
+            self._event_text,
+            self._site_text,
+            self._date_text,
+            self._round_text,
+            self._white_text,
+            self._black_text,
+        ]
+        with block_signals(widgets):
+            self._event_text.setText('Casual game')
+            self._site_text.setText('Home')
+            self._date_text.setText(self._get_current_date())
+            self._round_text.setText('1')
+            self._white_text.setText(getpass.getuser().capitalize())
+            self._black_text.setText('')
+
+    def closeEvent(self, event):
+        if self._force_quit:
+            self._force_quit = False
+            event.accept()
+            return
+
+        data = [
+            self._event_text.text(), self._site_text.text(),
+            self._date_text.text(), self._round_text.text(),
+            self._white_text.text(), self._black_text.text(),
+        ]
+
+        if not all(data):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setText("Missing details! Please fill all fields.")
+            msg_box.exec_()
+            event.ignore()
+            return
+
+        game_data = self.PGN_GAME_DATA(
+            event=self._event_text.text(),
+            site=self._site_text.text(),
+            date=self._date_text.text(),
+            round=self._round_text.text(),
+            white=self._white_text.text(),
+            black=self._black_text.text(),
+        )
+        self.DONE_SIGNAL.emit(game_data)
+
+
 class OptionWidget(QtWidgets.QDialog):
     PROMOTION_PIECES = [
         c.PieceType.queen,
@@ -34,7 +172,7 @@ class OptionWidget(QtWidgets.QDialog):
 
     def __init__(self, size=c.IMAGE.DEFAULT_SIZE, parent=None):
         super().__init__(parent=parent)
-        self._size = size
+        self._size = int(size * 0.8)
 
         self._default_play_time = 10
         self._default_bonus_time = 0
@@ -49,7 +187,7 @@ class OptionWidget(QtWidgets.QDialog):
         self._white_promotion = self._default_white_promotion
         self._black_promotion = self._default_black_promotion
 
-        self._resize_factor = float(size / c.IMAGE.DEFAULT_SIZE)
+        self._resize_factor = float(self._size / c.IMAGE.DEFAULT_SIZE)
         self._image_store = {}
 
         self._font_id = QtGui.QFontDatabase().addApplicationFont(
@@ -392,7 +530,58 @@ class OptionWidget(QtWidgets.QDialog):
         self.DONE_SIGNAL.emit()
 
 
+class LoadGameWidget(QtWidgets.QDialog):
+    SELECTED_GAME_SIGNAL = QtCore.Signal(int)
+
+    def __init__(self, game_info, size=c.IMAGE.DEFAULT_SIZE, parent=None):
+        super().__init__(parent=parent)
+        self._game_info = game_info
+        self._size = int(size * 0.8)
+        self._selected_index = -1
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
+        self.setWindowTitle('Select Game to load')
+        self.setModal(True)
+
+        self._main_layout = QtWidgets.QVBoxLayout(self)
+
+        self._scroll_area = QtWidgets.QScrollArea()
+        self._scroll_widget = QtWidgets.QWidget()
+
+        self._scroll_area.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+        self._scroll_area.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+
+        self._game_data_layout = QtWidgets.QVBoxLayout()
+        for index, game_data in enumerate(self._game_info):
+            btn = QtWidgets.QPushButton(game_data)
+            func = functools.partial(
+                self._on_btn_clicked,
+                index=index
+            )
+            btn.clicked.connect(func)
+            self._game_data_layout.addWidget(btn)
+
+        self._scroll_widget.setLayout(self._game_data_layout)
+        self._scroll_area.setWidget(self._scroll_widget)
+        self._main_layout.addWidget(self._scroll_area)
+
+    def _on_btn_clicked(self, index):
+        self._selected_index = index
+        self.close()
+
+    def closeEvent(self, event):
+        self.SELECTED_GAME_SIGNAL.emit(self._selected_index)
+
+
 class MovesWidget(QtWidgets.QWidget):
+    LABEL_CLICKED_SIGNAL = QtCore.Signal(int)
+
     def __init__(self, resize_factor, parent=None):
         super().__init__(parent=parent)
         self._resize_factor = resize_factor
@@ -413,13 +602,6 @@ class MovesWidget(QtWidgets.QWidget):
         self._labels = []
         self._labels_scroll_pos = {}
         self._move_num_labels = []
-
-    def paintEvent(self, event):
-        max_val = self._horizontal_scroll_bar.maximum()
-        if self._labels and max_val:
-            self._labels_scroll_pos[len(self._labels) - 1] = (
-                max_val + self._labels[-1].width()
-            )
 
     def _clear_labels(self):
         nb_move_num_labels = len(self._move_num_labels)
@@ -450,7 +632,7 @@ class MovesWidget(QtWidgets.QWidget):
 
             label_order += 1
             if len(self._labels) < label_order:
-                m1_label = self._create_label(m1)
+                m1_label = self._create_label(m1, index=len(self._labels))
                 self._labels.append(m1_label)
                 self._labels_layout.insertWidget(
                     self._labels_layout.count() - 1,
@@ -461,7 +643,7 @@ class MovesWidget(QtWidgets.QWidget):
             if m2:
                 label_order += 1
                 if len(self._labels) < label_order:
-                    m2_label = self._create_label(m2)
+                    m2_label = self._create_label(m2, index=len(self._labels))
                     self._labels.append(m2_label)
                     self._labels_layout.insertWidget(
                         self._labels_layout.count() - 1,
@@ -566,16 +748,31 @@ class MovesWidget(QtWidgets.QWidget):
 
         return hbar
 
-    def _create_label(self, text):
+    def _create_label(self, text, index=None):
         label = QtWidgets.QLabel(text)
         label.setFixedHeight(self._init_scroll_height)
+        if index is not None:
+            label.mousePressEvent = functools.partial(
+                self._on_label_clicked,
+                index=index,
+            )
+
         return label
+
+    def _on_label_clicked(self, event, index):
+        button = event.button()
+        if button != QtCore.Qt.MouseButton.LeftButton:
+            return
+
+        self.LABEL_CLICKED_SIGNAL.emit(index)
 
     def set_active_label(self, index, set_scroll=False):
         if index < 0:
-            self._horizontal_scroll_bar.setValue(0)
-            first_label = self._labels[0]
-            self._set_label_style(label=first_label, active=False)
+            for label in self._labels:
+                self._set_label_style(label=label, active=False)
+                self._horizontal_scroll_bar.setValue(
+                    self._horizontal_scroll_bar.minimum()
+                )
             return
 
         for i, label in enumerate(self._labels):
@@ -591,24 +788,21 @@ class MovesWidget(QtWidgets.QWidget):
         if not self._scroll_bar_active:
             return
 
-        if self._is_label_fully_visible(self._labels[index]):
-            return
+        for i in range(self._horizontal_scroll_bar.maximum()):
+            if self._is_label_fully_visible(self._labels[index]):
+                break
 
-        if index in self._labels_scroll_pos:
-            self._horizontal_scroll_bar.setValue(
-                self._labels_scroll_pos[index]
-            )
-        else:
-            self._horizontal_scroll_bar.setValue(0)
+            self._horizontal_scroll_bar.setValue(i)
 
-    def _set_label_style(self, label, active):
+    @staticmethod
+    def _set_label_style(label, active):
         if active:
             label.setStyleSheet(
                 """
                 QLabel {
                     color: black;
                     background: yellow;
-                    border: 1px solid red;
+                    /* border: 1px solid red; */
                 }
                 """
             )
@@ -623,7 +817,8 @@ class MovesWidget(QtWidgets.QWidget):
                 """
             )
 
-    def _is_label_fully_visible(self, label):
+    @staticmethod
+    def _is_label_fully_visible(label):
         visible_region = label.visibleRegion()
         if not visible_region.isEmpty():
             visible_region_width = visible_region.rects()[0].width()

@@ -1,8 +1,14 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
-from . import constant as c, imager, pgn
-from .widget import OptionWidget, MovesWidget
+from . import constant as c, imager
+from .pgn import MOVES2PGN, PGN2MOVES
+from .widget import (
+    OptionWidget,
+    MovesWidget,
+    PGNGameDataWidget,
+    LoadGameWidget
+)
 from .history import Player
 
 
@@ -11,6 +17,7 @@ class MainWindow(QtWidgets.QDialog):
     GAME_RESET_SIGNAL = QtCore.Signal()
     GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
     GAME_OVER_SIGNAL = QtCore.Signal(bool)
+    BULK_MOVE_SIGNAL = QtCore.Signal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -30,9 +37,16 @@ class MainWindow(QtWidgets.QDialog):
             parent=self,
         )
 
+        self._game_data_widget = PGNGameDataWidget(
+            size=c.IMAGE.DEFAULT_SIZE,
+            parent=None,
+        )
+
+        self._game_loaded = False
         self._first_square = None
         self._second_square = None
         self._current_player = c.Color.white
+        self._winner = None
 
         self._bonus_time = self._option_widget.bonus_time
 
@@ -67,8 +81,113 @@ class MainWindow(QtWidgets.QDialog):
         if event.key() == QtCore.Qt.Key_C:
             self._toggle_show_threatened()
 
+        ctrl_s = (
+            event.key() == QtCore.Qt.Key_S and
+            event.modifiers() == QtCore.Qt.ControlModifier
+        )
+
+        if ctrl_s:
+            self._handle_save_game()
+
+        ctrl_o = (
+            event.key() == QtCore.Qt.Key_O and
+            event.modifiers() == QtCore.Qt.ControlModifier
+        )
+
+        if ctrl_o:
+            self._handle_load_game()
+
     def board_updated(self):
         self._update()
+
+    def _handle_load_game(self):
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            parent=None,
+            caption='Load game (.pgn)',
+            filter='*.pgn'
+
+        )
+        if not file_path:
+            return
+
+        self._pgn2moves = PGN2MOVES(pgn_file_path=file_path)
+        if self._pgn2moves.nb_games == 1:
+            self._load_game()
+        else:
+            game_info = self._pgn2moves.game_info
+            w = LoadGameWidget(game_info=game_info)
+            w.SELECTED_GAME_SIGNAL.connect(self._load_game)
+            w.show()
+
+    def _load_game(self, game_index=0):
+        self._reset()
+
+        moves = self._pgn2moves.get_moves(game_index=game_index)
+        bulk_moves = [
+            (f'{src.address}{dst.address}', promotion)
+            for src, dst, promotion in moves
+        ]
+        self.BULK_MOVE_SIGNAL.emit(bulk_moves)
+
+        self._game_loaded = True
+        self._white_resign_btn.setVisible(False)
+        self._black_resign_btn.setVisible(False)
+        self._white_timer_lcd.setVisible(False)
+        self._black_timer_lcd.setVisible(False)
+        self._options_btn.setVisible(False)
+        self._start_btn.setVisible(False)
+        self._captured_label_white.setVisible(False)
+        self._captured_label_black.setVisible(False)
+        self._stop_all_timers()
+
+    def _handle_save_game(self):
+        if not self._has_game_started:
+            return
+        elif self._game_data is None:
+            return
+        elif not self._game_data.move_history:
+            return
+
+        self._game_data_widget.show()
+
+    def _save_game(self, game_data):
+        result = self._get_result()
+        game_data = (
+            f'[Event "{game_data.event}"]\n'
+            f'[Site "{game_data.site}"]\n'
+            f'[Date "{game_data.date}"]\n'
+            f'[Round "{game_data.round}"]\n'
+            f'[White "{game_data.white}"]\n'
+            f'[Black "{game_data.black}"]\n'
+            f'[Result "{result}"]\n'
+        )
+
+        move_history = self._game_data.move_history
+        game_moves = MOVES2PGN(move_history).text
+        if not game_moves.endswith(result):
+            game_moves = f'{game_moves} {result}'
+
+        game = f'{game_data}\n{game_moves}'
+
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Save game (.pgn)',
+            filter='*.pgn'
+
+        )
+        with open(file_path, 'w') as fp:
+            fp.write(game)
+
+    def _get_result(self):
+        if self._winner is None:
+            return '1/2-1/2'
+        elif self._winner == c.Color.white:
+            return '1-0'
+        elif self._winner == c.Color.black:
+            return '0-1'
+        else:
+            error_msg = 'Unknown winner type!'
+            raise RuntimeError(error_msg)
 
     def _reset(self):
         self._option_widget.reset()
@@ -83,10 +202,12 @@ class MainWindow(QtWidgets.QDialog):
             size=c.IMAGE.DEFAULT_SIZE,
         )
 
+        self._game_loaded = False
         self._first_square = None
         self._second_square = None
 
         self._current_player = c.Color.white
+        self._winner = None
 
         self._bonus_time = self._option_widget.bonus_time
 
@@ -120,6 +241,15 @@ class MainWindow(QtWidgets.QDialog):
         self._black_timer_lcd.display(
             self._format_time(self._remaining_time_black)
         )
+
+        self._white_resign_btn.setVisible(True)
+        self._black_resign_btn.setVisible(True)
+        self._white_timer_lcd.setVisible(True)
+        self._black_timer_lcd.setVisible(True)
+        self._options_btn.setVisible(True)
+        self._start_btn.setVisible(True)
+        self._captured_label_white.setVisible(True)
+        self._captured_label_black.setVisible(True)
 
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
@@ -267,11 +397,17 @@ class MainWindow(QtWidgets.QDialog):
         self._start_btn = self._create_btn('START')
         self._btn_layout.addWidget(self._start_btn, 1)
 
+        self._go_to_start_btn = self._create_btn('|<')
+        self._btn_layout.addWidget(self._go_to_start_btn, 1)
+
         self._back_btn = self._create_btn('<')
         self._btn_layout.addWidget(self._back_btn, 1)
 
         self._forward_btn = self._create_btn('>')
         self._btn_layout.addWidget(self._forward_btn, 1)
+
+        self._go_to_end_btn = self._create_btn('>|')
+        self._btn_layout.addWidget(self._go_to_end_btn, 1)
 
         self._bottom_layout.addLayout(self._btn_layout)
 
@@ -294,17 +430,26 @@ class MainWindow(QtWidgets.QDialog):
         self._options_btn.clicked.connect(self._on_options_btn_clicked)
         self._reset_btn.clicked.connect(self._on_reset_btn_clicked)
         self._start_btn.clicked.connect(self._on_start_btn_clicked)
+        self._go_to_end_btn.clicked.connect(self._on_go_to_end_btn_clicked)
+        self._go_to_start_btn.clicked.connect(self._on_go_to_start_btn_clicked)
         self._forward_btn.clicked.connect(self._on_forward_btn_clicked)
         self._back_btn.clicked.connect(self._on_back_btn_clicked)
         self._option_widget.DONE_SIGNAL.connect(self._on_options_selected)
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
+        self._moves_widget.LABEL_CLICKED_SIGNAL.connect(
+            self._on_move_widget_label_clicked
+        )
+
         self._white_resign_btn.clicked.connect(
             lambda: self._resign_btn_clicked(c.Color.black)
         )
+
         self._black_resign_btn.clicked.connect(
             lambda: self._resign_btn_clicked(c.Color.white)
         )
+
+        self._game_data_widget.DONE_SIGNAL.connect(self._save_game)
 
     def _resign_btn_clicked(self, winning_color):
         if not self._has_game_started:
@@ -318,8 +463,21 @@ class MainWindow(QtWidgets.QDialog):
         self.GAME_OVER_SIGNAL.emit(white_wins)
         self._moves_widget.display_win(winning_color)
 
+    def _on_move_widget_label_clicked(self, index):
+        self._inspect_history(index=index)
+
+    def _is_image_clickable(self):
+        return not any(
+            [
+                self._game_loaded,
+                self._is_paused,
+                self._is_game_over,
+                self._inspecting_history,
+            ]
+        )
+
     def _on_image_clicked(self, event):
-        if self._is_paused or self._is_game_over or self._inspecting_history:
+        if not self._is_image_clickable():
             return
 
         button = event.button()
@@ -361,11 +519,26 @@ class MainWindow(QtWidgets.QDialog):
     def _on_back_btn_clicked(self):
         self._inspect_history(cursor_step=-1)
 
-    def _inspect_history(self, cursor_step):
+    def _on_go_to_start_btn_clicked(self):
+        self._inspect_history(start=True)
+
+    def _on_go_to_end_btn_clicked(self):
+        self._inspect_history(end=True)
+
+    def _inspect_history(
+            self, cursor_step=None,
+            start=False, end=False, index=None
+    ):
         if self._history_player is None:
             return
 
-        if cursor_step == 1:
+        if index is not None:
+            result = self._history_player.move_to(index=index)
+        elif start:
+            result = self._history_player.move_to_start()
+        elif end:
+            result = self._history_player.move_to_end()
+        elif cursor_step == 1:
             result = self._history_player.move_forward()
         elif cursor_step == -1:
             result = self._history_player.move_backward()
@@ -373,7 +546,7 @@ class MainWindow(QtWidgets.QDialog):
             error_msg = f'Unknown cursor step: {cursor_step}'
             raise RuntimeError(error_msg)
 
-        if result.board is None:
+        if result is None or result.board is None:
             return
 
         self._inspecting_history = not self._history_player.is_at_end
@@ -417,6 +590,7 @@ class MainWindow(QtWidgets.QDialog):
         )
 
     def game_over(self, winner):
+        self._winner = winner
         self._is_game_over = True
         self._captured_image.draw_winner(winner)
         self._update_captured_image_labels()
@@ -527,9 +701,7 @@ class MainWindow(QtWidgets.QDialog):
         self._game_data = game_data
         self._history_player = Player(self._game_data.move_history)
 
-        moves = pgn.parse_move_history(
-            self._game_data.move_history
-        )
+        moves = MOVES2PGN(self._game_data.move_history).moves
         self._moves_widget.setVisible(True)
         self._moves_widget.display_moves(moves)
 
