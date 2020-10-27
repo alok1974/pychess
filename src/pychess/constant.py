@@ -38,6 +38,12 @@ class GAME:
 
 
 @enum.unique
+class EngineType(enum.Enum):
+    stockfish = 0
+    leela = 1
+
+
+@enum.unique
 class PieceType(enum.Enum):
     pawn = 0
     knight = 1

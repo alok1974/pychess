@@ -31,6 +31,7 @@ setup(
         'PySide2 >=5.15.0',
         'imageio >=2.9.0',
         'imageio-ffmpeg >=0.4.2',
+        'stockfish >=3.10.2'
     ],
     license='MIT',
     classifiers=[

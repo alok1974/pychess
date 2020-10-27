@@ -3,11 +3,13 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 from . import constant as c, imager
 from .pgn import MOVES2PGN, PGN2MOVES
+from .engineer import Engine
 from .widget import (
     OptionWidget,
     MovesWidget,
     PGNGameDataWidget,
-    LoadGameWidget
+    LoadGameWidget,
+    PlayAgainstComputerWidget,
 )
 from .history import Player
 
@@ -23,6 +25,8 @@ class MainWindow(QtWidgets.QDialog):
         super().__init__(parent=parent)
 
     def init_board(self, board):
+        self._engine_color = None
+        self._engine = Engine()
         self._board = board
         self._board_image = imager.BoardImage(
             self._board,
@@ -190,6 +194,7 @@ class MainWindow(QtWidgets.QDialog):
             raise RuntimeError(error_msg)
 
     def _reset(self):
+        self._engine_color = None
         self._option_widget.reset()
         self._moves_widget.reset()
         self.GAME_RESET_SIGNAL.emit()
@@ -388,13 +393,16 @@ class MainWindow(QtWidgets.QDialog):
 
         self._btn_layout = QtWidgets.QHBoxLayout()
 
-        self._options_btn = self._create_btn('OPTIONS')
+        self._options_btn = self._create_btn(' OPTIONS ')
         self._btn_layout.addWidget(self._options_btn, 1)
 
-        self._reset_btn = self._create_btn('RESET')
+        self._engine_btn = self._create_btn(' AI ')
+        self._btn_layout.addWidget(self._engine_btn, 1)
+
+        self._reset_btn = self._create_btn(' RESET ')
         self._btn_layout.addWidget(self._reset_btn, 1)
 
-        self._start_btn = self._create_btn('START')
+        self._start_btn = self._create_btn(' START ')
         self._btn_layout.addWidget(self._start_btn, 1)
 
         self._go_to_start_btn = self._create_btn('|<')
@@ -428,6 +436,7 @@ class MainWindow(QtWidgets.QDialog):
     def _connect_signals(self):
         self._image_label.mousePressEvent = self._on_image_clicked
         self._options_btn.clicked.connect(self._on_options_btn_clicked)
+        self._engine_btn.clicked.connect(self._on_engine_btn_clicked)
         self._reset_btn.clicked.connect(self._on_reset_btn_clicked)
         self._start_btn.clicked.connect(self._on_start_btn_clicked)
         self._go_to_end_btn.clicked.connect(self._on_go_to_end_btn_clicked)
@@ -450,6 +459,20 @@ class MainWindow(QtWidgets.QDialog):
         )
 
         self._game_data_widget.DONE_SIGNAL.connect(self._save_game)
+
+    def _on_engine_btn_clicked(self):
+        w = PlayAgainstComputerWidget(parent=self)
+        w.CHOSEN_COLOR_SIGNAL.connect(self._set_engine_color)
+        w.show()
+
+    def _set_engine_color(self, color):
+        self._engine_color = color
+        if self._engine_color == c.Color.white:
+            best_move = self._engine.get_best_move()
+            if best_move is not None:
+                self.MOVE_SIGNAL.emit(best_move)
+
+        self._on_start_btn_clicked()
 
     def _resign_btn_clicked(self, winning_color):
         if not self._has_game_started:
@@ -736,6 +759,13 @@ class MainWindow(QtWidgets.QDialog):
 
         if self._show_threatened:
             self._display_threatened()
+
+        if self._engine_color is not None:
+            if self._current_player == self._engine_color:
+                moves = [(m.src, m.dst) for m in self._game_data.move_history]
+                best_move = self._engine.get_best_move(moves)
+                if best_move is not None:
+                    self.MOVE_SIGNAL.emit(best_move)
 
     def _add_bonus_time(self):
         if self._current_player == c.Color.white:
