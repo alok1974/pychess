@@ -14,7 +14,7 @@ from .widget import (
 from .history import Player
 
 
-class MainWindow(QtWidgets.QDialog):
+class MainWidget(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
     GAME_RESET_SIGNAL = QtCore.Signal()
     GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
@@ -844,3 +844,18 @@ class MainWindow(QtWidgets.QDialog):
             self._hide_threatened()
         else:
             self._display_threatened()
+
+
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.main_widget = MainWidget()
+        self._frame = QtWidgets.QFrame()
+        self._layout = QtWidgets.QVBoxLayout()
+        self._layout.addWidget(self.main_widget)
+        self._frame.setLayout(self._layout)
+        self._status_bar = self.statusBar()
+        self._menu_bar = self.menuBar()
+        self.setCentralWidget(self._frame)
+        self.setWindowTitle('Pychess')
+        self.setStyleSheet(c.APP.STYLESHEET)
