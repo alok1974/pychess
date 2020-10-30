@@ -35,6 +35,8 @@ class GAME:
         std='STANDARD',
         c9lx='CHESS 960',
     )
+    DEFAULT_PLAY_TIME = 10
+    DEFAULT_BONUS_TIME = 0
 
 
 @enum.unique

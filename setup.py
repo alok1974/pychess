@@ -17,6 +17,8 @@ setup(
     packages=[
         'pychess',
         'pychess.resources',
+        'pychess.gui',
+        'pychess.gui.widget'
     ],
     package_data={
         'pychess': ['resources/*/*.*'],

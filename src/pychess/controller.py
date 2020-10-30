@@ -5,7 +5,7 @@ from PySide2 import QtWidgets
 
 
 from .gamer import Game
-from .gui import MainWindow
+from .mainwindow import MainWindow
 
 
 class Controller:

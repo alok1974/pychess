@@ -7,7 +7,7 @@ from .engineer import Engine
 from .widget import (
     OptionWidget,
     MovesWidget,
-    PGNGameDataWidget,
+    SaveGameDataWidget,
     LoadGameWidget,
     PlayAgainstComputerWidget,
 )
@@ -41,7 +41,7 @@ class MainWidget(QtWidgets.QDialog):
             parent=self,
         )
 
-        self._game_data_widget = PGNGameDataWidget(
+        self._save_game_data_widget = SaveGameDataWidget(
             size=c.IMAGE.DEFAULT_SIZE,
             parent=None,
         )
@@ -152,7 +152,7 @@ class MainWidget(QtWidgets.QDialog):
         elif not self._game_data.move_history:
             return
 
-        self._game_data_widget.show()
+        self._save_game_data_widget.show()
 
     def _save_game(self, game_data):
         result = self._get_result()
@@ -259,7 +259,7 @@ class MainWidget(QtWidgets.QDialog):
     def _setup_ui(self):
         self.setWindowTitle(c.APP.NAME)
         self.setStyleSheet(c.APP.STYLESHEET)
-        self.setFixedWidth(self._board_image.width + 40)
+        # self.setFixedWidth(self._board_image.width + 40)
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -292,9 +292,9 @@ class MainWidget(QtWidgets.QDialog):
         self._black_timer_lcd.display(
             self._format_time(self._remaining_time_black)
         )
-        self._black_timer_lcd.setFixedHeight(
-            int(c.APP.LCD_HEIGHT * self._resize_factor)
-        )
+        # self._black_timer_lcd.setFixedHeight(
+        #     int(c.APP.LCD_HEIGHT * self._resize_factor)
+        # )
         self._black_timer_lcd.setSegmentStyle(QtWidgets.QLCDNumber.Flat)
         self._black_timer_lcd.setStyleSheet(
             'color: rgb(255, 255, 255);'
@@ -303,9 +303,9 @@ class MainWidget(QtWidgets.QDialog):
         )
 
         self._black_resign_btn = QtWidgets.QPushButton("  RESIGN  ")
-        self._black_resign_btn.setFixedHeight(
-            int(c.APP.LCD_HEIGHT * self._resize_factor)
-        )
+        # self._black_resign_btn.setFixedHeight(
+        #     int(c.APP.LCD_HEIGHT * self._resize_factor)
+        # )
 
         self._black_panel_layout.addWidget(self._captured_label_white, 4)
         self._black_panel_layout.addWidget(self._black_resign_btn, 1)
@@ -361,9 +361,9 @@ class MainWidget(QtWidgets.QDialog):
         self._white_timer_lcd.display(
             self._format_time(self._remaining_time_white)
         )
-        self._white_timer_lcd.setFixedHeight(
-            int(c.APP.LCD_HEIGHT * self._resize_factor)
-        )
+        # self._white_timer_lcd.setFixedHeight(
+        #     int(c.APP.LCD_HEIGHT * self._resize_factor)
+        # )
         self._white_timer_lcd.setSegmentStyle(QtWidgets.QLCDNumber.Flat)
         self._white_timer_lcd.setStyleSheet(
             'color: rgb(0, 0, 0);'
@@ -372,13 +372,18 @@ class MainWidget(QtWidgets.QDialog):
         )
 
         self._white_resign_btn = QtWidgets.QPushButton("  RESIGN  ")
-        self._white_resign_btn.setFixedHeight(
-            int(c.APP.LCD_HEIGHT * self._resize_factor)
-        )
+        # self._white_resign_btn.setFixedHeight(
+        #     int(c.APP.LCD_HEIGHT * self._resize_factor)
+        # )
 
-        self._white_panel_layout.addWidget(self._captured_label_black, 4)
-        self._white_panel_layout.addWidget(self._white_resign_btn, 1)
-        self._white_panel_layout.addWidget(self._white_timer_lcd, 2)
+        self._white_resign_layout = QtWidgets.QVBoxLayout()
+        self._white_resign_layout.addWidget(self._white_timer_lcd)
+        self._white_resign_layout.addWidget(self._white_resign_btn)
+
+        self._white_panel_layout.addWidget(self._captured_label_black, 2)
+        self._white_panel_layout.addLayout(self._white_resign_layout, 1)
+        # self._white_panel_layout.addWidget(self._white_resign_btn, 1)
+        # self._white_panel_layout.addWidget(self._white_timer_lcd, 2)
 
         return self._white_panel_layout
 
@@ -458,7 +463,7 @@ class MainWidget(QtWidgets.QDialog):
             lambda: self._resign_btn_clicked(c.Color.white)
         )
 
-        self._game_data_widget.DONE_SIGNAL.connect(self._save_game)
+        self._save_game_data_widget.DONE_SIGNAL.connect(self._save_game)
 
     def _on_engine_btn_clicked(self):
         w = PlayAgainstComputerWidget(parent=self)
