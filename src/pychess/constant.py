@@ -117,6 +117,8 @@ class APP:
         selected=(252, 73, 3, 50),
         threatened=(255, 24, 14, 20),
     )
+    MOVE_WIDGET_WIDTH = 400
+    COLLAPSE_BTN_WIDTH = 20
 
 
 class IMAGE:
