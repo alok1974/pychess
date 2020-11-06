@@ -911,13 +911,13 @@ class OptionWidget(QtWidgets.QDialog):
         self._resize_factor = float(self._size / c.IMAGE.DEFAULT_SIZE)
         self._image_store = {}
 
-        self._font_id = QtGui.QFontDatabase().addApplicationFont(
-            c.APP.FONT_FILE_PATH
-        )
-        if self._font_id == -1:
-            error_msg = f'Could not load font from {c.APP.FONT_FILE_PATH}'
-            raise RuntimeError(error_msg)
-        self._font = QtGui.QFont(c.APP.FONT_FAMILY)
+        # self._font_id = QtGui.QFontDatabase().addApplicationFont(
+        #     c.APP.FONT_FILE_PATH
+        # )
+        # if self._font_id == -1:
+        #     error_msg = f'Could not load font from {c.APP.FONT_FILE_PATH}'
+        #     raise RuntimeError(error_msg)
+        # self._font = QtGui.QFont(c.APP.FONT_FAMILY)
 
         self._setup_ui()
         self._connect_signals()
@@ -979,9 +979,8 @@ class OptionWidget(QtWidgets.QDialog):
         return self._black_promotion
 
     def _setup_ui(self):
-        # self.setFixedSize(self._size, self._size)
         self.setModal(True)
-
+        self.setMaximumSize(c.IMAGE.DEFAULT_SIZE, c.IMAGE.DEFAULT_SIZE)
         self._main_layout = QtWidgets.QVBoxLayout(self)
 
         time_widget = self._create_time_widget()
@@ -1011,12 +1010,11 @@ class OptionWidget(QtWidgets.QDialog):
         )
 
         layout = QtWidgets.QVBoxLayout(widget)
-        layout_label = self._create_label('GAME TIME', 300, 24)
+        layout_label = self._create_label('GAME TIME')
         layout.addWidget(layout_label)
 
         self._play_time_slider_value_label = self._create_label(
             f'{str(self._default_play_time).zfill(2)} min',
-            50,
         )
         self._play_time_slider = self._create_slider(
             min_val=1,
@@ -1032,7 +1030,6 @@ class OptionWidget(QtWidgets.QDialog):
 
         self._bonus_time_slider_value_label = self._create_label(
             f'{str(self._default_bonus_time).zfill(2)} sec',
-            50,
         )
         self._bonus_time_slider = self._create_slider(
             min_val=0,
@@ -1064,7 +1061,7 @@ class OptionWidget(QtWidgets.QDialog):
         )
 
         layout = QtWidgets.QVBoxLayout(widget)
-        layout_label = self._create_label('GAME TYPE', 200, 24)
+        layout_label = self._create_label('GAME TYPE')
         layout.addWidget(layout_label)
 
         layout.addStretch(1)
@@ -1096,7 +1093,7 @@ class OptionWidget(QtWidgets.QDialog):
         )
 
         layout = QtWidgets.QVBoxLayout(widget)
-        layout_label = self._create_label('PAWN PROMOTIONS', 200, 24)
+        layout_label = self._create_label('PAWN PROMOTIONS')
         layout.addWidget(layout_label)
 
         layout.addStretch(1)
@@ -1136,7 +1133,6 @@ class OptionWidget(QtWidgets.QDialog):
         layout = QtWidgets.QHBoxLayout()
         label = self._create_label(
             f'{color.name.upper()}',
-            int(self._resize_factor * 100),
         )
         label.setAlignment(QtCore.Qt.AlignCenter)
         combobox = QtWidgets.QComboBox()
@@ -1175,13 +1171,10 @@ class OptionWidget(QtWidgets.QDialog):
         icon.addFile(image_path)
         return icon
 
-    def _create_label(self, name, width=150, font_size=14):
+    @staticmethod
+    def _create_label(name):
         label = QtWidgets.QLabel(name)
-        # label.setFixedWidth(int(self._resize_factor * width))
         label.setStyleSheet('QWidget { border: none }')
-        self._font.setPointSize(int(self._resize_factor * font_size))
-        label.setFont(self._font)
-
         return label
 
     def _create_slider(self, min_val, max_val, default_val, step=1):
@@ -1193,12 +1186,11 @@ class OptionWidget(QtWidgets.QDialog):
         slider.setValue(default_val)
         return slider
 
-    def _create_radio_button(self, name, check_state):
+    @staticmethod
+    def _create_radio_button(name, check_state):
         btn = QtWidgets.QRadioButton(name)
         btn.setChecked(check_state)
         btn.setStyleSheet('QWidget { border: none }')
-        self._font.setPointSize(int(self._resize_factor * 14))
-        btn.setFont(self._font)
         return btn
 
     def _connect_signals(self):
