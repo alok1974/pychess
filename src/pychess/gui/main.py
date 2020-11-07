@@ -1,12 +1,19 @@
 from PySide2 import QtWidgets, QtCore
 
 
-from .widgets import BoardWidget, ButtonWidget, OptionWidget, MoveWidget
+from .widgets import (
+    BoardWidget,
+    ButtonWidget,
+    OptionWidget,
+    MoveWidget,
+    LoadGameWidget,
+    SaveGameDataWidget,
+)
 
 
 from .. import constant as c, engineer
 from ..history import Player as HistoryPlayer
-from ..pgn import MOVES2PGN
+from ..pgn import MOVES2PGN, PGN2MOVES
 
 
 class MainWidget(QtWidgets.QDialog):
@@ -32,9 +39,8 @@ class MainWidget(QtWidgets.QDialog):
         self._engine = engineer.Engine()
         self._board = board
 
-        self._game_loaded = False
         self._current_player = c.Color.white
-
+        self._winner = None
         self._bonus_time = c.GAME.DEFAULT_BONUS_TIME
         self._timer_white = QtCore.QTimer()
         self._timer_white.setInterval(1000)  # timeout per 1 second
@@ -50,7 +56,6 @@ class MainWidget(QtWidgets.QDialog):
 
         self._game_data = None
         self._history_player = None
-        self._show_threatened = False
 
         self._inspecting_history = False
 
@@ -68,9 +73,8 @@ class MainWidget(QtWidgets.QDialog):
         self._engine_color = None
         self._history_player = None
 
-        self._game_loaded = False
         self._current_player = c.Color.white
-
+        self._winner = None
         self._bonus_time = c.GAME.DEFAULT_BONUS_TIME
         self._timer_white.stop()
         self._remaining_time_white = c.GAME.DEFAULT_PLAY_TIME * 60
@@ -84,7 +88,6 @@ class MainWidget(QtWidgets.QDialog):
 
         self._game_data = None
         self._history_player = None
-        self._show_threatened = False
 
         self._inspecting_history = False
 
@@ -113,6 +116,7 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.update_board()
 
     def game_over(self, winner):
+        self._winner = winner
         self._is_game_over = True
         self._board_widget.game_over(winner)
         self._button_widget.start_btn.setText('RESTART')
@@ -124,6 +128,27 @@ class MainWidget(QtWidgets.QDialog):
     def mouseDoubleClickEvent(self, event):
         if not self._left_widget.isVisible():
             self._toggle_left_widget()
+
+    def keyPressEvent(self, event):
+        keys = QtCore.Qt
+        if self._is_key_pressed(event, keys.Key_C):
+            self._toggle_show_threatened()
+
+        if self._is_key_pressed(event, keys.Key_S, keys.ControlModifier):
+            self._handle_save_game()
+
+        if self._is_key_pressed(event, keys.Key_O, keys.ControlModifier):
+            self._handle_load_game()
+
+        if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
+            self._reset()
+
+    @staticmethod
+    def _is_key_pressed(event, key, modifier=None):
+        result = event.key() == key
+        if modifier is not None:
+            result = result and event.modifiers() == modifier
+        return result
 
     def _setup_ui(self):
         main_layout = QtWidgets.QHBoxLayout(self)
@@ -222,7 +247,7 @@ class MainWidget(QtWidgets.QDialog):
         self._inspect_history(index=move_index)
 
     def _option_btn_clicked(self):
-        if self._has_game_started:
+        if self._has_game_started or self._board_widget.game_loaded:
             return
 
         self._option_widget.show()
@@ -381,3 +406,100 @@ class MainWidget(QtWidgets.QDialog):
 
         index = self._history_player.current_index
         self._moves_widget.highlight_move(move_index=index)
+
+    def _toggle_show_threatened(self):
+        self._board_widget.toggle_show_threatened()
+
+    def _handle_load_game(self):
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            parent=None,
+            caption='Load game (.pgn)',
+            filter='*.pgn'
+
+        )
+        if not file_path:
+            return
+
+        self._pgn2moves = PGN2MOVES(pgn_file_path=file_path)
+        if self._pgn2moves.nb_games == 1:
+            self._load_game()
+        else:
+            game_info = self._pgn2moves.game_info
+            w = LoadGameWidget(game_info=game_info, parent=self)
+            w.SELECTED_GAME_SIGNAL.connect(self._load_game)
+            w.show()
+
+    def _load_game(self, game_index=0):
+        if game_index == -1:  # No game was selected
+            return
+
+        self._reset()
+        moves = self._pgn2moves.get_moves(game_index=game_index)
+        bulk_moves = [
+            (f'{src.address}{dst.address}', promotion)
+            for src, dst, promotion in moves
+        ]
+        self.BULK_MOVE_SIGNAL.emit(bulk_moves)
+        self._stop_all_timers()
+
+        self._board_widget.game_loaded = True
+        self._button_widget.setVisible(False)
+        self._board_widget.set_panel_visibility(False)
+        self._board_widget.adjustSize()
+        self._right_widget.adjustSize()
+        self._left_widget.adjustSize()
+        self.adjustSize()
+
+    def _handle_save_game(self):
+        if not self._has_game_started:
+            return
+        elif self._game_data is None:
+            return
+        elif not self._game_data.move_history:
+            return
+
+        w = SaveGameDataWidget(parent=self)
+        w.DONE_SIGNAL.connect(self._save_game)
+        w.show()
+
+    def _save_game(self, game_data):
+        result = self._get_result()
+        game_data = (
+            f'[Event "{game_data.event}"]\n'
+            f'[Site "{game_data.site}"]\n'
+            f'[Date "{game_data.date}"]\n'
+            f'[Round "{game_data.round}"]\n'
+            f'[White "{game_data.white}"]\n'
+            f'[Black "{game_data.black}"]\n'
+            f'[Result "{result}"]\n'
+        )
+
+        move_history = self._game_data.move_history
+        game_moves = MOVES2PGN(move_history).text
+        if not game_moves.endswith(result):
+            game_moves = f'{game_moves} {result}'
+
+        game = f'{game_data}\n{game_moves}'
+
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Save game (.pgn)',
+            filter='*.pgn'
+
+        )
+        if not file_path:
+            return
+
+        with open(file_path, 'w') as fp:
+            fp.write(game)
+
+    def _get_result(self):
+        if self._winner is None:
+            return '1/2-1/2'
+        elif self._winner == c.Color.white:
+            return '1-0'
+        elif self._winner == c.Color.black:
+            return '0-1'
+        else:
+            error_msg = 'Unknown winner type!'
+            raise RuntimeError(error_msg)

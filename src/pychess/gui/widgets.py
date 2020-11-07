@@ -4,6 +4,7 @@ import collections
 import functools
 import enum
 import re
+import getpass
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -162,6 +163,8 @@ class BoardWidget(QtWidgets.QDialog):
             self._format_time(c.GAME.DEFAULT_PLAY_TIME * 60)
         )
 
+        self.set_panel_visibility(True)
+
     def clear_moves(self):
         self._first_square = None
         self._second_square = None
@@ -230,17 +233,31 @@ class BoardWidget(QtWidgets.QDialog):
             self._format_time(seconds)
         )
 
+    def toggle_show_threatened(self):
+        self._show_threatened = not self._show_threatened
+
+        if not self._show_threatened:
+            self._hide_threatened()
+        else:
+            self._display_threatened()
+
+    def set_panel_visibility(self, visibility):
+        self._white_panel_widget.setVisible(visibility)
+        self._black_panel_widget.setVisible(visibility)
+        self._captured_label_white.setVisible(visibility)
+        self._captured_label_black.setVisible(visibility)
+
     def _setup_ui(self):
         self.setStyleSheet('border: none;')
         main_layout = QtWidgets.QVBoxLayout(self)
 
         # Add black panel widget
         (
-            black_widget,
+            self._black_panel_widget,
             self._black_timer_lcd,
             self._black_resign_btn
         ) = self._create_panel_widget(color=c.Color.black)
-        main_layout.addWidget(black_widget)
+        main_layout.addWidget(self._black_panel_widget)
 
         # Add black capture image
         self._captured_pixmap_black = QtGui.QPixmap.fromImage(
@@ -264,11 +281,11 @@ class BoardWidget(QtWidgets.QDialog):
 
         # Add white panel widget
         (
-            white_widget,
+            self._white_panel_widget,
             self._white_timer_lcd,
             self._white_resign_btn,
         ) = self._create_panel_widget(color=c.Color.white)
-        main_layout.addWidget(white_widget)
+        main_layout.addWidget(self._white_panel_widget)
 
     def _create_image_layout(self):
         # Create Pixmap
@@ -455,14 +472,14 @@ class BoardWidget(QtWidgets.QDialog):
         if self._game_data is None:
             return []
 
-        total_threatened = []
+        all_threatened = []
         capturables = self._game_data.capturables[color]
         for _, threatened in capturables.items():
-            total_threatened.extend(threatened)
+            all_threatened.extend(threatened)
 
-        total_threatened = list(set(total_threatened))
+        all_threatened = list(set(all_threatened))
 
-        return total_threatened
+        return all_threatened
 
     def _update_image_label(self):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
@@ -476,14 +493,6 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_pixmap_black = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_black)
         self._captured_label_black.setPixmap(self._captured_pixmap_black)
-
-    def _toggle_show_threatened(self):
-        self._show_threatened = not self._show_threatened
-
-        if not self._show_threatened:
-            self._hide_threatened()
-        else:
-            self._display_threatened()
 
     @staticmethod
     def _format_time(total_seconds):
@@ -539,6 +548,7 @@ class ButtonWidget(QtWidgets.QDialog):
         self._main_layout.addWidget(self.start_btn)
 
     def reset(self):
+        self.setVisible(True)
         self.update_btn_text(self.BUTTON_TYPE.start, 'START')
 
     def update_btn_text(self, btn_type, text):
@@ -588,22 +598,33 @@ class ButtonWidget(QtWidgets.QDialog):
 class LoadGameWidget(QtWidgets.QDialog):
     SELECTED_GAME_SIGNAL = QtCore.Signal(int)
 
-    def __init__(self, game_info, size=c.IMAGE.DEFAULT_SIZE, parent=None):
+    def __init__(self, game_info, parent=None):
         super().__init__(parent=parent)
         self._game_info = game_info
-        self._size = int(size * 0.8)
+        self._title = (
+            'Click on game to load '
+            f'({len(self._game_info)} games found in the file)'
+        )
         self._selected_index = -1
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setStyleSheet(c.APP.STYLESHEET)
-        self.setWindowTitle('Select Game to load')
+        self.setWindowTitle(self._title)
         self.setModal(True)
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
 
         self._scroll_area = QtWidgets.QScrollArea()
+        self._scroll_area.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Expanding,
+        )
+
         self._scroll_widget = QtWidgets.QWidget()
+        self._scroll_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Expanding,
+        )
 
         self._scroll_area.setVerticalScrollBarPolicy(
             QtCore.Qt.ScrollBarAsNeeded
@@ -614,7 +635,13 @@ class LoadGameWidget(QtWidgets.QDialog):
 
         self._game_data_layout = QtWidgets.QVBoxLayout()
         for index, game_data in enumerate(self._game_info):
-            btn = QtWidgets.QPushButton(game_data)
+            btn_text = f'\n{game_data}\n'
+            btn = QtWidgets.QPushButton(btn_text)
+            btn.setMinimumWidth(c.APP.MOVE_WIDGET_WIDTH)
+            btn.setSizePolicy(
+                QtWidgets.QSizePolicy.Fixed,
+                QtWidgets.QSizePolicy.Expanding,
+            )
             func = functools.partial(
                 self._btn_clicked,
                 index=index
@@ -629,6 +656,12 @@ class LoadGameWidget(QtWidgets.QDialog):
     def _btn_clicked(self, index):
         self._selected_index = index
         self.close()
+
+    def showEvent(self, event):
+        self._scroll_area.adjustSize()
+        self._scroll_widget.adjustSize()
+        self.adjustSize()
+        self.setFixedWidth(self.sizeHint().width())
 
     def closeEvent(self, event):
         self.SELECTED_GAME_SIGNAL.emit(self._selected_index)
@@ -962,9 +995,9 @@ class OptionWidget(QtWidgets.QDialog):
 
     DONE_SIGNAL = QtCore.Signal()
 
-    def __init__(self, size=c.IMAGE.DEFAULT_SIZE, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent=parent)
-        self._size = int(size * 0.8)
+        self._size = c.IMAGE.DEFAULT_SIZE
 
         self._default_play_time = c.GAME.DEFAULT_PLAY_TIME
         self._default_bonus_time = c.GAME.DEFAULT_BONUS_TIME
@@ -1303,3 +1336,147 @@ class OptionWidget(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         self.DONE_SIGNAL.emit()
+
+
+class SaveGameDataWidget(QtWidgets.QDialog):
+    DONE_SIGNAL = QtCore.Signal(tuple)
+
+    PGN_GAME_DATA = collections.namedtuple(
+        'GAME_DATA',
+        [
+            'event', 'site', 'date', 'round', 'black', 'white'
+        ]
+    )
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._size = c.IMAGE.DEFAULT_SIZE
+
+        self._event = ''
+        self._site = ''
+        self._date = ''
+        self._round = ''
+        self._white = ''
+        self._black = ''
+
+        self._force_quit = False
+
+        self._setup_ui()
+        self._connect_signals()
+
+    def _setup_ui(self):
+        self.windowTitle = 'Enter game details'
+        self.setModal(True)
+
+        self._main_layout = QtWidgets.QVBoxLayout(self)
+
+        layout, self._event_text = self._create_field('Event', 'Casual')
+        self._main_layout.addLayout(layout)
+
+        layout, self._site_text = self._create_field('Site', 'Home')
+        self._main_layout.addLayout(layout)
+
+        date = self._get_current_date()
+        layout, self._date_text = self._create_field('Date', date)
+        self._main_layout.addLayout(layout)
+
+        layout, self._round_text = self._create_field('Round', '1')
+        self._main_layout.addLayout(layout)
+
+        layout, self._white_text = self._create_field('White')
+        self._main_layout.addLayout(layout)
+
+        layout, self._black_text = self._create_field('Black')
+        self._main_layout.addLayout(layout)
+
+        empty_label = QtWidgets.QLabel('  ')
+        empty_label.setMinimumHeight(c.APP.MEDIUM_HEIGHT)
+        self._main_layout.addWidget(empty_label)
+
+        self._save_btn = self._create_btn('Save Game')
+        self._main_layout.addWidget(self._save_btn)
+
+
+    @staticmethod
+    def _create_btn(text):
+        btn = QtWidgets.QPushButton(text)
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Fixed,
+        )
+        btn.setMinimumHeight(c.APP.MEDIUM_HEIGHT)
+        return btn
+
+    def _connect_signals(self):
+        self._save_btn.clicked.connect(self._save_btn_clicked)
+
+    def _save_btn_clicked(self):
+        data = [
+            self._event_text.text(), self._site_text.text(),
+            self._date_text.text(), self._round_text.text(),
+            self._white_text.text(), self._black_text.text(),
+        ]
+
+        if not all(data):
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setText("Missing details! Please fill all fields.")
+            msg_box.exec_()
+            return
+
+        game_data = self.PGN_GAME_DATA(
+            event=self._event_text.text(),
+            site=self._site_text.text(),
+            date=self._date_text.text(),
+            round=self._round_text.text(),
+            white=self._white_text.text(),
+            black=self._black_text.text(),
+        )
+        self.DONE_SIGNAL.emit(game_data)
+        self.close()
+
+    @staticmethod
+    def _get_current_date():
+        from datetime import datetime
+        n = datetime.now()
+        return f'{n.year}.{n.month}.{n.day}'
+
+    @staticmethod
+    def _create_field(name, default_val=''):
+        layout = QtWidgets.QHBoxLayout()
+        label = QtWidgets.QLabel(name)
+        label.setMinimumSize(
+            c.APP.MEDIUM_HEIGHT * 4,
+            c.APP.MEDIUM_HEIGHT,
+        )
+        line_edit = QtWidgets.QLineEdit(default_val)
+        line_edit.setMinimumSize(
+            c.APP.MEDIUM_HEIGHT * 4,
+            c.APP.MEDIUM_HEIGHT,
+        )
+        line_edit.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Fixed,
+        )
+        layout.addWidget(label)
+        layout.addWidget(line_edit)
+
+        return layout, line_edit
+
+    def showEvent(self, event):
+        widgets = [
+            self._event_text,
+            self._site_text,
+            self._date_text,
+            self._round_text,
+            self._white_text,
+            self._black_text,
+        ]
+        with block_signals(widgets):
+            self._event_text.setText('Casual game')
+            self._site_text.setText('Home')
+            self._date_text.setText(self._get_current_date())
+            self._round_text.setText('1')
+            self._white_text.setText(getpass.getuser().capitalize())
+            self._black_text.setText('')
+
+        self.setFixedHeight(self.sizeHint().height())

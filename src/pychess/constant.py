@@ -81,6 +81,7 @@ class APP:
     STYLESHEET = STYLESHEET.dark_01
     BUTTON_HEIGHT = 60
     LCD_HEIGHT = 40
+    MEDIUM_HEIGHT = 30
 
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
