@@ -616,7 +616,7 @@ class LoadGameWidget(QtWidgets.QDialog):
         for index, game_data in enumerate(self._game_info):
             btn = QtWidgets.QPushButton(game_data)
             func = functools.partial(
-                self._on_btn_clicked,
+                self._btn_clicked,
                 index=index
             )
             btn.clicked.connect(func)
@@ -626,7 +626,7 @@ class LoadGameWidget(QtWidgets.QDialog):
         self._scroll_area.setWidget(self._scroll_widget)
         self._main_layout.addWidget(self._scroll_area)
 
-    def _on_btn_clicked(self, index):
+    def _btn_clicked(self, index):
         self._selected_index = index
         self.close()
 
@@ -863,7 +863,7 @@ class MoveWidget(QtWidgets.QDialog):
         return btn
 
     def _connect_signals(self):
-        self._textedit.mousePressEvent = self._on_move_mouse_press
+        self._textedit.mousePressEvent = self._mouse_press_event
 
         self._first_btn.clicked.connect(
             lambda: self.FIRST_BTN_CLICKED_SIGNAL.emit()
@@ -881,7 +881,7 @@ class MoveWidget(QtWidgets.QDialog):
             lambda: self.LAST_BTN_CLICKED_SIGNAL.emit()
         )
 
-    def _on_move_mouse_press(self, event):
+    def _mouse_press_event(self, event):
         move_index = self._index_from_mouse_pos(event.pos())
         if move_index is None:
             return
@@ -1257,48 +1257,48 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _connect_signals(self):
         self._play_time_slider.valueChanged.connect(
-            self._on_play_time_slider_changed
+            self._play_time_slider_changed
         )
 
         self._bonus_time_slider.valueChanged.connect(
-            self._on_bonus_time_slider_changed
+            self._bonus_time_slider_changed
         )
 
         self._chess960_button.toggled.connect(
-            lambda: self._on_game_type_btn_toggled(self._chess960_button)
+            lambda: self._game_type_btn_toggled(self._chess960_button)
         )
 
         self._standard_button.toggled.connect(
-            lambda: self._on_game_type_btn_toggled(self._standard_button)
+            lambda: self._game_type_btn_toggled(self._standard_button)
         )
 
         self._black_promotion_combobox.currentIndexChanged.connect(
-            self._on_black_combo_index_changed,
+            self._black_combo_index_changed,
         )
 
         self._white_promotion_combobox.currentIndexChanged.connect(
-            self._on_white_combo_index_changed,
+            self._white_combo_index_changed,
         )
 
-    def _on_play_time_slider_changed(self, val):
+    def _play_time_slider_changed(self, val):
         self._play_time = val
         self._play_time_slider_value_label.setText(f'{str(val).zfill(2)} min')
 
-    def _on_bonus_time_slider_changed(self, val):
+    def _bonus_time_slider_changed(self, val):
         self._bonus_time = val
         self._bonus_time_slider_value_label.setText(f'{str(val).zfill(2)} sec')
 
-    def _on_game_type_btn_toggled(self, btn):
+    def _game_type_btn_toggled(self, btn):
         if btn.text() == c.GAME.TYPE.std:
             self._is_standard_type = btn.isChecked()
 
         if btn.text() == c.GAME.TYPE.c9lx:
             self._is_standard_type = not btn.isChecked()
 
-    def _on_white_combo_index_changed(self, index):
+    def _white_combo_index_changed(self, index):
         self._white_promotion = self.PROMOTION_PIECES[index]
 
-    def _on_black_combo_index_changed(self, index):
+    def _black_combo_index_changed(self, index):
         self._black_promotion = self.PROMOTION_PIECES[index]
 
     def closeEvent(self, event):
