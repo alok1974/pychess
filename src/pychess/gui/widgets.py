@@ -981,15 +981,6 @@ class OptionWidget(QtWidgets.QDialog):
 
         self._resize_factor = float(self._size / c.IMAGE.DEFAULT_SIZE)
         self._image_store = {}
-
-        # self._font_id = QtGui.QFontDatabase().addApplicationFont(
-        #     c.APP.FONT_FILE_PATH
-        # )
-        # if self._font_id == -1:
-        #     error_msg = f'Could not load font from {c.APP.FONT_FILE_PATH}'
-        #     raise RuntimeError(error_msg)
-        # self._font = QtGui.QFont(c.APP.FONT_FAMILY)
-
         self._setup_ui()
         self._connect_signals()
 

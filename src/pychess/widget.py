@@ -54,7 +54,6 @@ class SaveGameDataWidget(QtWidgets.QDialog):
     def _setup_ui(self):
         self.windowTitle = 'Enter game details'
         self.setStyleSheet(c.APP.STYLESHEET)
-        # self.setFixedSize(self._size, self._size)
         self.setModal(True)
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
@@ -258,7 +257,6 @@ class OptionWidget(QtWidgets.QDialog):
         return self._black_promotion
 
     def _setup_ui(self):
-        # self.setFixedSize(self._size, self._size)
         self.setModal(True)
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
@@ -456,7 +454,6 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _create_label(self, name, width=150, font_size=14):
         label = QtWidgets.QLabel(name)
-        # label.setFixedWidth(int(self._resize_factor * width))
         label.setStyleSheet('QWidget { border: none }')
         self._font.setPointSize(int(self._resize_factor * font_size))
         label.setFont(self._font)
@@ -788,7 +785,6 @@ class MovesWidget(QtWidgets.QWidget):
 
     def _create_label(self, text, index=None):
         label = QtWidgets.QLabel(text)
-        # label.setFixedHeight(self._init_scroll_height)
         if index is not None:
             label.mousePressEvent = functools.partial(
                 self._on_label_clicked,
