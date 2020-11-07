@@ -163,55 +163,33 @@ class MainWidget(QtWidgets.QDialog):
         return widget
 
     def _connect_signals(self):
-        self._moves_widget.MOVE_SELECTED_SIGNAL.connect(self._move_selected)
+        # Board Widget signals
+        bw = self._board_widget
+        bw.MOVE_SIGNAL.connect(self._recieved_move_string)
+        bw.WHITE_RESIGN_BTN_CLICKED_SIGNAL.connect(self._resign)
+        bw.BLACK_RESIGN_BTN_CLICKED_SIGNAL.connect(self._resign)
 
-        self._moves_widget.FIRST_BTN_CLICKED_SIGNAL.connect(
-            self._first_btn_clicked
-        )
+        # Move Widget Signals
+        mw = self._moves_widget
+        mw.MOVE_SELECTED_SIGNAL.connect(self._move_selected)
+        mw.FIRST_BTN_CLICKED_SIGNAL.connect(self._first_btn_clicked)
+        mw.PREV_BTN_CLICKED_SIGNAL.connect(self._previous_btn_clicked)
+        mw.NEXT_BTN_CLICKED_SIGNAL.connect(self._next_btn_clicked)
+        mw.LAST_BTN_CLICKED_SIGNAL.connect(self._last_btn_clicked)
 
-        self._moves_widget.PREV_BTN_CLICKED_SIGNAL.connect(
-            self._previous_btn_clicked
-        )
+        # Button Widget Signals
+        bw = self._button_widget
+        bw.OPTION_BTN_CLICKED_SIGNAL.connect(self._option_btn_clicked)
+        bw.AI_BTN_CLICKED_SIGNAL.connect(self._ai_btn_clicked)
+        bw.RESET_BTN_CLICKED_SIGNAL.connect(self._reset_btn_clicked)
+        bw.START_BTN_CLICKED_SIGNAL.connect(self._start_btn_clicked)
 
-        self._moves_widget.NEXT_BTN_CLICKED_SIGNAL.connect(
-            self._next_btn_clicked
-        )
-
-        self._moves_widget.LAST_BTN_CLICKED_SIGNAL.connect(
-            self._last_btn_clicked
-        )
-
-        self._button_widget.OPTION_BTN_CLICKED_SIGNAL.connect(
-            self._option_btn_clicked
-        )
-
-        self._button_widget.AI_BTN_CLICKED_SIGNAL.connect(
-            self._ai_btn_clicked
-        )
-
-        self._button_widget.RESET_BTN_CLICKED_SIGNAL.connect(
-            self._reset_btn_clicked
-        )
-
-        self._button_widget.START_BTN_CLICKED_SIGNAL.connect(
-            self._start_btn_clicked
-        )
-
-        self._board_widget.MOVE_SIGNAL.connect(self._recieved_move_string)
-
-        self._board_widget.WHITE_RESIGN_BTN_CLICKED_SIGNAL.connect(
-            self._white_resign_btn_clicked
-        )
-
-        self._board_widget.BLACK_RESIGN_BTN_CLICKED_SIGNAL.connect(
-            self._black_resign_btn_clicked
-        )
-
-        self._timer_white.timeout.connect(self._timer_white_timeout)
-        self._timer_black.timeout.connect(self._timer_black_timeout)
-
+        # Option Widget Signals
         self._option_widget.DONE_SIGNAL.connect(self._set_options)
 
+        # Internal Signals
+        self._timer_white.timeout.connect(self._timer_white_timeout)
+        self._timer_black.timeout.connect(self._timer_black_timeout)
         self._collapse_btn.clicked.connect(self._toggle_left_widget)
 
     def _handle_left_widget(self):
@@ -288,12 +266,6 @@ class MainWidget(QtWidgets.QDialog):
 
     def _last_btn_clicked(self):
         self._inspect_history(end=True)
-
-    def _white_resign_btn_clicked(self):
-        self._resign(winning_color=c.Color.black)
-
-    def _black_resign_btn_clicked(self):
-        self._resign(winning_color=c.Color.white)
 
     def _start_current_player_time(self):
         if self._current_player == c.Color.white:

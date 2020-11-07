@@ -67,8 +67,8 @@ class AIPlayer(QtWidgets.QDialog):
 
 class BoardWidget(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
-    WHITE_RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal()
-    BLACK_RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal()
+    WHITE_RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal(c.Color)
+    BLACK_RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal(c.Color)
 
     def __init__(self, board, parent=None):
         super().__init__(parent=parent)
@@ -91,6 +91,38 @@ class BoardWidget(QtWidgets.QDialog):
     @property
     def image_height(self):
         return self._board_image.image.height
+
+    @property
+    def is_game_over(self):
+        return self._is_game_over
+
+    @is_game_over.setter
+    def is_game_over(self, val):
+        self._is_game_over = val
+
+    @property
+    def inspecting_history(self):
+        return self._inspecting_history
+
+    @inspecting_history.setter
+    def inspecting_history(self, val):
+        self._inspecting_history = val
+
+    @property
+    def is_paused(self):
+        return self._is_paused
+
+    @is_paused.setter
+    def is_paused(self, val):
+        self._is_paused = val
+
+    @property
+    def game_loaded(self):
+        return self._game_loaded
+
+    @game_loaded.setter
+    def game_loaded(self, val):
+        self._game_loaded = val
 
     def init_board(self):
         self.reset()
@@ -128,6 +160,74 @@ class BoardWidget(QtWidgets.QDialog):
         )
         self._black_timer_lcd.display(
             self._format_time(c.GAME.DEFAULT_PLAY_TIME * 60)
+        )
+
+    def clear_moves(self):
+        self._first_square = None
+        self._second_square = None
+
+    def update_invalid_move(self):
+        if not self._is_selection_valid(self._second_square):
+            return
+
+        self._remove_highlight(self._first_square)
+        self._first_square = self._second_square
+        self._second_square = None
+        self._highlight(
+            self._first_square,
+            highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
+            is_first_selected=True,
+        )
+
+    def update_move(self, game_data):
+        self._game_data = game_data
+        self._update()
+
+        self.highlight_move(src=game_data.src, dst=game_data.dst)
+
+        self.clear_moves()
+
+        self._captured_image.update(
+            captured_white=game_data.captured_white,
+            captured_black=game_data.captured_black,
+            leader=game_data.leader,
+            lead=game_data.lead
+        )
+
+        self._update_captured_image_labels()
+
+    def highlight_move(self, src, dst):
+        self._highlight(src, highlight_color=c.APP.HIGHLIGHT_COLOR.src)
+        self._highlight(dst, highlight_color=c.APP.HIGHLIGHT_COLOR.dst)
+
+    def set_current_player(self, color):
+        self._current_player = color
+        if self._show_threatened:
+            self._display_threatened()
+
+    def mousePressEvent(self, event):
+        # NOTE: This event will be fired only when
+        # the user has clicke somewhere in the gui
+        # OUTSIDE of the chess board image. We can
+        # easily clear the first and the second square
+        # selections
+        self._first_square = None
+        self._second_square = None
+
+    def game_over(self, winner):
+        self._winner = winner
+        self._is_game_over = True
+        self._captured_image.draw_winner(winner)
+        self._update_captured_image_labels()
+
+    def display_time_white(self, seconds):
+        self._white_timer_lcd.display(
+            self._format_time(seconds)
+        )
+
+    def display_time_black(self, seconds):
+        self._black_timer_lcd.display(
+            self._format_time(seconds)
         )
 
     def _setup_ui(self):
@@ -267,58 +367,11 @@ class BoardWidget(QtWidgets.QDialog):
         return btn
 
     def _connect_signals(self):
-        self._image_label.mousePressEvent = self._on_image_clicked
-        self._white_resign_btn.clicked.connect(
-            lambda: self.WHITE_RESIGN_BTN_CLICKED_SIGNAL.emit()
-        )
+        self._image_label.mousePressEvent = self._image_clicked
+        self._white_resign_btn.clicked.connect(self._white_resign_btn_clicked)
+        self._black_resign_btn.clicked.connect(self._black_resign_btn_clicked)
 
-        self._black_resign_btn.clicked.connect(
-            lambda: self.BLACK_RESIGN_BTN_CLICKED_SIGNAL.emit()
-        )
-
-    @property
-    def is_game_over(self):
-        return self._is_game_over
-
-    @is_game_over.setter
-    def is_game_over(self, val):
-        self._is_game_over = val
-
-    @property
-    def inspecting_history(self):
-        return self._inspecting_history
-
-    @inspecting_history.setter
-    def inspecting_history(self, val):
-        self._inspecting_history = val
-
-    @property
-    def is_paused(self):
-        return self._is_paused
-
-    @is_paused.setter
-    def is_paused(self, val):
-        self._is_paused = val
-
-    @property
-    def game_loaded(self):
-        return self._game_loaded
-
-    @game_loaded.setter
-    def game_loaded(self, val):
-        self._game_loaded = val
-
-    def _is_image_clickable(self):
-        return not any(
-            [
-                self._game_loaded,
-                self._is_paused,
-                self._is_game_over,
-                self._inspecting_history,
-            ]
-        )
-
-    def _on_image_clicked(self, event):
+    def _image_clicked(self, event):
         if not self._is_image_clickable():
             return
 
@@ -344,6 +397,22 @@ class BoardWidget(QtWidgets.QDialog):
             move = f'{self._first_square.address}{self._second_square.address}'
             self.MOVE_SIGNAL.emit(move)
 
+    def _white_resign_btn_clicked(self):
+        self.WHITE_RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.white)
+
+    def _black_resign_btn_clicked(self):
+        self.BLACK_RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.black)
+
+    def _is_image_clickable(self):
+        return not any(
+            [
+                self._game_loaded,
+                self._is_paused,
+                self._is_game_over,
+                self._inspecting_history,
+            ]
+        )
+
     def _is_selection_valid(self, square):
         if square is None:
             return False
@@ -356,23 +425,6 @@ class BoardWidget(QtWidgets.QDialog):
             return False
 
         return True
-
-    def clear_moves(self):
-        self._first_square = None
-        self._second_square = None
-
-    def update_invalid_move(self):
-        if not self._is_selection_valid(self._second_square):
-            return
-
-        self._remove_highlight(self._first_square)
-        self._first_square = self._second_square
-        self._second_square = None
-        self._highlight(
-            self._first_square,
-            highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
-            is_first_selected=True,
-        )
 
     def _highlight(self, square, highlight_color, is_first_selected=False):
         self._board_image.highlight(
@@ -389,32 +441,6 @@ class BoardWidget(QtWidgets.QDialog):
     def _update(self):
         self._board_image.update()
         self._update_image_label()
-
-    def update_move(self, game_data):
-        self._game_data = game_data
-        self._update()
-
-        self.highlight_move(src=game_data.src, dst=game_data.dst)
-
-        self.clear_moves()
-
-        self._captured_image.update(
-            captured_white=game_data.captured_white,
-            captured_black=game_data.captured_black,
-            leader=game_data.leader,
-            lead=game_data.lead
-        )
-
-        self._update_captured_image_labels()
-
-    def highlight_move(self, src, dst):
-        self._highlight(src, highlight_color=c.APP.HIGHLIGHT_COLOR.src)
-        self._highlight(dst, highlight_color=c.APP.HIGHLIGHT_COLOR.dst)
-
-    def set_current_player(self, color):
-        self._current_player = color
-        if self._show_threatened:
-            self._display_threatened()
 
     def _display_threatened(self):
         threatened = self._get_threatened(self._current_player)
@@ -451,15 +477,6 @@ class BoardWidget(QtWidgets.QDialog):
             self._captured_image.qt_image_black)
         self._captured_label_black.setPixmap(self._captured_pixmap_black)
 
-    def mousePressEvent(self, event):
-        # NOTE: This event will be fired only when
-        # the user has clicke somewhere in the gui
-        # OUTSIDE of the chess board image. We can
-        # easily clear the first and the second square
-        # selections
-        self._first_square = None
-        self._second_square = None
-
     def _toggle_show_threatened(self):
         self._show_threatened = not self._show_threatened
 
@@ -467,16 +484,6 @@ class BoardWidget(QtWidgets.QDialog):
             self._hide_threatened()
         else:
             self._display_threatened()
-
-    def display_time_white(self, seconds):
-        self._white_timer_lcd.display(
-            self._format_time(seconds)
-        )
-
-    def display_time_black(self, seconds):
-        self._black_timer_lcd.display(
-            self._format_time(seconds)
-        )
 
     @staticmethod
     def _format_time(total_seconds):
@@ -492,12 +499,6 @@ class BoardWidget(QtWidgets.QDialog):
         seconds = str(seconds).zfill(2)
 
         return f'{hours}:{minutes}:{seconds}'
-
-    def game_over(self, winner):
-        self._winner = winner
-        self._is_game_over = True
-        self._captured_image.draw_winner(winner)
-        self._update_captured_image_labels()
 
 
 class ButtonWidget(QtWidgets.QDialog):
