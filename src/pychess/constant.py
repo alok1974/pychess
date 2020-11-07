@@ -61,33 +61,6 @@ class Color(enum.Enum):
     white = 1
 
 
-@enum.unique
-class Direction(enum.Enum):
-    #       nnw n nne
-    #     nw         ne
-    #   wnw   \ | /    ene
-    #  w      --+--       e
-    #   wsw   / | \    ese
-    #     sw         se
-    #       ssw s sse
-    n = 0
-    nne = 1
-    ne = 2
-    ene = 3
-    e = 4
-    ese = 5
-    se = 6
-    sse = 7
-    s = 8
-    ssw = 9
-    sw = 10
-    wsw = 11
-    w = 12
-    wnw = 13
-    nw = 14
-    nnw = 15
-
-
 class STYLESHEET:
     def _get_stylesheet(stylesheet_name):
         stylesheet = None
@@ -108,8 +81,49 @@ class APP:
     STYLESHEET = STYLESHEET.dark_01
     BUTTON_HEIGHT = 60
     LCD_HEIGHT = 40
+
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
+
+    CHESS_FONT_FAMILY = 'DejaVuSans'
+    CHESS_FONT_FILE_PATH = os.path.join(
+        RESOURCE_DIR, f'font/{CHESS_FONT_FAMILY}.ttf'
+    )
+
+    PIECE_UNICODE = _declare_constants(
+        obj_name='PIECE_UNICODE',
+        pawn=_declare_constants(
+            obj_name='PAWN_UNICODE',
+            white='\U00002659',
+            black='\U0000265F',
+        ),
+        knight=_declare_constants(
+            obj_name='KNIGHT_UNICODE',
+            white='\U00002658',
+            black='\U0000265E',
+        ),
+        bishop=_declare_constants(
+            obj_name='BISHOP_UNICODE',
+            white='\U00002657',
+            black='\U0000265D',
+        ),
+        rook=_declare_constants(
+            obj_name='ROOK_UNICODE',
+            white='\U00002656',
+            black='\U0000265C',
+        ),
+        queen=_declare_constants(
+            obj_name='QUEEN_UNICODE',
+            white='\U00002655',
+            black='\U0000265B',
+        ),
+        king=_declare_constants(
+            obj_name='KING_UNICODE',
+            white='\U00002654',
+            black='\U0000265A',
+        ),
+    )
+
     HIGHLIGHT_COLOR = _declare_constants(
         obj_name='HIGHLIGHT_COLOR',
         src=(165, 255, 140, 50),
@@ -128,7 +142,7 @@ class IMAGE:
     BOARD_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BOARD_IMAGE_NAME)
 
     PIECE_IMAGE = _declare_constants(
-        obj_name='IMAGE_NAME',
+        obj_name='PIECE_IMAGE',
         pawn=_declare_constants(
             obj_name='PAWN_IMAGES',
             white='pawn.png',
@@ -170,17 +184,17 @@ class IMAGE:
             black='rook_small_b.png'
         ),
         queen=_declare_constants(
-            obj_name='PAWN_IMAGES',
+            obj_name='QUEEN_IMAGES',
             white='queen.png',
             black='queen_b.png'
         ),
         queen_small=_declare_constants(
-            obj_name='PAWN_SMALL_IMAGES',
+            obj_name='QUEEN_SMALL_IMAGES',
             white='queen_small.png',
             black='queen_small_b.png'
         ),
         king=_declare_constants(
-            obj_name='PAWN_IMAGES',
+            obj_name='KING_IMAGES',
             white='king.png',
             black='king_b.png'
         ),

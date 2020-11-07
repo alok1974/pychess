@@ -3,12 +3,14 @@ import contextlib
 import collections
 import functools
 import enum
+import re
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
 from .. import constant as c, imager
+from ..pgn import REGEX, NAMEDTUPLES
 
 
 @contextlib.contextmanager
@@ -652,14 +654,10 @@ class MoveWidget(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self._highlight_format = QtGui.QTextCharFormat()
-        self._highlight_format.setForeground(
-            QtGui.QBrush(QtGui.QColor("red"))
-        )
-        self._highlight_format.setBackground(
-            QtGui.QBrush(QtGui.QColor("yellow"))
-        )
-        self._highlight_format.setFontWeight(QtGui.QFont.Bold)
+        self._highlight_format = self._highlight_format()
+        self._plain_format = self._plain_format()
+
+        self._font = self._load_chess_fonts()
 
         self._cursor_pos_map = {}
         self._move_index_word_data = {}
@@ -685,6 +683,10 @@ class MoveWidget(QtWidgets.QDialog):
         cur_pos = 0
         move_index = -1
         for index, m1, m2 in moves:
+            # Seding reverse color for the unicode fonts as our
+            # UI theme is dark
+            m1 = self._apply_chess_fonts(m1, c.Color.black)  # white move
+            m2 = self._apply_chess_fonts(m2, c.Color.white)  # black move
             move_num = f'{index}.'
             mid_space = ' '
             trailing_space = '  '
@@ -712,7 +714,63 @@ class MoveWidget(QtWidgets.QDialog):
 
             self._textedit.insertPlainText(move_string)
 
-        self._highlight_last()
+    def _load_chess_fonts(self):
+        font_id = QtGui.QFontDatabase().addApplicationFont(
+            c.APP.CHESS_FONT_FILE_PATH
+        )
+        if font_id == -1:
+            error_msg = (
+                f'Could not load font from {c.APP.CHESS_FONT_FILE_PATH}'
+            )
+            raise RuntimeError(error_msg)
+
+        self._font = QtGui.QFont(c.APP.CHESS_FONT_FAMILY)
+
+    def _apply_chess_fonts(self, text, color):
+        piece_str = None
+        m = re.match(REGEX.SINGLE_MOVE, text)
+        if m is not None:
+            result = NAMEDTUPLES.PARSE_SINGLE_MOVE_RESULT(*m.groups())
+            piece_str = self._get_piece_str(result)
+            if piece_str is not None:
+                unicode_symbol = self._get_unicode(piece_str, color)
+                if piece_str != 'P':
+                    text = text[1:]
+                text = f'{unicode_symbol}{text}'
+        return text
+
+    @staticmethod
+    def _get_piece_str(parse_result):
+        piece_str = None
+        if parse_result.piece is not None:
+            if not parse_result.piece:
+                piece_str = 'P'
+            else:
+                piece_str = parse_result.piece[0]
+                if piece_str in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
+                    piece_str = 'P'
+        return piece_str
+
+    @staticmethod
+    def _get_unicode(piece_string, color):
+        piece_name = None
+        if piece_string == 'B':
+            piece_name = c.PieceType.bishop.name
+        elif piece_string == 'K':
+            piece_name = c.PieceType.king.name
+        elif piece_string == 'N':
+            piece_name = c.PieceType.knight.name
+        elif piece_string == 'P':
+            piece_name = c.PieceType.pawn.name
+        elif piece_string == 'R':
+            piece_name = c.PieceType.rook.name
+        elif piece_string == 'Q':
+            piece_name = c.PieceType.queen.name
+        else:
+            raise ValueError(f'Unknown piece string {piece_string}')
+
+        unicodes = getattr(c.APP.PIECE_UNICODE, piece_name)
+        return getattr(unicodes, color.name)
 
     def _highlight_last(self):
         max_index = max(
@@ -728,16 +786,14 @@ class MoveWidget(QtWidgets.QDialog):
 
     def highlight_move(self, move_index):
         # Remove hightlight from last highlighted
-        self._format_word(self._last_highlighted)
+        self._remove_highlight(word_data=self._last_highlighted)
 
         if move_index == -1:
             return
 
         word_data = self._move_index_word_data[move_index]
-        self._format_word(
-            word_data,
-            self._highlight_format,
-        )
+        self._add_highlight(word_data=word_data)
+
         self._last_highlighted = word_data
 
     def _setup_ui(self):
@@ -762,15 +818,17 @@ class MoveWidget(QtWidgets.QDialog):
         ) = self._create_btn_widget()
         self._main_layout.addWidget(btn_widget)
 
-    def _create_text_edit(self):
+    @staticmethod
+    def _create_text_edit():
         textedit = QtWidgets.QTextEdit()
+        textedit.setFontFamily(c.APP.CHESS_FONT_FAMILY)
         textedit.setStyleSheet('border: 1px solid rgb(90, 90, 90)')
         textedit.setReadOnly(True)
         textedit.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         textedit.viewport().setCursor(
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
-        textedit.zoomIn(12)
+        textedit.zoomIn(14)
         return textedit
 
     def _create_btn_widget(self):
@@ -794,7 +852,8 @@ class MoveWidget(QtWidgets.QDialog):
 
         return widget, first_btn, prev_btn, next_btn, last_btn
 
-    def _create_btn(self, text):
+    @staticmethod
+    def _create_btn(text):
         btn = QtWidgets.QPushButton(text)
         btn.setStyleSheet('border: 1px solid rgb(90, 90, 90)')
         btn.setSizePolicy(
@@ -857,19 +916,31 @@ class MoveWidget(QtWidgets.QDialog):
             char_pos = pos + word_starts_at + i_word
             self._cursor_pos_map[char_pos] = word_data
 
-    def _format_word(self, word_data, char_format=None):
+    @staticmethod
+    def _highlight_format():
+        char_format = QtGui.QTextCharFormat()
+        char_format.setForeground(QtGui.QBrush(QtGui.QColor("red")))
+        char_format.setBackground(QtGui.QBrush(QtGui.QColor("yellow")))
+        char_format.setFontWeight(QtGui.QFont.Bold)
+        return char_format
+
+    @staticmethod
+    def _plain_format():
+        char_format = QtGui.QTextCharFormat()
+        char_format.setForeground(QtGui.QBrush(QtGui.QColor(221, 221, 221)))
+        char_format.setBackground(QtGui.QBrush(QtGui.QColor(25, 25, 25)))
+        char_format.setFontWeight(QtGui.QFont.Normal)
+        return char_format
+
+    def _add_highlight(self, word_data):
+        self._format_word(word_data, char_format=self._highlight_format)
+
+    def _remove_highlight(self, word_data):
+        self._format_word(word_data, char_format=self._plain_format)
+
+    def _format_word(self, word_data, char_format):
         if word_data is None:
             return
-
-        if char_format is None:
-            char_format = QtGui.QTextCharFormat()
-            char_format.setForeground(
-                QtGui.QBrush(QtGui.QColor(221, 221, 221))
-            )
-            char_format.setBackground(
-                QtGui.QBrush(QtGui.QColor(25, 25, 25))
-            )
-            char_format.setFontWeight(QtGui.QFont.Normal)
 
         cursor = self._textedit.textCursor()
         cursor.setPosition(word_data.start)
