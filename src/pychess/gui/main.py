@@ -360,6 +360,9 @@ class MainWidget(QtWidgets.QDialog):
         if not self._has_game_started:
             return
 
+        if self._is_game_over:
+            return
+
         self.game_over(winning_color)
         white_wins = True
         if winning_color == c.Color.black:
