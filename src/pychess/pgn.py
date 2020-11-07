@@ -79,9 +79,22 @@ class NAMEDTUPLES:
             'partial_addr',
         ]
     )
+    PARSE_SINGLE_MOVE_RESULT = collections.namedtuple(
+        'PARSE_SINGLE_MOVE_RESULT',
+        [
+            'castling',
+            'piece',
+            'capture',
+            'address',
+            'promotion',
+            'check_mate',
+        ],
+    )
 
 
 class REGEX:
+    start_anchor = r"^"
+    end_anchor = r"$"
     move_num = r"([\d]+)"
     literal_dot = r"\."
     group_starts = r"("
@@ -181,6 +194,30 @@ class REGEX:
         result,
 
         group_ends,
+    ])
+
+    SINGLE_MOVE = ''.join([
+        start_anchor,
+
+        castling,
+
+        alternative,
+
+        non_capturing_group_starts,
+
+        piece,
+
+        capture,
+
+        address,
+
+        promotion,
+
+        group_ends,
+
+        check_mate,
+
+        end_anchor,
     ])
 
 
