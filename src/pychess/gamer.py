@@ -297,7 +297,7 @@ class Game:
                 if not result:
                     error_msg = (
                         'Error happened while trying to apply the move: '
-                        f'move {self._move_no}({self.current_player.name}): '
+                        f'move {self._move_no}({self._current_player.name}): '
                         f'{move}'
                     )
                     raise RuntimeError(error_msg)
