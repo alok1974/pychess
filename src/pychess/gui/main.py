@@ -357,7 +357,7 @@ class MainWidget(QtWidgets.QDialog):
         )
 
     def _resign(self, winning_color):
-        if not self._has_game_started:
+        if self._is_paused:
             return
 
         if self._is_game_over:

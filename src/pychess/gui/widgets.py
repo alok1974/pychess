@@ -119,7 +119,6 @@ class BoardWidget(QtWidgets.QDialog):
         self._game_loaded = False
         self._is_paused = True
         self._is_game_over = False
-        self._has_game_started = False
 
         self._show_threatened = False
         self._inspecting_history = False
