@@ -862,7 +862,15 @@ class MoveWidget(QtWidgets.QDialog):
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
         textedit.zoomIn(14)
+
+        # Force loading of fonts at init time
+        textedit.insertPlainText('Initializing ...')
+
         return textedit
+
+    def showEvent(self, event):
+        # Clear the textedit as missing fonts are now loaded
+        self._textedit.clear()
 
     def _create_btn_widget(self):
         widget = QtWidgets.QWidget()
