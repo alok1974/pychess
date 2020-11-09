@@ -134,6 +134,8 @@ class APP:
     )
     MOVE_WIDGET_WIDTH = 400
     COLLAPSE_BTN_WIDTH = 20
+    AI_BTN_WIDTH = 200
+    AI_BTN_HEIGHT = 50
 
 
 class IMAGE:
