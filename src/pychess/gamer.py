@@ -95,6 +95,7 @@ class Game:
 
         self._black_promotion_piece_type = c.PieceType.queen
         self._white_promotion_piece_type = c.PieceType.queen
+        self._is_standard_type = True
 
     @contextlib.contextmanager
     def block_signals(self):
@@ -207,6 +208,7 @@ class Game:
 
         self._black_promotion_piece_type = c.PieceType.queen
         self._white_promotion_piece_type = c.PieceType.queen
+        self._is_standard_type = True
 
     @property
     def is_game_over(self):
