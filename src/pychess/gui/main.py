@@ -534,13 +534,14 @@ class MainWidget(QtWidgets.QDialog):
         w.show()
 
     def _update_ui_for_start(self):
-        self._board_widget.ready_to_start()
+        # NOTE: The order of widget initialization below
+        # is important otherwise the move widget does not fill
+        # the whole space
         self._toggle_left_widget(visibility=True)
         self._left_widget.adjustSize()
         self._moves_widget.adjustSize()
+        self._board_widget.ready_to_start()
         self.adjustSize()
-        self._left_widget.adjustSize()
-        self._moves_widget.adjustSize()
         self.adjustPosition(self)
 
     def _update_data_for_start(self):
