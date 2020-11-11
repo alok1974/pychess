@@ -772,6 +772,8 @@ class MoveWidget(QtWidgets.QDialog):
                 unicode_symbol = self._get_unicode(piece_str, color)
                 if piece_str != 'P':
                     text = text[1:]
+                else:
+                    unicode_symbol = ''
                 text = f'{unicode_symbol}{text}'
         return text
 
