@@ -435,7 +435,7 @@ class MainWidget(QtWidgets.QDialog):
         if self._pgn2moves.nb_games == 1:
             self._load_game()
         else:
-            game_info = self._pgn2moves.game_info
+            game_info = self._pgn2moves.short_info
             w = LoadGameWidget(game_info=game_info, parent=self)
             w.SELECTED_GAME_SIGNAL.connect(self._load_game)
             w.show()

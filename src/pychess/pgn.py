@@ -227,6 +227,7 @@ class PGN2MOVES:
         self._games = self._parse_game_file(file_path=pgn_file_path)
         self._nb_games = len(self._games)
         self._game_info = None
+        self._short_info = None
 
     @property
     def nb_games(self):
@@ -237,6 +238,12 @@ class PGN2MOVES:
         if self._game_info is None:
             self._game_info = self._get_game_info()
         return self._game_info
+
+    @property
+    def short_info(self):
+        if self._short_info is None:
+            self._short_info = self._get_short_info()
+        return self._short_info
 
     def get_moves(self, game_index):
         return self._get_moves(game_index=game_index)
@@ -293,6 +300,14 @@ class PGN2MOVES:
         for game in self._games:
             header_data = game.header_data
             info.append(f'{self._generate_info_string(header_data)}')
+
+        return info
+
+    def _get_short_info(self):
+        info = []
+        for game in self._games:
+            header_data = game.header_data
+            info.append(f'{self._generate_short_info_string(header_data)}')
 
         return info
 
@@ -705,6 +720,24 @@ class PGN2MOVES:
         if event_date is not None:
             out.append(f'[Event Date "{event_date}"]')
 
+        return '\n'.join(out)
+
+    @staticmethod
+    def _generate_short_info_string(header_data):
+        out = []
+
+        white = header_data.white or '-'
+        black = header_data.black or '-'
+        out.append(
+            f'{white} vs. {black}'
+        )
+
+        site = header_data.site or '-'
+        date = header_data.date or '-'
+        result = header_data.result or '-'
+        out.append(
+            f'{site} | {date}, result {result}'
+        )
         return '\n'.join(out)
 
     @staticmethod
