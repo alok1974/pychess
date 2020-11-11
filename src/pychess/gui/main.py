@@ -544,9 +544,20 @@ class MainWidget(QtWidgets.QDialog):
         self.adjustSize()
         self.adjustPosition(self)
 
-    def _update_data_for_start(self):
+    def _update_data_for_start(self, is_engine_selected=False):
         self._reset()
         if self._custom_options_set:
+            if is_engine_selected and not self._custom_is_standard_type:
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setText(
+                    'Currently, Chess 960 format is not available '
+                    'while playing against computer. It might be implemented '
+                    'in future. For now, please select the standard format '
+                    'for playing against computer.'
+                )
+                msg_box.exec_()
+                return False
+
             self._bonus_time = self._custom_bonus_time
             self._remaining_time_white = self._custom_play_time * 60
             self._remaining_time_black = self._custom_play_time * 60
@@ -558,8 +569,11 @@ class MainWidget(QtWidgets.QDialog):
                     self._custom_is_standard_type,
                 )
             )
+
         self._resume_game()
         self._has_game_started = True
+
+        return True
 
     def _update_engine_for_start(self, engine_color):
         if engine_color is None:
@@ -573,7 +587,12 @@ class MainWidget(QtWidgets.QDialog):
                 self.MOVE_SIGNAL.emit(best_move)
 
     def _start_new_game(self, engine_color=None):
-        self._update_data_for_start()
+        is_engine_selected = engine_color is not None
+        result = self._update_data_for_start(is_engine_selected)
+        if not result:
+            # Something went wrong while updating the start data
+            return
+
         self._update_ui_for_start()
         self._update_engine_for_start(engine_color=engine_color)
 
