@@ -103,13 +103,8 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.display_time_white(self._remaining_time_white)
         self._board_widget.display_time_black(self._remaining_time_black)
 
-        self._left_widget.setVisible(False)
-        self._moves_widget.adjustSize()
-        self._left_widget.adjustSize()
-        self._board_widget.adjustSize()
-        self._right_widget.adjustSize()
-        self.adjustSize()
-        self.adjustPosition(self)
+        self._toggle_left_widget(visibility=False)
+        self._adjust_size()
 
     def _reset_custom_options(self):
         self._custom_options_set = False
@@ -184,7 +179,9 @@ class MainWidget(QtWidgets.QDialog):
         # menuBar = MenuBar(self)
         # layout.addWidget(menuBar)
 
-        lower_layout = QtWidgets.QHBoxLayout()
+        self._lower_widget = QtWidgets.QWidget()
+
+        lower_layout = QtWidgets.QHBoxLayout(self._lower_widget)
         lower_layout.setContentsMargins(0, 0, 0, 0)
 
         self._right_widget = self._create_right_widget()
@@ -193,7 +190,7 @@ class MainWidget(QtWidgets.QDialog):
         lower_layout.addWidget(self._right_widget, 1)
         lower_layout.addWidget(self._left_widget, 2)
 
-        layout.addLayout(lower_layout)
+        layout.addWidget(self._lower_widget)
 
     def _create_right_widget(self):
         widget = QtWidgets.QWidget()
@@ -592,18 +589,16 @@ class MainWidget(QtWidgets.QDialog):
     def _resume_game(self):
         self._start_current_player_time()
         self._is_paused = False
-        self._toggle_left_widget(visibility=True)
         self._board_widget.is_paused = self._is_paused
-        self._right_widget.adjustSize()
-        self.adjustSize()
+        self._toggle_left_widget(visibility=True)
+        self._adjust_size()
 
     def _pause_game(self):
         self._stop_all_timers()
         self._is_paused = True
-        self._toggle_left_widget(visibility=False)
         self._board_widget.is_paused = self._is_paused
-        self._right_widget.adjustSize()
-        self.adjustSize()
+        self._toggle_left_widget(visibility=False)
+        self._adjust_size()
 
     def _display_pgn_moves(self):
         if self._game_data is None:
@@ -631,9 +626,6 @@ class MainWidget(QtWidgets.QDialog):
 
     def _handle_keypress(self, event):
         keys = QtCore.Qt
-        if self._is_key_pressed(event, keys.Key_Escape):
-            print('escape pressed')
-
         if self._is_key_pressed(event, keys.Key_C):
             self._toggle_show_threatened()
 
@@ -654,6 +646,15 @@ class MainWidget(QtWidgets.QDialog):
 
         if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
             self._toggle_pause()
+
+    def _adjust_size(self):
+        self._left_widget.adjustSize()
+        self._moves_widget.adjustSize()
+        self._board_widget.adjustSize()
+        self._right_widget.adjustSize()
+        self._lower_widget.adjustSize()
+        self.adjustSize()
+        self.adjustPosition(self)
 
 
 class MainWindow(QtWidgets.QMainWindow):
