@@ -337,18 +337,6 @@ class BoardWidget(QtWidgets.QDialog):
         ) = self._create_panel_widget(color=c.Color.black)
         main_layout.addWidget(self._black_panel_widget)
 
-        # Add black capture image
-        self._captured_pixmap_black = QtGui.QPixmap.fromImage(
-            self._captured_image.qt_image_black
-        )
-        self._captured_label_black = QtWidgets.QLabel()
-        self._captured_label_black.setPixmap(self._captured_pixmap_black)
-        main_layout.addWidget(self._captured_label_black)
-
-        # Add main board image
-        image_layout = self._create_image_layout()
-        main_layout.addLayout(image_layout)
-
         # Add white capture image
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_white)
@@ -356,6 +344,18 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_label_white.setPixmap(self._captured_pixmap_white)
 
         main_layout.addWidget(self._captured_label_white)
+
+        # Add main board image
+        image_layout = self._create_image_layout()
+        main_layout.addLayout(image_layout)
+
+        # Add black capture image
+        self._captured_pixmap_black = QtGui.QPixmap.fromImage(
+            self._captured_image.qt_image_black
+        )
+        self._captured_label_black = QtWidgets.QLabel()
+        self._captured_label_black.setPixmap(self._captured_pixmap_black)
+        main_layout.addWidget(self._captured_label_black)
 
         # Add white panel widget
         (
