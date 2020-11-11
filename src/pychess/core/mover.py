@@ -1,6 +1,6 @@
-from . import constant as c
-from .squarer import Square
-from .piecer import Piece
+from .. import constant as c
+from ..element.squarer import Square
+from ..element.piecer import Piece
 
 
 class Move:

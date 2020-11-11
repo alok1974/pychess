@@ -1,7 +1,7 @@
 import collections
 
 
-from . import constant as c
+from .. import constant as c
 
 
 class Piece:

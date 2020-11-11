@@ -1,9 +1,4 @@
-from .controller import Controller
+from .controller import run
 
 
-__all__ = ['run']
-
-
-def run():
-    controller = Controller()
-    controller.run()
+__all__ = [run]

@@ -1,6 +1,12 @@
 from PySide2 import QtWidgets, QtCore
 
 
+from .. import constant as c
+from ..core.history import Player as HistoryPlayer
+from ..core.pgn import MOVES2PGN, PGN2MOVES
+from ..core.engineer import Engine
+
+
 from .widgets import (
     BoardWidget,
     OptionWidget,
@@ -8,12 +14,8 @@ from .widgets import (
     LoadGameWidget,
     SaveGameDataWidget,
     ChoosePlayerWidget,
+    # MenuBar,
 )
-
-
-from .. import constant as c, engineer
-from ..history import Player as HistoryPlayer
-from ..pgn import MOVES2PGN, PGN2MOVES
 
 
 class MainWidget(QtWidgets.QDialog):
@@ -33,7 +35,7 @@ class MainWidget(QtWidgets.QDialog):
         self._collapsed_width = None
         self._history_player = None
         self._engine_color = None
-        self._engine = engineer.Engine()
+        self._engine = Engine()
         self._board = board
 
         self._current_player = c.Color.white
@@ -166,27 +168,7 @@ class MainWidget(QtWidgets.QDialog):
             self._toggle_left_widget()
 
     def keyPressEvent(self, event):
-        keys = QtCore.Qt
-        if self._is_key_pressed(event, keys.Key_C):
-            self._toggle_show_threatened()
-
-        if self._is_key_pressed(event, keys.Key_S, keys.ControlModifier):
-            self._handle_save_game()
-
-        if self._is_key_pressed(event, keys.Key_O, keys.ControlModifier):
-            self._handle_load_game()
-
-        if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
-            self._handle_reset()
-
-        if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
-            self._open_options()
-
-        if self._is_key_pressed(event, keys.Key_N, keys.ControlModifier):
-            self._choose_player()
-
-        if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
-            self._toggle_pause()
+        self._handle_keypress(event=event)
 
     @staticmethod
     def _is_key_pressed(event, key, modifier=None):
@@ -196,13 +178,22 @@ class MainWidget(QtWidgets.QDialog):
         return result
 
     def _setup_ui(self):
-        main_layout = QtWidgets.QHBoxLayout(self)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # menuBar = MenuBar(self)
+        # layout.addWidget(menuBar)
+
+        lower_layout = QtWidgets.QHBoxLayout()
+        lower_layout.setContentsMargins(0, 0, 0, 0)
 
         self._right_widget = self._create_right_widget()
         self._left_widget = self._create_left_widget()
 
-        main_layout.addWidget(self._right_widget, 1)
-        main_layout.addWidget(self._left_widget, 2)
+        lower_layout.addWidget(self._right_widget, 1)
+        lower_layout.addWidget(self._left_widget, 2)
+
+        layout.addLayout(lower_layout)
 
     def _create_right_widget(self):
         widget = QtWidgets.QWidget()
@@ -236,6 +227,7 @@ class MainWidget(QtWidgets.QDialog):
 
         # Move Widget Signals
         mw = self._moves_widget
+        mw.KEYPRESS_SIGNAL.connect(self._handle_keypress)
         mw.MOVE_SELECTED_SIGNAL.connect(self._move_selected)
         mw.FIRST_BTN_CLICKED_SIGNAL.connect(self._first_btn_clicked)
         mw.PREV_BTN_CLICKED_SIGNAL.connect(self._previous_btn_clicked)
@@ -636,3 +628,82 @@ class MainWidget(QtWidgets.QDialog):
         )
         if result == QtWidgets.QMessageBox.Yes:
             self._reset()
+
+    def _handle_keypress(self, event):
+        keys = QtCore.Qt
+        if self._is_key_pressed(event, keys.Key_Escape):
+            print('escape pressed')
+
+        if self._is_key_pressed(event, keys.Key_C):
+            self._toggle_show_threatened()
+
+        if self._is_key_pressed(event, keys.Key_S, keys.ControlModifier):
+            self._handle_save_game()
+
+        if self._is_key_pressed(event, keys.Key_O, keys.ControlModifier):
+            self._handle_load_game()
+
+        if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
+            self._handle_reset()
+
+        if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
+            self._open_options()
+
+        if self._is_key_pressed(event, keys.Key_N, keys.ControlModifier):
+            self._choose_player()
+
+        if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
+            self._toggle_pause()
+
+
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self, board, parent=None):
+        super().__init__(parent=parent)
+        self.main_widget = MainWidget(board=board)
+        # self._status_bar = self.statusBar()
+        # self._status_bar.showMessage('Ready ..')
+        self._menu_bar = self.menuBar()
+        # self._fileMenu = self._menu_bar.addMenu('&File')
+        self.setCentralWidget(self.main_widget)
+        self.setWindowTitle('Pychess')
+        self.setStyleSheet(c.APP.STYLESHEET)
+
+    def keyPressEvent(self, event):
+        self.main_widget.keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.main_widget.mousePressEvent(event)
+        event.ignore()
+#     def keyPressEvent(self, event):
+#         with adjust_size(self):
+#             self._handle_keys(event=event)
+
+    # def _handle_keys(self, event):
+    #     keys = QtCore.Qt
+    #     if self._is_key_pressed(event, keys.Key_C):
+    #         self.main_widget.toggle_show_threatened()
+
+    #     if self._is_key_pressed(event, keys.Key_S, keys.ControlModifier):
+    #         self.main_widget.handle_save_game()
+
+    #     if self._is_key_pressed(event, keys.Key_O, keys.ControlModifier):
+    #         self.main_widget.handle_load_game()
+
+    #     if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
+    #         self.main_widget.handle_reset()
+
+    #     if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
+    #         self.main_widget.open_options()
+
+    #     if self._is_key_pressed(event, keys.Key_N, keys.ControlModifier):
+    #         self.main_widget.choose_player()
+
+    #     if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
+    #         self.main_widget.toggle_pause()
+
+    # @staticmethod
+    # def _is_key_pressed(event, key, modifier=None):
+    #     result = event.key() == key
+    #     if modifier is not None:
+    #         result = result and event.modifiers() == modifier
+    #     return result

@@ -5,12 +5,12 @@ import contextlib
 import copy
 
 
-from .boarder import Board
+from .. import constant as c
+from ..event import Signal
+from ..element.boarder import Board
+from ..element.squarer import Square
+from ..element.piecer import Piece
 from .mover import Move
-from . import constant as c
-from .piecer import Piece
-from .squarer import Square
-from .event import Signal
 
 
 GAME_DATA = collections.namedtuple(

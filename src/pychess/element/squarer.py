@@ -1,7 +1,7 @@
 import re
 
 
-from . import constant as c
+from .. import constant as c
 
 
 class Square:

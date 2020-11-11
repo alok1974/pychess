@@ -2,10 +2,10 @@ import itertools
 import random
 
 
+from .. import constant as c
+from ..core.mover import Move
 from .squarer import Square
 from .piecer import Piece
-from . import constant as c
-from .mover import Move
 
 
 class Board:

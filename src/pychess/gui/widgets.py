@@ -9,8 +9,9 @@ import getpass
 from PySide2 import QtWidgets, QtCore, QtGui
 
 
-from .. import constant as c, imager
-from ..pgn import REGEX, NAMEDTUPLES
+from .. import constant as c
+from ..core.pgn import REGEX, NAMEDTUPLES
+from . import imager
 
 
 @contextlib.contextmanager
@@ -25,6 +26,26 @@ def block_signals(widgets):
     finally:
         for widget, is_signal_blocked in signal_states:
             widget.blockSignals(is_signal_blocked)
+
+
+class MenuBar(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._setup_ui()
+        self._connect_signals()
+
+    def _setup_ui(self):
+        self.setMaximumHeight(50)
+        layout = QtWidgets.QHBoxLayout(self)
+
+        for btn_text in 'abcdefghij':
+            btn = QtWidgets.QPushButton(f'B({btn_text})')
+            layout.addWidget(btn)
+
+        layout.addStretch(1)
+
+    def _connect_signals(self):
+        pass
 
 
 class ImageLabel(QtWidgets.QLabel):
@@ -679,6 +700,7 @@ class MoveWidget(QtWidgets.QDialog):
     PREV_BTN_CLICKED_SIGNAL = QtCore.Signal()
     NEXT_BTN_CLICKED_SIGNAL = QtCore.Signal()
     LAST_BTN_CLICKED_SIGNAL = QtCore.Signal()
+    KEYPRESS_SIGNAL = QtCore.Signal(QtCore.QEvent)
 
     WORD_DATA = collections.namedtuple(
         'WORD_DATA',
@@ -703,6 +725,12 @@ class MoveWidget(QtWidgets.QDialog):
         self._last_highlighted = None
         self._setup_ui()
         self._connect_signals()
+
+    def keyPressEvent(self, event):
+        # Relay back the keypress events
+        # NOTE: This fixed the problem when the move widget
+        # was being closed when the escape key was pressed
+        self.KEYPRESS_SIGNAL.emit(event)
 
     def reset(self):
         self._cursor_pos_map = {}

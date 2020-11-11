@@ -1,4 +1,4 @@
-from . import constant as c
+from .. import constant as c
 from .gamer import Game
 
 

@@ -5,8 +5,8 @@ import collections
 from PIL import Image, ImageQt, ImageDraw, ImageFont
 
 
-from . import constant as c
-from .squarer import Square
+from .. import constant as c
+from ..element.squarer import Square
 
 
 class BoardImage:

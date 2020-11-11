@@ -1,7 +1,7 @@
 import collections
 
 
-from .boarder import Board
+from ..element.boarder import Board
 
 
 PLAY_RESULT = collections.namedtuple('PLAY_RESULT', ['board', 'move'])

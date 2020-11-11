@@ -7,12 +7,12 @@ import contextlib
 import textwrap
 
 
-from . import constant as c
-from .squarer import Square
+from ..import constant as c
+from ..element.squarer import Square
+from ..element.piecer import Piece
+from ..element.boarder import Board
+from ..gui.imager import BoardImage
 from .mover import Move
-from .piecer import Piece
-from .boarder import Board
-from .imager import BoardImage
 from .gamer import Game
 
 

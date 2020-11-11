@@ -16,8 +16,10 @@ setup(
     url='https://github.com/alok1974/pychess',
     packages=[
         'pychess',
-        'pychess.resources',
+        'pychess.core',
+        'pychess.element',
         'pychess.gui',
+        'pychess.resources',
     ],
     package_data={
         'pychess': ['resources/*/*.*'],
