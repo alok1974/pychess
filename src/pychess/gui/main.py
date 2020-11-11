@@ -147,21 +147,22 @@ class MainWidget(QtWidgets.QDialog):
     def game_over(self, winner):
         self._winner = winner
         self._is_game_over = True
+        self._has_game_started = False
         self._board_widget.game_over(winner)
         self._stop_all_timers()
 
     def resizeEvent(self, event):
-        if self._game_loaded:
-            self._handle_left_widget()
+        if self._is_paused:
             return
-        elif self._has_game_started:
+
+        if self._game_loaded or self._has_game_started:
             self._handle_left_widget()
 
     def mouseDoubleClickEvent(self, event):
-        if not self._has_game_started:
+        if self._is_paused:
             return
 
-        if not self._left_widget.isVisible():
+        if self._has_game_started or not self._left_widget.isVisible():
             self._toggle_left_widget()
 
     def keyPressEvent(self, event):
@@ -176,13 +177,10 @@ class MainWidget(QtWidgets.QDialog):
             self._handle_load_game()
 
         if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
-            self._reset()
+            self._handle_reset()
 
         if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
             self._open_options()
-
-        if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
-            self._reset()
 
         if self._is_key_pressed(event, keys.Key_N, keys.ControlModifier):
             self._choose_player()
@@ -517,6 +515,9 @@ class MainWidget(QtWidgets.QDialog):
             raise RuntimeError(error_msg)
 
     def _choose_player(self):
+        if self._has_game_started or self._board_widget.game_loaded:
+            return
+
         w = ChoosePlayerWidget(parent=self)
         w.CHOSEN_COLOR_SIGNAL.connect(
             lambda color: self._start_new_game(engine_color=color)
@@ -599,12 +600,18 @@ class MainWidget(QtWidgets.QDialog):
     def _resume_game(self):
         self._start_current_player_time()
         self._is_paused = False
+        self._toggle_left_widget(visibility=True)
         self._board_widget.is_paused = self._is_paused
+        self._right_widget.adjustSize()
+        self.adjustSize()
 
     def _pause_game(self):
         self._stop_all_timers()
         self._is_paused = True
+        self._toggle_left_widget(visibility=False)
         self._board_widget.is_paused = self._is_paused
+        self._right_widget.adjustSize()
+        self.adjustSize()
 
     def _display_pgn_moves(self):
         if self._game_data is None:
@@ -613,3 +620,19 @@ class MainWidget(QtWidgets.QDialog):
         self._history_player = HistoryPlayer(self._game_data.move_history)
         moves = MOVES2PGN(self._game_data.move_history).moves
         self._moves_widget.display_moves(moves)
+
+    def _handle_reset(self):
+        if not self._has_game_started:
+            return
+
+        msg_box = QtWidgets.QMessageBox()
+        result = msg_box.question(
+            self,
+            'Reset Game?',
+            'There is a game in progress, '
+            'do you really want to reset?',
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.Cancel,
+        )
+        if result == QtWidgets.QMessageBox.Yes:
+            self._reset()

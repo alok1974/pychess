@@ -180,8 +180,7 @@ class BoardWidget(QtWidgets.QDialog):
     @is_paused.setter
     def is_paused(self, val):
         self._is_paused = val
-        self._board_image.handle_pause_screen(is_paused=val)
-        self._update_image_label()
+        self._handle_pause(self._is_paused)
 
     @property
     def game_loaded(self):
@@ -416,8 +415,6 @@ class BoardWidget(QtWidgets.QDialog):
         layout.addWidget(lcd, 1)
         layout.addWidget(btn, 2)
 
-        widget.setMaximumWidth(self._board_image.image.width)
-
         return widget, lcd, btn
 
     @staticmethod
@@ -596,6 +593,12 @@ class BoardWidget(QtWidgets.QDialog):
         seconds = str(seconds).zfill(2)
 
         return f'{hours}:{minutes}:{seconds}'
+
+    def _handle_pause(self, is_paused):
+        self._board_image.handle_pause_screen(is_paused=is_paused)
+        self._update_image_label()
+        self.set_panel_visibility(not is_paused)
+        self.adjustSize()
 
 
 class LoadGameWidget(QtWidgets.QDialog):
