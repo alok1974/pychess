@@ -234,7 +234,7 @@ class MainWidget(QtWidgets.QDialog):
         # Internal Signals
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
-        self._collapse_btn.clicked.connect(self._toggle_left_widget)
+        self._collapse_btn.clicked.connect(self._collapse_btn_clicked)
 
     def _handle_left_widget(self):
         if self._collapsed_width is None:
@@ -254,11 +254,9 @@ class MainWidget(QtWidgets.QDialog):
             vis_to_set = not self._left_widget.isVisible()
         self._left_widget.setVisible(vis_to_set)
         self._collapse_btn.setVisible(vis_to_set)
-        self.adjustSize()
 
         if not vis_to_set:
             self._collapse_btn.setText('>')
-            self._collapsed_width = self.width()
         else:
             self._collapse_btn.setText('<')
             self._display_pgn_moves()
@@ -268,12 +266,6 @@ class MainWidget(QtWidgets.QDialog):
 
     def _move_selected(self, move_index):
         self._inspect_history(index=move_index)
-
-    def _new_game_btn_clicked(self):
-        self._choose_player()
-
-    def _reset_btn_clicked(self):
-        self._reset()
 
     def _toggle_pause(self):
         if not self._has_game_started:
@@ -298,6 +290,11 @@ class MainWidget(QtWidgets.QDialog):
 
     def _last_btn_clicked(self):
         self._inspect_history(end=True)
+
+    def _collapse_btn_clicked(self):
+        self._toggle_left_widget()
+        self._adjust_size()
+        self._collapsed_width = self.width()
 
     def _start_current_player_time(self):
         if self._current_player == c.Color.white:
