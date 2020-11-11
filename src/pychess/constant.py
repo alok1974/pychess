@@ -140,9 +140,17 @@ class APP:
 
 class IMAGE:
     NB_SQUARES = 8
+
     IMAGE_DIR = os.path.join(RESOURCE_DIR, 'image')
+
     BOARD_IMAGE_NAME = 'board.png'
     BOARD_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BOARD_IMAGE_NAME)
+
+    SPLASH_IMAGE_NAME = 'splash.png'
+    SPLASH_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, SPLASH_IMAGE_NAME)
+
+    PAUSE_IMAGE_NAME = 'pause.png'
+    PAUSE_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, PAUSE_IMAGE_NAME)
 
     PIECE_IMAGE = _declare_constants(
         obj_name='PIECE_IMAGE',
