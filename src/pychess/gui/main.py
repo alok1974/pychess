@@ -252,12 +252,14 @@ class MainWidget(QtWidgets.QDialog):
             vis_to_set = visibility
         else:
             vis_to_set = not self._left_widget.isVisible()
+
         self._left_widget.setVisible(vis_to_set)
         self._collapse_btn.setVisible(vis_to_set)
 
         if not vis_to_set:
             self._collapse_btn.setText('>')
         else:
+            self._collapse_btn.setVisible(vis_to_set)
             self._collapse_btn.setText('<')
             self._display_pgn_moves()
 
@@ -440,11 +442,10 @@ class MainWidget(QtWidgets.QDialog):
         self._game_loaded = True
         self._board_widget.game_loaded = True
         self._board_widget.set_panel_visibility(False)
-        self._board_widget.adjustSize()
         self._toggle_left_widget(visibility=True)
-        self._right_widget.adjustSize()
-        self._left_widget.adjustSize()
-        self.adjustSize()
+        self._collapse_btn.setVisible(False)
+        self._inspect_history(index=-1)
+        self._adjust_size()
 
     def _handle_save_game(self):
         if not self._has_game_started:
@@ -501,7 +502,7 @@ class MainWidget(QtWidgets.QDialog):
             raise RuntimeError(error_msg)
 
     def _choose_player(self):
-        if self._has_game_started or self._board_widget.game_loaded:
+        if self._has_game_started:
             return
 
         w = ChoosePlayerWidget(parent=self)
@@ -606,20 +607,19 @@ class MainWidget(QtWidgets.QDialog):
         self._moves_widget.display_moves(moves)
 
     def _handle_reset(self):
-        if not self._has_game_started:
-            return
-
-        msg_box = QtWidgets.QMessageBox()
-        result = msg_box.question(
-            self,
-            'Reset Game?',
-            'There is a game in progress, '
-            'do you really want to reset?',
-            QtWidgets.QMessageBox.Yes,
-            QtWidgets.QMessageBox.Cancel,
-        )
-        if result == QtWidgets.QMessageBox.Yes:
-            self._reset()
+        if self._has_game_started:
+            msg_box = QtWidgets.QMessageBox()
+            result = msg_box.question(
+                self,
+                'Reset Game?',
+                'There is a game in progress, '
+                'do you really want to reset?',
+                QtWidgets.QMessageBox.Yes,
+                QtWidgets.QMessageBox.Cancel,
+            )
+            if result != QtWidgets.QMessageBox.Yes:
+                return
+        self._reset()
 
     def _handle_keypress(self, event):
         keys = QtCore.Qt
