@@ -3,11 +3,11 @@ from PySide2 import QtWidgets, QtCore
 
 from .widgets import (
     BoardWidget,
-    ButtonWidget,
     OptionWidget,
     MoveWidget,
     LoadGameWidget,
     SaveGameDataWidget,
+    ChoosePlayerWidget,
 )
 
 
@@ -28,10 +28,7 @@ class MainWidget(QtWidgets.QDialog):
         super().__init__(parent=parent)
         self._board = board
         self._board_widget = BoardWidget(board=self._board)
-        self._board_widget.init_board()
-        self._button_widget = ButtonWidget()
         self._moves_widget = MoveWidget()
-        self._option_widget = OptionWidget(parent=self)
 
         self._collapsed_width = None
         self._history_player = None
@@ -53,22 +50,31 @@ class MainWidget(QtWidgets.QDialog):
         self._is_paused = True
         self._is_game_over = False
         self._has_game_started = False
+        self._game_loaded = False
 
         self._game_data = None
         self._history_player = None
 
         self._inspecting_history = False
 
+        # Custom Options
+        self._custom_options_set = False
+        self._custom_bonus_time = None
+        self._custom_play_time = None
+        self._custom_white_promotion = None
+        self._custom_black_promotion = None
+        self._custom_is_standard_type = None
+
         self._setup_ui()
         self._connect_signals()
+
+        self._reset()
 
     def _reset(self):
         self.GAME_RESET_SIGNAL.emit()
 
         self._board_widget.reset()
         self._moves_widget.reset()
-        self._option_widget.reset()
-        self._button_widget.reset()
 
         self._engine_color = None
         self._history_player = None
@@ -85,6 +91,7 @@ class MainWidget(QtWidgets.QDialog):
         self._is_paused = True
         self._is_game_over = False
         self._has_game_started = False
+        self._game_loaded = False
 
         self._game_data = None
         self._history_player = None
@@ -94,12 +101,25 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.display_time_white(self._remaining_time_white)
         self._board_widget.display_time_black(self._remaining_time_black)
 
+        self._left_widget.setVisible(False)
+        self._moves_widget.adjustSize()
+        self._left_widget.adjustSize()
+        self._board_widget.adjustSize()
+        self._right_widget.adjustSize()
+        self.adjustSize()
+        self.adjustPosition(self)
+
+    def _reset_custom_options(self):
+        self._custom_options_set = False
+        self._custom_bonus_time = None
+        self._custom_play_time = None
+        self._custom_white_promotion = None
+        self._custom_black_promotion = None
+        self._custom_is_standard_type = None
+
     def update_move(self, game_data):
         self._game_data = game_data
-        self._history_player = HistoryPlayer(self._game_data.move_history)
-        moves = MOVES2PGN(self._game_data.move_history).moves
-        self._moves_widget.display_moves(moves)
-
+        self._display_pgn_moves()
         self._board_widget.update_move(game_data=self._game_data)
 
     def update_invalid_move(self):
@@ -112,6 +132,15 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.set_current_player(color)
         self._start_current_player_time()
 
+        if self._engine_color is not None:
+            if self._current_player == self._engine_color:
+                moves = [(m.src, m.dst) for m in self._game_data.move_history]
+                best_move = self._engine.get_best_move(moves)
+                if best_move is not None:
+                    self.MOVE_SIGNAL.emit(best_move)
+                else:
+                    print('Computer was Unable to get the best move!')
+
     def update_board(self):
         self._board_widget.update_board()
 
@@ -119,13 +148,19 @@ class MainWidget(QtWidgets.QDialog):
         self._winner = winner
         self._is_game_over = True
         self._board_widget.game_over(winner)
-        self._button_widget.start_btn.setText('RESTART')
         self._stop_all_timers()
 
     def resizeEvent(self, event):
-        self._handle_left_widget()
+        if self._game_loaded:
+            self._handle_left_widget()
+            return
+        elif self._has_game_started:
+            self._handle_left_widget()
 
     def mouseDoubleClickEvent(self, event):
+        if not self._has_game_started:
+            return
+
         if not self._left_widget.isVisible():
             self._toggle_left_widget()
 
@@ -142,6 +177,18 @@ class MainWidget(QtWidgets.QDialog):
 
         if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
             self._reset()
+
+        if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
+            self._open_options()
+
+        if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
+            self._reset()
+
+        if self._is_key_pressed(event, keys.Key_N, keys.ControlModifier):
+            self._choose_player()
+
+        if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
+            self._toggle_pause()
 
     @staticmethod
     def _is_key_pressed(event, key, modifier=None):
@@ -171,11 +218,6 @@ class MainWidget(QtWidgets.QDialog):
         widget = QtWidgets.QWidget()
         widget.setStyleSheet('border: none;')
 
-        inner_layout = QtWidgets.QVBoxLayout()
-        inner_layout.setContentsMargins(0, 0, 0, 0)
-        inner_layout.addWidget(self._moves_widget, 1)
-        inner_layout.addWidget(self._button_widget, 1)
-
         # Create left widget toggle btn
         self._collapse_btn = QtWidgets.QPushButton('<')
         self._collapse_btn.setStyleSheet('border: 1px solid rgb(90, 90, 90);')
@@ -183,7 +225,7 @@ class MainWidget(QtWidgets.QDialog):
 
         layout = QtWidgets.QHBoxLayout(widget)
         layout.addWidget(self._collapse_btn)
-        layout.addLayout(inner_layout)
+        layout.addWidget(self._moves_widget, 1)
 
         return widget
 
@@ -202,16 +244,6 @@ class MainWidget(QtWidgets.QDialog):
         mw.NEXT_BTN_CLICKED_SIGNAL.connect(self._next_btn_clicked)
         mw.LAST_BTN_CLICKED_SIGNAL.connect(self._last_btn_clicked)
 
-        # Button Widget Signals
-        bw = self._button_widget
-        bw.OPTION_BTN_CLICKED_SIGNAL.connect(self._option_btn_clicked)
-        bw.AI_BTN_CLICKED_SIGNAL.connect(self._ai_btn_clicked)
-        bw.RESET_BTN_CLICKED_SIGNAL.connect(self._reset_btn_clicked)
-        bw.START_BTN_CLICKED_SIGNAL.connect(self._start_btn_clicked)
-
-        # Option Widget Signals
-        self._option_widget.DONE_SIGNAL.connect(self._set_options)
-
         # Internal Signals
         self._timer_white.timeout.connect(self._timer_white_timeout)
         self._timer_black.timeout.connect(self._timer_black_timeout)
@@ -228,17 +260,21 @@ class MainWidget(QtWidgets.QDialog):
             self._collapse_btn.setVisible(True)
             self._collapse_btn.setText('<')
 
-    def _toggle_left_widget(self):
-        vis_to_set = not self._left_widget.isVisible()
+    def _toggle_left_widget(self, visibility=None):
+        if visibility is not None:
+            vis_to_set = visibility
+        else:
+            vis_to_set = not self._left_widget.isVisible()
         self._left_widget.setVisible(vis_to_set)
         self._collapse_btn.setVisible(vis_to_set)
+        self.adjustSize()
+
         if not vis_to_set:
             self._collapse_btn.setText('>')
+            self._collapsed_width = self.width()
         else:
             self._collapse_btn.setText('<')
-        self.adjustSize()
-        if not vis_to_set:
-            self._collapsed_width = self.width()
+            self._display_pgn_moves()
 
     def _recieved_move_string(self, move_string):
         self.MOVE_SIGNAL.emit(move_string)
@@ -246,39 +282,23 @@ class MainWidget(QtWidgets.QDialog):
     def _move_selected(self, move_index):
         self._inspect_history(index=move_index)
 
-    def _option_btn_clicked(self):
-        if self._has_game_started or self._board_widget.game_loaded:
-            return
-
-        self._option_widget.show()
-
-    def _ai_btn_clicked(self):
-        print('ai btn clicked')
+    def _new_game_btn_clicked(self):
+        self._choose_player()
 
     def _reset_btn_clicked(self):
         self._reset()
 
-    def _start_btn_clicked(self):
-        self._has_game_started = True
+    def _toggle_pause(self):
+        if not self._has_game_started:
+            return
+
         if self._is_game_over:
-            self._reset()
+            return
 
         if self._is_paused:
-            self._button_widget.update_btn_text(
-                btn_type=self._button_widget.BUTTON_TYPE.start,
-                text='PAUSE',
-            )
-            self._start_current_player_time()
-            self._is_paused = False
-            self._board_widget.is_paused = self._is_paused
+            self._resume_game()
         else:
-            self._button_widget.update_btn_text(
-                btn_type=self._button_widget.BUTTON_TYPE.start,
-                text='START',
-            )
-            self._stop_all_timers()
-            self._is_paused = True
-            self._board_widget.is_paused = self._is_paused
+            self._pause_game()
 
     def _first_btn_clicked(self):
         self._inspect_history(start=True)
@@ -336,22 +356,13 @@ class MainWidget(QtWidgets.QDialog):
             self._remaining_time_black += self._bonus_time
             self._board_widget.display_time_black(self._remaining_time_black)
 
-    def _set_options(self):
-        self._bonus_time = self._option_widget.bonus_time
-
-        self._remaining_time_white = self._option_widget.play_time * 60
-        self._board_widget.display_time_white(self._remaining_time_white)
-
-        self._remaining_time_black = self._option_widget.play_time * 60
-        self._board_widget.display_time_black(self._remaining_time_black)
-
-        self.GAME_OPTIONS_SET_SIGNAL.emit(
-            (
-                self._option_widget.white_promotion,
-                self._option_widget.black_promotion,
-                self._option_widget.is_standard_type,
-            )
-        )
+    def _set_options(self, options):
+        self._custom_options_set = True
+        self._custom_bonus_time = options.bonus_time
+        self._custom_play_time = options.play_time
+        self._custom_white_promotion = options.white_promotion
+        self._custom_black_promotion = options.black_promotion
+        self._custom_is_standard_type = options.is_standard_type
 
     def _resign(self, winning_color):
         if self._is_paused:
@@ -442,10 +453,11 @@ class MainWidget(QtWidgets.QDialog):
         self.BULK_MOVE_SIGNAL.emit(bulk_moves)
         self._stop_all_timers()
 
+        self._game_loaded = True
         self._board_widget.game_loaded = True
-        self._button_widget.setVisible(False)
         self._board_widget.set_panel_visibility(False)
         self._board_widget.adjustSize()
+        self._toggle_left_widget(visibility=True)
         self._right_widget.adjustSize()
         self._left_widget.adjustSize()
         self.adjustSize()
@@ -503,3 +515,81 @@ class MainWidget(QtWidgets.QDialog):
         else:
             error_msg = 'Unknown winner type!'
             raise RuntimeError(error_msg)
+
+    def _choose_player(self):
+        w = ChoosePlayerWidget(parent=self)
+        w.CHOSEN_COLOR_SIGNAL.connect(
+            lambda color: self._start_new_game(engine_color=color)
+        )
+        w.HUMAN_VS_HUMAN_SIGNAL.connect(self._start_new_game)
+        w.show()
+
+    def _open_options(self):
+        if self._has_game_started or self._board_widget.game_loaded:
+            return
+
+        self._reset_custom_options()
+        w = OptionWidget(parent=self)
+        w.OPTIONS_SET_SIGNAL.connect(self._set_options)
+        w.show()
+
+    def _update_ui_for_start(self):
+        self._board_widget.ready_to_start()
+        self._toggle_left_widget(visibility=True)
+        self._left_widget.adjustSize()
+        self._moves_widget.adjustSize()
+        self.adjustSize()
+        self._left_widget.adjustSize()
+        self._moves_widget.adjustSize()
+        self.adjustPosition(self)
+
+    def _update_data_for_start(self):
+        self._reset()
+        if self._custom_options_set:
+            self._bonus_time = self._custom_bonus_time
+            self._remaining_time_white = self._custom_play_time * 60
+            self._remaining_time_black = self._custom_play_time * 60
+
+            self.GAME_OPTIONS_SET_SIGNAL.emit(
+                (
+                    self._custom_white_promotion,
+                    self._custom_black_promotion,
+                    self._custom_is_standard_type,
+                )
+            )
+        self._resume_game()
+        self._has_game_started = True
+
+    def _update_engine_for_start(self, engine_color):
+        if engine_color is None:
+            return
+
+        self._engine_color = engine_color
+        self._board_widget.engine_color = engine_color
+        if self._engine_color == c.Color.white:
+            best_move = self._engine.get_best_move()
+            if best_move is not None:
+                self.MOVE_SIGNAL.emit(best_move)
+
+    def _start_new_game(self, engine_color=None):
+        self._update_data_for_start()
+        self._update_ui_for_start()
+        self._update_engine_for_start(engine_color=engine_color)
+
+    def _resume_game(self):
+        self._start_current_player_time()
+        self._is_paused = False
+        self._board_widget.is_paused = self._is_paused
+
+    def _pause_game(self):
+        self._stop_all_timers()
+        self._is_paused = True
+        self._board_widget.is_paused = self._is_paused
+
+    def _display_pgn_moves(self):
+        if self._game_data is None:
+            return
+
+        self._history_player = HistoryPlayer(self._game_data.move_history)
+        moves = MOVES2PGN(self._game_data.move_history).moves
+        self._moves_widget.display_moves(moves)

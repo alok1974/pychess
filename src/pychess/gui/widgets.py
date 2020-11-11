@@ -2,7 +2,6 @@ import os
 import contextlib
 import collections
 import functools
-import enum
 import re
 import getpass
 
@@ -28,41 +27,101 @@ def block_signals(widgets):
             widget.blockSignals(is_signal_blocked)
 
 
-class AIPlayer(QtWidgets.QDialog):
-    CHOSEN_COLOR_SIGNAL = QtCore.Signal(c.Color)
-
-    def __init__(self, size=c.IMAGE.DEFAULT_SIZE, parent=None):
-        self._resize_factor = size / c.IMAGE.DEFAULT_SIZE
-        self._parent = parent
+class ImageLabel(QtWidgets.QLabel):
+    def __init__(self, parent=None):
         super().__init__(parent=parent)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding,
+            QtWidgets.QSizePolicy.MinimumExpanding,
+        )
+
+    def setPixmap(self, pixmap):
+        self.pixmap = pixmap
+        super().setPixmap(self.pixmap)
+
+    def paintEvent(self, event):
+        size = self.size()
+        point = QtCore.QPoint(0, 0)
+        scaled_pixmap = self.pixmap.scaled(
+            size,
+            QtCore.Qt.KeepAspectRatio,
+            transformMode=QtCore.Qt.SmoothTransformation,
+        )
+
+        point.setX((size.width() - scaled_pixmap.width()) / 2)
+        point.setY((size.height() - scaled_pixmap.height()) / 2)
+
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        painter.drawPixmap(point, scaled_pixmap)
+
+
+class ChoosePlayerWidget(QtWidgets.QDialog):
+    CHOSEN_COLOR_SIGNAL = QtCore.Signal(c.Color)
+    HUMAN_VS_HUMAN_SIGNAL = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._parent = parent
         self._setup_ui()
+        self._connect_signals()
 
     def _setup_ui(self):
-        self.setWindowTitle('Play against computer')
+        self.setWindowTitle('Choose Players')
+        self.setMaximumSize(c.APP.MOVE_WIDGET_WIDTH, c.APP.MOVE_WIDGET_WIDTH)
         self.setModal(True)
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
 
-        self._white_btn = self._create_btn(c.Color.white)
-        self._main_layout.addWidget(self._white_btn)
+        self._human_vs_human_btn = self._create_btn()
+        self._main_layout.addWidget(self._human_vs_human_btn)
 
-        self._black_btn = self._create_btn(c.Color.black)
-        self._main_layout.addWidget(self._black_btn)
+        self._human_vs_computer_btn = self._create_btn(c.Color.black)
+        self._main_layout.addWidget(self._human_vs_computer_btn)
 
-    def _set_player(self, color):
-        self.CHOSEN_COLOR_SIGNAL.emit(color)
+        self._computer_vs_human_btn = self._create_btn(c.Color.white)
+        self._main_layout.addWidget(self._computer_vs_human_btn)
+
+    def _connect_signals(self):
+        self._human_vs_human_btn.clicked.connect(
+            lambda: self._set_player()
+        )
+
+        self._computer_vs_human_btn.clicked.connect(
+            lambda: self._set_player(c.Color.white)
+        )
+
+        self._human_vs_computer_btn.clicked.connect(
+            lambda: self._set_player(c.Color.black)
+        )
+
+    def _set_player(self, color=None):
+        if color is None:
+            self.HUMAN_VS_HUMAN_SIGNAL.emit()
+        else:
+            self.CHOSEN_COLOR_SIGNAL.emit(color)
+
         self.close()
 
-    def _create_btn(self, color):
-        if color == c.Color.white:
-            btn_text = 'Computer vs. Human'
+    @staticmethod
+    def _create_btn(color=None):
+        if color is None:
+            btn_text = 'Human vs. Human'
         else:
-            btn_text = 'Human vs. Computer'
+            if color == c.Color.white:
+                btn_text = 'Computer vs. Human'
+            else:
+                btn_text = 'Human vs. Computer'
 
         btn = QtWidgets.QPushButton(btn_text)
-        btn.setMinimumWidth(int(200 * self._resize_factor))
-        btn.setMinimumHeight(int(50 * self._resize_factor))
-        btn.clicked.connect(lambda: self._set_player(color))
+        btn.setMinimumWidth(c.APP.AI_BTN_WIDTH)
+        btn.setMinimumHeight(c.APP.AI_BTN_HEIGHT)
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding,
+        )
         return btn
 
 
@@ -82,8 +141,13 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_image = imager.CapturedImage(
             size=c.IMAGE.DEFAULT_SIZE,
         )
+
+        self._splash_pixmap = QtGui.QPixmap(c.IMAGE.SPLASH_IMAGE_FILE_PATH)
+
         self._setup_ui()
         self._connect_signals()
+
+        self.reset()
 
     @property
     def board(self):
@@ -116,6 +180,8 @@ class BoardWidget(QtWidgets.QDialog):
     @is_paused.setter
     def is_paused(self, val):
         self._is_paused = val
+        self._board_image.handle_pause_screen(is_paused=val)
+        self._update_image_label()
 
     @property
     def game_loaded(self):
@@ -125,8 +191,13 @@ class BoardWidget(QtWidgets.QDialog):
     def game_loaded(self, val):
         self._game_loaded = val
 
-    def init_board(self):
-        self.reset()
+    @property
+    def engine_color(self):
+        return self._engine_color
+
+    @engine_color.setter
+    def engine_color(self, val):
+        self._engine_color = val
 
     def update_board(self):
         self._update()
@@ -141,7 +212,6 @@ class BoardWidget(QtWidgets.QDialog):
         )
 
         self._board_image.update()
-        self._update_image_label()
         self._update_captured_image_labels()
 
         self._first_square = None
@@ -152,6 +222,7 @@ class BoardWidget(QtWidgets.QDialog):
         self._game_loaded = False
         self._is_paused = True
         self._is_game_over = False
+        self._engine_color = None
 
         self._show_threatened = False
         self._inspecting_history = False
@@ -163,7 +234,9 @@ class BoardWidget(QtWidgets.QDialog):
             self._format_time(c.GAME.DEFAULT_PLAY_TIME * 60)
         )
 
-        self.set_panel_visibility(True)
+        self.set_panel_visibility(False)
+        self._update_splash()
+        self.adjustSize()
 
     def clear_moves(self):
         self._first_square = None
@@ -223,14 +296,14 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_image.draw_winner(winner)
         self._update_captured_image_labels()
 
-    def display_time_white(self, seconds):
+    def display_time_white(self, seconds=None):
         self._white_timer_lcd.display(
-            self._format_time(seconds)
+            self._format_time(total_seconds=seconds)
         )
 
-    def display_time_black(self, seconds):
+    def display_time_black(self, seconds=None):
         self._black_timer_lcd.display(
-            self._format_time(seconds)
+            self._format_time(total_seconds=seconds)
         )
 
     def toggle_show_threatened(self):
@@ -246,6 +319,11 @@ class BoardWidget(QtWidgets.QDialog):
         self._black_panel_widget.setVisible(visibility)
         self._captured_label_white.setVisible(visibility)
         self._captured_label_black.setVisible(visibility)
+
+    def ready_to_start(self):
+        self._update_image_label()
+        self.set_panel_visibility(True)
+        self.adjustSize()
 
     def _setup_ui(self):
         self.setStyleSheet('border: none;')
@@ -268,8 +346,8 @@ class BoardWidget(QtWidgets.QDialog):
         main_layout.addWidget(self._captured_label_black)
 
         # Add main board image
-        self._image_layout = self._create_image_layout()
-        main_layout.addLayout(self._image_layout)
+        image_layout = self._create_image_layout()
+        main_layout.addLayout(image_layout)
 
         # Add white capture image
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
@@ -292,34 +370,35 @@ class BoardWidget(QtWidgets.QDialog):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
 
         # Create Label and add the pixmap
-        self._image_label = QtWidgets.QLabel()
+        self._image_label = ImageLabel()
         self._image_label.setPixmap(self._pixmap)
-        self._image_label.setMinimumWidth(self._board_image.qt_image.width())
-        self._image_label.setMinimumHeight(self._board_image.qt_image.height())
+        # self._image_label.setMinimumWidth(self._board_image.qt_image.width())
+        # self._image_label.setMinimumHeight(self._board_image.qt_image.height())
         self._image_label.setCursor(
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
 
         # Create an innner layout to prohibit horizontal stretching of the
         # image label
-        self._image_layout_inner = QtWidgets.QHBoxLayout()
-        self._image_layout_inner.addWidget(self._image_label)
+        # inner_layout = QtWidgets.QHBoxLayout()
+        # inner_layout.addWidget(self._image_label)
 
         # Adding a spacer to the right of the label to make sure that the
         # image label does not stretch otherwise we cannot get the right
         # mouse position to pick the pixel
-        self._image_layout_inner.addStretch(1)
+        # inner_layout.addStretch(1)
 
         # Create an outer layout to prohibit the vertical stretching
         # of the image label
-        self._image_layout = QtWidgets.QVBoxLayout()
-        self._image_layout.addLayout(self._image_layout_inner)
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self._image_label)
+        # layout.addLayout(inner_layout)
 
         # Adding a spacer to the bottom of the label to make sure that the
         # image label does not stretch otherwise we cannot get the right
         # mouse position to pick the pixel
-        self._image_layout.addStretch(1)
-        return self._image_layout
+        # layout.addStretch(1)
+        return layout
 
     def _create_panel_widget(self, color, min_height=50):
         widget = QtWidgets.QWidget()
@@ -341,7 +420,8 @@ class BoardWidget(QtWidgets.QDialog):
 
         return widget, lcd, btn
 
-    def _create_lcd(self, color, min_height=None):
+    @staticmethod
+    def _create_lcd(color, min_height=None):
         lcd = QtWidgets.QLCDNumber()
         if min_height is not None:
             lcd.setMinimumHeight(min_height)
@@ -369,7 +449,8 @@ class BoardWidget(QtWidgets.QDialog):
 
         return lcd
 
-    def _create_btn(self, text, min_height=None):
+    @staticmethod
+    def _create_btn(text, min_height=None):
         btn = QtWidgets.QPushButton(str(text).upper())
         if min_height is not None:
             btn.setMinimumHeight(min_height)
@@ -421,8 +502,12 @@ class BoardWidget(QtWidgets.QDialog):
         self.BLACK_RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.black)
 
     def _is_image_clickable(self):
+        is_engine_move = False
+        if self._engine_color is not None:
+            is_engine_move = self._current_player == self._engine_color
         return not any(
             [
+                is_engine_move,
                 self._game_loaded,
                 self._is_paused,
                 self._is_game_over,
@@ -485,6 +570,9 @@ class BoardWidget(QtWidgets.QDialog):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
         self._image_label.setPixmap(self._pixmap)
 
+    def _update_splash(self):
+        self._image_label.setPixmap(self._splash_pixmap)
+
     def _update_captured_image_labels(self):
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_white)
@@ -508,91 +596,6 @@ class BoardWidget(QtWidgets.QDialog):
         seconds = str(seconds).zfill(2)
 
         return f'{hours}:{minutes}:{seconds}'
-
-
-class ButtonWidget(QtWidgets.QDialog):
-    OPTION_BTN_CLICKED_SIGNAL = QtCore.Signal()
-    AI_BTN_CLICKED_SIGNAL = QtCore.Signal()
-    RESET_BTN_CLICKED_SIGNAL = QtCore.Signal()
-    START_BTN_CLICKED_SIGNAL = QtCore.Signal()
-
-    @enum.unique
-    class BUTTON_TYPE(enum.Enum):
-        options = 0
-        ai = 1
-        reset = 2
-        start = 3
-
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self._setup_ui()
-        self._connect_signals()
-
-    def _setup_ui(self):
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding,
-        )
-        self.setStyleSheet('border: none;')
-        self.setMaximumHeight(250)
-        self._main_layout = QtWidgets.QVBoxLayout(self)
-
-        self.options_btn = self._create_button('OPTIONS')
-        self.ai_btn = self._create_button('AI')
-        self.reset_btn = self._create_button('RESET')
-        self.start_btn = self._create_button('START')
-
-        self._main_layout.addWidget(self.options_btn)
-        self._main_layout.addWidget(self.ai_btn)
-        self._main_layout.addWidget(self.reset_btn)
-        self._main_layout.addWidget(self.start_btn)
-
-    def reset(self):
-        self.setVisible(True)
-        self.update_btn_text(self.BUTTON_TYPE.start, 'START')
-
-    def update_btn_text(self, btn_type, text):
-        btn = None
-        if btn_type == self.BUTTON_TYPE.start:
-            btn = self.start_btn
-        elif btn_type == self.BUTTON_TYPE.options:
-            btn = self.options_btn
-        elif btn_type == self.BUTTON_TYPE.reset:
-            btn = self.reset_btn
-        elif btn_type == self.BUTTON_TYPE.ai:
-            btn = self.ai_btn
-        else:
-            error_msg = f"Unknown button type {btn_type}"
-            raise TypeError(error_msg)
-
-        btn.setText(text)
-
-    def _connect_signals(self):
-        self.options_btn.clicked.connect(
-            lambda: self.OPTION_BTN_CLICKED_SIGNAL.emit()
-        )
-
-        self.ai_btn.clicked.connect(
-            lambda: self.AI_BTN_CLICKED_SIGNAL.emit()
-        )
-
-        self.reset_btn.clicked.connect(
-            lambda: self.RESET_BTN_CLICKED_SIGNAL.emit()
-        )
-
-        self.start_btn.clicked.connect(
-            lambda: self.START_BTN_CLICKED_SIGNAL.emit()
-        )
-
-    def _create_button(self, text, minimum_height=40):
-        btn = QtWidgets.QPushButton(text)
-        btn.setStyleSheet('border: 1px solid rgb(90, 90, 90);')
-        btn.setMinimumHeight(minimum_height)
-        btn.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Expanding,
-        )
-        return btn
 
 
 class LoadGameWidget(QtWidgets.QDialog):
@@ -863,13 +866,11 @@ class MoveWidget(QtWidgets.QDialog):
         )
         textedit.zoomIn(14)
 
-        # Force loading of fonts at init time
-        textedit.insertPlainText('Initializing ...')
-
         return textedit
 
     def showEvent(self, event):
-        # Clear the textedit as missing fonts are now loaded
+        # Force loading of fonts at init time
+        self._textedit.insertPlainText('Initializing ...')
         self._textedit.clear()
 
     def _create_btn_widget(self):
@@ -1001,7 +1002,18 @@ class OptionWidget(QtWidgets.QDialog):
         c.PieceType.knight,
     ]
 
-    DONE_SIGNAL = QtCore.Signal()
+    OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
+
+    OPTIONS = collections.namedtuple(
+        'OPTIONS',
+        [
+            'play_time',
+            'bonus_time',
+            'is_standard_type',
+            'white_promotion',
+            'black_promotion',
+        ]
+    )
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -1060,26 +1072,6 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _get_piece_type_index(self, piece_type):
         return self.PROMOTION_PIECES.index(piece_type)
-
-    @property
-    def play_time(self):
-        return self._play_time
-
-    @property
-    def bonus_time(self):
-        return self._bonus_time
-
-    @property
-    def is_standard_type(self):
-        return self._is_standard_type
-
-    @property
-    def white_promotion(self):
-        return self._white_promotion
-
-    @property
-    def black_promotion(self):
-        return self._black_promotion
 
     def _setup_ui(self):
         self.setModal(True)
@@ -1343,7 +1335,14 @@ class OptionWidget(QtWidgets.QDialog):
         self._black_promotion = self.PROMOTION_PIECES[index]
 
     def closeEvent(self, event):
-        self.DONE_SIGNAL.emit()
+        options = self.OPTIONS(
+            play_time=self._play_time,
+            bonus_time=self._bonus_time,
+            is_standard_type=self._is_standard_type,
+            white_promotion=self._white_promotion,
+            black_promotion=self._black_promotion,
+        )
+        self.OPTIONS_SET_SIGNAL.emit(options)
 
 
 class SaveGameDataWidget(QtWidgets.QDialog):
@@ -1403,7 +1402,6 @@ class SaveGameDataWidget(QtWidgets.QDialog):
 
         self._save_btn = self._create_btn('Save Game')
         self._main_layout.addWidget(self._save_btn)
-
 
     @staticmethod
     def _create_btn(text):
