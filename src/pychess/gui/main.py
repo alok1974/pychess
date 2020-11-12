@@ -408,6 +408,9 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.toggle_show_threatened()
 
     def _handle_load_game(self):
+        if self._has_game_started:
+            return
+
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             parent=None,
             caption='Load game (.pgn)',
