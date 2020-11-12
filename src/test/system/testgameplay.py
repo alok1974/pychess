@@ -1,4 +1,4 @@
-from pychess.gamer import Game
+from pychess.core.gamer import Game
 
 
 def log_game_stats(game):

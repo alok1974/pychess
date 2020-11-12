@@ -39,6 +39,7 @@ class BoardImage:
 
     def handle_pause_screen(self, is_paused):
         if is_paused:
+            self._pause_image = self._load_image(c.IMAGE.PAUSE_IMAGE_FILE_PATH)
             self._board_image.alpha_composite(
                 self._pause_image,
                 (0, 0),
@@ -234,7 +235,6 @@ class BoardImage:
             square: self._base_image.getpixel(self.square_to_pixel(square))
             for square in self.board.squares
         }
-        self._pause_image = self._load_image(c.IMAGE.PAUSE_IMAGE_FILE_PATH)
 
     def _draw_pieces(self):
         for piece in self._board.pieces:

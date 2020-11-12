@@ -12,7 +12,7 @@ def _declare_constants(obj_name, **name_value_dict):
     return ConstantContainer(*name_value_dict.values())
 
 
-RESOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resources')
+RESOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resource')
 
 
 class GAME:

@@ -2,11 +2,11 @@ import unittest
 import collections
 
 
-from pychess.mover import Move
-from pychess.squarer import Square
-from pychess.piecer import generate_pieces
+from pychess.core.mover import Move
+from pychess.element.squarer import Square
+from pychess.element.piecer import generate_pieces
 from pychess import constant as c
-from pychess.piecer import Piece
+from pychess.element.piecer import Piece
 
 
 # Move Data

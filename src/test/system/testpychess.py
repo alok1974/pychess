@@ -1,4 +1,5 @@
-from pychess import gamer, imager
+from pychess.core import gamer
+from pychess.gui import imager
 
 
 game = gamer.Game()

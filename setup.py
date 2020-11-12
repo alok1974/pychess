@@ -19,10 +19,10 @@ setup(
         'pychess.core',
         'pychess.element',
         'pychess.gui',
-        'pychess.resources',
+        'pychess.resource',
     ],
     package_data={
-        'pychess': ['resources/*/*.*'],
+        'pychess': ['resource/*/*.*'],
     },
     package_dir={
         'pychess': 'src/pychess'

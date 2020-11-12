@@ -1,11 +1,11 @@
 import unittest
 
 
-from pychess.gamer import Game
-from pychess.squarer import Square
-from pychess.piecer import Piece
+from pychess.core.gamer import Game
+from pychess.element.squarer import Square
+from pychess.element.piecer import Piece
 from pychess import constant as c
-from pychess.mover import Move
+from pychess.core.mover import Move
 
 
 def _check_win(game):

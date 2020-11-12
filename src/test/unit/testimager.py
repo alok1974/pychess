@@ -1,24 +1,22 @@
 import unittest
-import tempfile
-import shutil
 
 
 from PySide2 import QtGui
 from PIL import Image as PIL_Image
 
 
-from pychess import imager, boarder, constant as c
+from pychess import constant as c
+from pychess.gui import imager
+from pychess.element import boarder
 
 
 class TestImager(unittest.TestCase):
     def setUp(self):
-        self.tempdir = tempfile.mkdtemp()
-
         self.board = boarder.Board()
         self.board_image = imager.BoardImage(board=self.board)
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir)
+        pass
 
     def test_board(self):
         self.assertEqual(self.board_image.board, self.board)
