@@ -447,9 +447,20 @@ class MainWidget(QtWidgets.QDialog):
         self._inspect_history(index=-1)
         self._adjust_size()
 
-        # Add winning text
         header = self._pgn2moves.header_info[game_index]
-        self._moves_widget.display_win(winning_text=header.result)
+
+        result = header.result
+        self._moves_widget.display_win(winning_text=result)
+
+        white = header.white
+        black = header.black
+        date = header.date
+        self._moves_widget.set_game_info(
+            white=white,
+            black=black,
+            date=date,
+            result=result,
+        )
 
     def _handle_save_game(self):
         if not self._has_game_started:
@@ -587,6 +598,7 @@ class MainWidget(QtWidgets.QDialog):
 
         self._update_ui_for_start()
         self._update_engine_for_start(engine_color=engine_color)
+        self._moves_widget.set_game_info(engine_color=engine_color)
 
     def _resume_game(self):
         self._start_current_player_time()

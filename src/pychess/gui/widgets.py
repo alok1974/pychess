@@ -4,6 +4,7 @@ import collections
 import functools
 import re
 import getpass
+from datetime import datetime
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -873,6 +874,39 @@ class MoveWidget(QtWidgets.QDialog):
 
         self._last_highlighted = word_data
 
+    def set_game_info(
+            self, white=None, black=None,
+            engine_color=None, date=None, result=None,
+    ):
+        if engine_color is not None:
+            if engine_color == c.Color.white:
+                white = 'Computer'
+                black = getpass.getuser().capitalize()
+            else:
+                white = getpass.getuser().capitalize()
+                black = 'Computer'
+        else:
+            if not any([white, black]):
+                white = getpass.getuser().capitalize()
+                black = 'Opponent'
+
+        white = white or '??'
+        white = self._format_player_name(white)
+
+        black = black or '??'
+        black = self._format_player_name(black)
+
+        date = date or datetime.now().strftime('%Y.%m.%d')
+
+        text = f' White: {white}\n Black: {black}\n Date: {date}'
+        if result is not None:
+            text = f'{text}, Result: {result}'
+        self._game_info_label.setText(text)
+
+    @staticmethod
+    def _format_player_name(name):
+        return ' '.join([n.strip() for n in name.split(',')])
+
     def _setup_ui(self):
         self.setStyleSheet('border: none;')
         self.setMinimumWidth(c.APP.MOVE_WIDGET_WIDTH)
@@ -882,6 +916,14 @@ class MoveWidget(QtWidgets.QDialog):
         )
 
         self._main_layout = QtWidgets.QVBoxLayout(self)
+
+        self._game_info_label = QtWidgets.QLabel('GAME INFO')
+        self._game_info_label.setStyleSheet(
+            'border: 1px solid rgb(90, 90, 90);'
+            'font-size: 14px;'
+        )
+        self._game_info_label.setMinimumHeight(70)
+        self._main_layout.addWidget(self._game_info_label)
 
         self._textedit = self._create_text_edit()
         self._main_layout.addWidget(self._textedit)
