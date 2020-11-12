@@ -1442,23 +1442,23 @@ class OptionWidget(QtWidgets.QDialog):
 class SaveGameDataWidget(QtWidgets.QDialog):
     DONE_SIGNAL = QtCore.Signal(tuple)
 
-    PGN_GAME_DATA = collections.namedtuple(
+    PGN_GAME_INFO = collections.namedtuple(
         'GAME_DATA',
         [
             'event', 'site', 'date', 'round', 'black', 'white'
         ]
     )
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, white=None, black=None, date=None):
         super().__init__(parent=parent)
         self._size = c.IMAGE.DEFAULT_SIZE
 
         self._event = ''
         self._site = ''
-        self._date = ''
+        self._date = date or ''
         self._round = ''
-        self._white = ''
-        self._black = ''
+        self._white = white or ''
+        self._black = black or ''
 
         self._force_quit = False
 
@@ -1523,7 +1523,7 @@ class SaveGameDataWidget(QtWidgets.QDialog):
             msg_box.exec_()
             return
 
-        game_data = self.PGN_GAME_DATA(
+        game_data = self.PGN_GAME_INFO(
             event=self._event_text.text(),
             site=self._site_text.text(),
             date=self._date_text.text(),
@@ -1574,9 +1574,9 @@ class SaveGameDataWidget(QtWidgets.QDialog):
         with block_signals(widgets):
             self._event_text.setText('Casual game')
             self._site_text.setText('Home')
-            self._date_text.setText(self._get_current_date())
+            self._date_text.setText(self._date)
             self._round_text.setText('1')
-            self._white_text.setText(getpass.getuser().capitalize())
-            self._black_text.setText('')
+            self._white_text.setText(self._white)
+            self._black_text.setText(self._black)
 
         self.setFixedHeight(self.sizeHint().height())

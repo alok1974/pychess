@@ -476,14 +476,19 @@ class MainWidget(QtWidgets.QDialog):
         )
 
     def _handle_save_game(self):
-        if not self._has_game_started:
+        if self._game_loaded:
             return
-        elif self._game_data is None:
+        if self._game_data is None:
             return
         elif not self._game_data.move_history:
             return
 
-        w = SaveGameDataWidget(parent=self)
+        w = SaveGameDataWidget(
+            parent=self,
+            white=self._white_player_name,
+            black=self._black_player_name,
+            date=self._game_date,
+        )
         w.DONE_SIGNAL.connect(self._save_game)
         w.show()
 
@@ -563,43 +568,64 @@ class MainWidget(QtWidgets.QDialog):
 
     def _update_data_for_start(self, engine_color=None):
         self._reset()
-        if self._custom_options_set:
-            engine_set = engine_color is not None
-            chess960 = not self._custom_is_standard_type
-            if engine_set and chess960:
-                msg_box = QtWidgets.QMessageBox()
-                msg_box.setText(
-                    'Currently, Chess 960 format is not available '
-                    'while playing against computer. It might be implemented '
-                    'in future. For now, please select the standard format '
-                    'for playing against computer.'
-                )
-                msg_box.exec_()
-                return False
+        result = self._set_custom_options(engine_color=engine_color)
+        if not result:
+            return False
 
-            self._bonus_time = self._custom_bonus_time
-            self._remaining_time_white = self._custom_play_time * 60
-            self._remaining_time_black = self._custom_play_time * 60
-
-            self.GAME_OPTIONS_SET_SIGNAL.emit(
-                (
-                    self._custom_white_promotion,
-                    self._custom_black_promotion,
-                    self._custom_is_standard_type,
-                )
-            )
-
-        if engine_color is not None:
-            if engine_color == c.Color.white:
-                self._black_player_name = self._white_player_name
-                self._white_player_name = 'Computer'
-            else:
-                self._black_player_name = 'Computer'
-
+        self._update_game_info(engine_color=engine_color)
         self._resume_game()
         self._has_game_started = True
 
         return True
+
+    def _set_custom_options(self, engine_color=None):
+        if not self._custom_options_set:
+            return True
+
+        valid_engine_game = self._check_valid_engine_game(engine_color)
+        if not valid_engine_game:
+            return False
+
+        self._bonus_time = self._custom_bonus_time
+        self._remaining_time_white = self._custom_play_time * 60
+        self._remaining_time_black = self._custom_play_time * 60
+
+        self.GAME_OPTIONS_SET_SIGNAL.emit(
+            (
+                self._custom_white_promotion,
+                self._custom_black_promotion,
+                self._custom_is_standard_type,
+            )
+        )
+        return True
+
+    def _check_valid_engine_game(self, engine_color=None):
+        engine_set = engine_color is not None
+        chess960 = not self._custom_is_standard_type
+        if engine_set and chess960:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setText(
+                'Currently, Chess 960 format is not available '
+                'while playing against computer. It might be implemented '
+                'in future. For now, please select the standard format '
+                'for playing against computer.'
+            )
+            msg_box.exec_()
+            return False
+        return True
+
+    def _update_game_info(self, engine_color=None):
+        self._game_date = datetime.now().strftime('%Y.%m.%d')
+
+        if engine_color is None:
+            return
+
+        if engine_color == c.Color.white:
+            self._white_player_name = 'Computer'
+            self._black_player_name = getpass.getuser().capitalize()
+        else:
+            self._White_player_name = getpass.getuser().capitalize()
+            self._black_player_name = 'Computer'
 
     def _update_engine_for_start(self, engine_color):
         if engine_color is None:
@@ -613,7 +639,7 @@ class MainWidget(QtWidgets.QDialog):
                 self.MOVE_SIGNAL.emit(best_move)
 
     def _start_new_game(self, engine_color=None):
-        result = self._update_data_for_start(engine_color=None)
+        result = self._update_data_for_start(engine_color=engine_color)
         if not result:
             # Something went wrong while updating the start data
             return
@@ -625,7 +651,7 @@ class MainWidget(QtWidgets.QDialog):
         self._moves_widget.set_game_info(
             white=self._white_player_name,
             black=self._black_player_name,
-            date=datetime.now().strftime('%Y.%m.%d'),
+            date=self._game_date,
         )
 
     def _resume_game(self):
