@@ -1,3 +1,7 @@
+import getpass
+from datetime import datetime
+
+
 from PySide2 import QtWidgets, QtCore
 
 
@@ -56,8 +60,11 @@ class MainWidget(QtWidgets.QDialog):
 
         self._game_data = None
         self._history_player = None
-
         self._inspecting_history = False
+
+        self._white_player_name = getpass.getuser().capitalize()
+        self._black_player_name = 'Opponent'
+        self._game_date = None
 
         # Custom Options
         self._custom_options_set = False
@@ -97,8 +104,11 @@ class MainWidget(QtWidgets.QDialog):
 
         self._game_data = None
         self._history_player = None
-
         self._inspecting_history = False
+
+        self._white_player_name = getpass.getuser().capitalize()
+        self._black_player_name = 'Opponent'
+        self._game_date = None
 
         self._board_widget.display_time_white(self._remaining_time_white)
         self._board_widget.display_time_black(self._remaining_time_black)
@@ -455,13 +465,13 @@ class MainWidget(QtWidgets.QDialog):
         result = header.result
         self._moves_widget.display_win(winning_text=result)
 
-        white = header.white
-        black = header.black
-        date = header.date
+        self._white_player_name = header.white
+        self._black_player_name = header.black
+        self._game_date = header.date
         self._moves_widget.set_game_info(
-            white=white,
-            black=black,
-            date=date,
+            white=self._white_player_name,
+            black=self._black_player_name,
+            date=self._game_date,
             result=result,
         )
 
@@ -544,16 +554,19 @@ class MainWidget(QtWidgets.QDialog):
         # is important otherwise the move widget does not fill
         # the whole space
         self._toggle_left_widget(visibility=True)
+        self._set_game_info()
         self._left_widget.adjustSize()
         self._moves_widget.adjustSize()
         self._board_widget.ready_to_start()
         self.adjustSize()
         self.adjustPosition(self)
 
-    def _update_data_for_start(self, is_engine_selected=False):
+    def _update_data_for_start(self, engine_color=None):
         self._reset()
         if self._custom_options_set:
-            if is_engine_selected and not self._custom_is_standard_type:
+            engine_set = engine_color is not None
+            chess960 = not self._custom_is_standard_type
+            if engine_set and chess960:
                 msg_box = QtWidgets.QMessageBox()
                 msg_box.setText(
                     'Currently, Chess 960 format is not available '
@@ -576,6 +589,13 @@ class MainWidget(QtWidgets.QDialog):
                 )
             )
 
+        if engine_color is not None:
+            if engine_color == c.Color.white:
+                self._black_player_name = self._white_player_name
+                self._white_player_name = 'Computer'
+            else:
+                self._black_player_name = 'Computer'
+
         self._resume_game()
         self._has_game_started = True
 
@@ -593,15 +613,20 @@ class MainWidget(QtWidgets.QDialog):
                 self.MOVE_SIGNAL.emit(best_move)
 
     def _start_new_game(self, engine_color=None):
-        is_engine_selected = engine_color is not None
-        result = self._update_data_for_start(is_engine_selected)
+        result = self._update_data_for_start(engine_color=None)
         if not result:
             # Something went wrong while updating the start data
             return
 
         self._update_ui_for_start()
         self._update_engine_for_start(engine_color=engine_color)
-        self._moves_widget.set_game_info(engine_color=engine_color)
+
+    def _set_game_info(self):
+        self._moves_widget.set_game_info(
+            white=self._white_player_name,
+            black=self._black_player_name,
+            date=datetime.now().strftime('%Y.%m.%d'),
+        )
 
     def _resume_game(self):
         self._start_current_player_time()

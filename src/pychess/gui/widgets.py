@@ -4,7 +4,6 @@ import collections
 import functools
 import re
 import getpass
-from datetime import datetime
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -874,29 +873,9 @@ class MoveWidget(QtWidgets.QDialog):
 
         self._last_highlighted = word_data
 
-    def set_game_info(
-            self, white=None, black=None,
-            engine_color=None, date=None, result=None,
-    ):
-        if engine_color is not None:
-            if engine_color == c.Color.white:
-                white = 'Computer'
-                black = getpass.getuser().capitalize()
-            else:
-                white = getpass.getuser().capitalize()
-                black = 'Computer'
-        else:
-            if not any([white, black]):
-                white = getpass.getuser().capitalize()
-                black = 'Opponent'
-
-        white = white or '??'
+    def set_game_info(self, white, black, date, result=None):
         white = self._format_player_name(white)
-
-        black = black or '??'
         black = self._format_player_name(black)
-
-        date = date or datetime.now().strftime('%Y.%m.%d')
 
         text = f' White: {white}\n Black: {black}\n Date: {date}'
         if result is not None:
