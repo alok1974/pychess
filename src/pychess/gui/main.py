@@ -320,7 +320,7 @@ class MainWidget(QtWidgets.QDialog):
             self.game_over(winner=c.Color.black)
             white_wins = False
             self.GAME_OVER_SIGNAL.emit(white_wins)
-            self._moves_widget.display_win(c.Color.black)
+            self._moves_widget.display_win(winner=c.Color.black)
 
         self._board_widget.display_time_white(self._remaining_time_white)
 
@@ -330,7 +330,7 @@ class MainWidget(QtWidgets.QDialog):
             self.game_over(winner=c.Color.white)
             white_wins = True
             self.GAME_OVER_SIGNAL.emit(white_wins)
-            self._moves_widget.display_win(c.Color.white)
+            self._moves_widget.display_win(winner=c.Color.white)
 
         self._board_widget.display_time_black(self._remaining_time_black)
 
@@ -363,7 +363,7 @@ class MainWidget(QtWidgets.QDialog):
             white_wins = False
 
         self.GAME_OVER_SIGNAL.emit(white_wins)
-        self._moves_widget.display_win(winning_color)
+        self._moves_widget.display_win(winner=winning_color)
 
     def _inspect_history(
             self, cursor_step=None,
@@ -446,6 +446,10 @@ class MainWidget(QtWidgets.QDialog):
         self._collapse_btn.setVisible(False)
         self._inspect_history(index=-1)
         self._adjust_size()
+
+        # Add winning text
+        header = self._pgn2moves.header_info[game_index]
+        self._moves_widget.display_win(winning_text=header.result)
 
     def _handle_save_game(self):
         if not self._has_game_started:

@@ -738,12 +738,20 @@ class MoveWidget(QtWidgets.QDialog):
         self._last_highlighted = None
         self._textedit.clear()
 
-    def display_win(self, winner):
-        winning_text = '1-0'
-        if winner == c.Color.black:
-            winning_text = '0-1'
+    def display_win(self, winning_text=None, winner=None):
+        winning_text = winning_text or self._get_winning_text(winner=winner)
+        self._add_winning_text_at_end(winning_text)
 
-        self._textedit.insertPlainText(winning_text)
+    @staticmethod
+    def _get_winning_text(winner=None):
+        winning_text = None
+        if winner is None:
+            winning_text = '1/2-1/2'
+        elif winner == c.Color.black:
+            winning_text = '0-1'
+        else:
+            winning_text = '1-0'
+        return winning_text
 
     def display_moves(self, moves):
         self.reset()
@@ -1007,6 +1015,14 @@ class MoveWidget(QtWidgets.QDialog):
         char_format.setFontWeight(QtGui.QFont.Normal)
         return char_format
 
+    @staticmethod
+    def _winning_format():
+        char_format = QtGui.QTextCharFormat()
+        char_format.setForeground(QtGui.QBrush(QtGui.QColor(255, 20, 10)))
+        char_format.setBackground(QtGui.QBrush(QtGui.QColor(25, 25, 25)))
+        char_format.setFontWeight(QtGui.QFont.Normal)
+        return char_format
+
     def _add_highlight(self, word_data):
         self._format_word(word_data, char_format=self._highlight_format)
 
@@ -1017,14 +1033,38 @@ class MoveWidget(QtWidgets.QDialog):
         if word_data is None:
             return
 
+        self._format(
+            start=word_data.start,
+            length=word_data.length,
+            char_format=char_format,
+        )
+
+    def _format(self, start, length, char_format):
         cursor = self._textedit.textCursor()
-        cursor.setPosition(word_data.start)
+        cursor.setPosition(start)
         cursor.movePosition(
             QtGui.QTextCursor.NextCharacter,
             QtGui.QTextCursor.KeepAnchor,
-            word_data.length,
+            length,
         )
         cursor.mergeCharFormat(char_format)
+
+        self._reset_format()
+
+    def _add_winning_text_at_end(self, winning_text):
+        start = self._textedit.document().characterCount() - 1
+        length = len(winning_text)
+        char_format = self._winning_format()
+        self._textedit.insertPlainText(winning_text)
+        self._format(
+            start=start,
+            length=length,
+            char_format=char_format,
+        )
+
+    def _reset_format(self):
+        self._textedit.setTextColor(QtGui.QColor(221, 221, 221))
+        self._textedit.setTextBackgroundColor(QtGui.QColor(25, 25, 25))
 
 
 class OptionWidget(QtWidgets.QDialog):

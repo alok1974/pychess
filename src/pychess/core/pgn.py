@@ -228,6 +228,7 @@ class PGN2MOVES:
         self._nb_games = len(self._games)
         self._game_info = None
         self._short_info = None
+        self._header_info = None
 
     @property
     def nb_games(self):
@@ -244,6 +245,12 @@ class PGN2MOVES:
         if self._short_info is None:
             self._short_info = self._get_short_info()
         return self._short_info
+
+    @property
+    def header_info(self):
+        if self._header_info is None:
+            self._header_info = self._get_header_info()
+        return self._header_info
 
     def get_moves(self, game_index):
         return self._get_moves(game_index=game_index)
@@ -296,20 +303,22 @@ class PGN2MOVES:
         return self._get_game_moves(game, image_folder=image_folder)
 
     def _get_game_info(self):
-        info = []
-        for game in self._games:
-            header_data = game.header_data
-            info.append(f'{self._generate_info_string(header_data)}')
-
-        return info
+        return [
+            self._generate_info_string(data)
+            for data in self.header_info
+        ]
 
     def _get_short_info(self):
-        info = []
-        for game in self._games:
-            header_data = game.header_data
-            info.append(f'{self._generate_short_info_string(header_data)}')
+        return [
+            self._generate_short_info_string(data)
+            for data in self.header_info
+        ]
 
-        return info
+    def _get_header_info(self):
+        return [
+            game.header_data
+            for game in self._games
+        ]
 
     def _parse_game_file(self, file_path):
         text = self._get_pgn_text(file_path)
