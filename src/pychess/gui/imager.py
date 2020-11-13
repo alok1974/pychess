@@ -9,13 +9,97 @@ from .. import constant as c
 from ..element.squarer import Square
 
 
+class Coordinates:
+    """
+    The image is assumed to be composed as following,
+
+     _____________________________________________________
+    |                                                     |
+    |     ___________________________________________     |
+    |    |          |          |          |          |    |
+    |    |     1    |     2    |    3     |    4     |    |
+    |    |          |          |          |          |    |
+    |    |__________|__________|__________|__________|    |
+    |    |  square  |          |          |          |    |
+    |    |   size   |          |          |          |    |
+    |    |<-------->|          |          |          |    |
+    |    |__________|__________|__________|__________|    |
+    |    |          |          |          |          |    |
+    |    |          |          |          |          |    |
+    |    |          |          |          |          |    |
+    |    |__________|__________|__________|__________|    |
+    |    |          |          |          |          |    |
+    |    |          |          |          |          |    |
+    |    |          |          |          |          |    |
+    |<-->|__________|__________|__________|__________|    |
+    | border size                                         |
+    |_____________________________________________________|
+
+    In the above,
+        nb_squares = 4
+        border_size = 4 (1 whitespace == 1 unit)
+        square_size = 10 (1 whitespace = 1 unit)
+
+    With this we can define any pixel position on the image in terms of
+    squares and vice versa. This class provide methods to find the square
+    based on the pixel, find the top left pixel position of each square, and
+    given an image size and a square coordinate find the top left position
+    where the image should be drawn from (the image to be drawn is always
+    assumed to be of square aspect, having same width and height)
+    """
+    def __init__(
+            self, border_size=c.IMAGE.BORDER_SIZE,
+            square_size=c.IMAGE.SQUARE_SIZE, nb_square=c.IMAGE.NB_SQUARES,
+    ):
+
+        self._border_size = border_size
+        self._square_size = square_size
+        self._nb_square = nb_square
+
+    def get_image_coordinates(self, image_size, square_x, square_y):
+        x, y = self.square_to_pixel(square_x, square_y)
+        offset = int((self._square_size - image_size) / 2)
+        return x + offset, y + offset
+
+    def pixel_to_square(self, x, y):
+        if self.pixel_on_border(x, y):
+            return
+
+        square_x = int((x - self._border_size) / self._square_size)
+        square_y = c.IMAGE.NB_SQUARES - 1 - int(
+            (y - self._border_size) / self._square_size
+        )
+        return square_x, square_y
+
+    def square_to_pixel(self, square_x, square_y):
+        x = (square_x * self._square_size) + self._border_size
+
+        reverse_y_coordinate = c.IMAGE.NB_SQUARES - 1 - square_y
+        y = (reverse_y_coordinate * self._square_size) + self._border_size
+
+        return x, y
+
+    def pixel_on_border(self, x, y):
+        sqr_sz = self._square_size
+        bdr_sz = self._border_size
+        nb_sqr = c.IMAGE.NB_SQUARES
+
+        return (
+            (x - bdr_sz) < 0 or
+            (y - bdr_sz) < 0 or
+            (x > (bdr_sz + (nb_sqr * sqr_sz))) or
+            (y > (bdr_sz + (nb_sqr * sqr_sz)))
+        )
+
+
 class BoardImage:
     COLOR_MOVE_HINT_CAPTURE = (255, 42, 14)
     COLOR_MOVE_HINT_EMPTY = (127, 127, 127)
 
-    def __init__(self, board, size=c.IMAGE.DEFAULT_SIZE):
+    def __init__(self, board):
         self._image_store = {}
-        self.init(board=board, size=size)
+        self._coords = Coordinates()
+        self.init(board=board)
 
     @property
     def board(self):
@@ -67,7 +151,7 @@ class BoardImage:
         image.alpha_composite(self._board_image, (border, border))
         font = ImageFont.truetype(
             c.APP.FONT_FILE_PATH,
-            size=int(c.IMAGE.MOVIE_FONT_SIZE * self._resize_factor),
+            c.IMAGE.MOVIE_FONT_SIZE,
         )
         ctx = ImageDraw.Draw(image)
         ctx.multiline_text(
@@ -78,31 +162,16 @@ class BoardImage:
         )
         image.save(save_to_path)
 
-    def init(self, board, size=c.IMAGE.DEFAULT_SIZE):
+    def init(self, board):
         self._board = board
         self._threatened_squares = []
         self._selected_square = None
-        self.resize(size=size)
-        self.update()
-
-    def resize(self, size=c.IMAGE.DEFAULT_SIZE):
-        if size not in c.IMAGE.SUPPORTED_SIZE:
-            error_msg = (
-                f'Unable to resize image - invalid size {size}, '
-                f'supported sizes are {c.IMAGE.SUPPORTED_SIZE}'
-            )
-            raise RuntimeError(error_msg)
-
-        self._resize_factor = float(size / c.IMAGE.BASE_IMAGE_SIZE)
-        self._square_size = int(c.IMAGE.SQUARE_SIZE * self._resize_factor)
-        self._border_size = int(c.IMAGE.BORDER_SIZE * self._resize_factor)
-        self._non_pawn_image_size = int(
-            c.IMAGE.NON_PAWN_IMAGE_SIZE * self._resize_factor
-        )
-        self._pawn_image_size = int(
-            c.IMAGE.PAWN_IMAGE_SIZE * self._resize_factor
-        )
+        self._square_size = c.IMAGE.SQUARE_SIZE
+        self._border_size = c.IMAGE.BORDER_SIZE
+        self._non_pawn_image_size = c.IMAGE.NON_PAWN_IMAGE_SIZE
+        self._pawn_image_size = c.IMAGE.PAWN_IMAGE_SIZE
         self._init_board_image()
+        self.update()
 
     def update(self):
         self._board_image.alpha_composite(self._base_image, (0, 0))
@@ -243,59 +312,27 @@ class BoardImage:
     def _draw_piece(self, piece):
         if piece is None:
             return
+
         image_path = self._get_piece_image_path(piece)
         piece_image = self._load_image(image_path)
-        x, y = self._get_coordinates(piece)
+        piece_square = self._board.get_square(piece)
+        # x, y = self._get_coordinates(piece_square)
+        x, y = self._coords.get_image_coordinates(
+            image_size=piece_image.width,
+            square_x=piece_square.x,
+            square_y=piece_square.y,
+        )
         self._board_image.alpha_composite(
             piece_image,
             (x, y),
         )
 
-    def _get_coordinates(self, piece):
-        square = self._board.get_square(piece)
-        row, column = square.x, square.y
-
-        piece_image_size = (
-            self._pawn_image_size
-            if piece.type == c.PieceType.pawn
-            else self._non_pawn_image_size
-        )
-
-        return (
-            self._get_coordinate(piece_image_size, row),
-            self._get_coordinate(piece_image_size, column, reverse=True),
-        )
-
-    def _get_coordinate(self, image_size, row_or_column, reverse=False):
-        position = row_or_column
-        if reverse:
-            position = c.IMAGE.NB_SQUARES - 1 - row_or_column
-
-        base_offset = self._square_size * position
-        image_offset = int((self._square_size - image_size) / 2)
-
-        return self._border_size + base_offset + image_offset
-
     def _load_image(self, image_path):
-        size = int(self._resize_factor * c.IMAGE.DEFAULT_SIZE)
-        if (image_path, size) not in self._image_store:
+        if image_path not in self._image_store:
             image = Image.open(image_path)
-            image = self._resize_image(image)
-            self._image_store[(image_path, size)] = image
+            self._image_store[image_path] = image
 
-        return self._image_store[(image_path, size)]
-
-    def _resize_image(self, image):
-        if self._resize_factor == float(1):
-            return image
-
-        return image.resize(
-            (
-                int(image.width * self._resize_factor),
-                int(image.height * self._resize_factor),
-            ),
-            resample=Image.LANCZOS,
-        )
+        return self._image_store[image_path]
 
     @staticmethod
     def _get_piece_image_path(piece):
@@ -310,45 +347,17 @@ class BoardImage:
         return image_path
 
     def pixel_to_square(self, x, y):
-        pixel_on_border = self._pixel_on_border(
-            square_size=self._square_size,
-            nb_squares=c.IMAGE.NB_SQUARES,
-            border_size=self._border_size,
-            x=x,
-            y=y,
-        )
-
-        if pixel_on_border:
-            return
-
-        square_x = int((x - self._border_size) / self._square_size)
-        square_y = c.IMAGE.NB_SQUARES - 1 - int(
-            (y - self._border_size) / self._square_size
-        )
-        return Square((square_x, square_y))
+        address = self._coords.pixel_to_square(x, y)
+        return Square(address)
 
     def square_to_pixel(self, square):
-        x = (square.x * self._square_size) + self._border_size
-
-        reverse_y_coordinate = c.IMAGE.NB_SQUARES - 1 - square.y
-        y = (reverse_y_coordinate * self._square_size) + self._border_size
-
-        return x, y
-
-    @staticmethod
-    def _pixel_on_border(square_size, nb_squares, border_size, x, y):
-        return (
-            (x - border_size) < 0 or
-            (y - border_size) < 0 or
-            (x > (border_size + (nb_squares * square_size))) or
-            (y > (border_size + (nb_squares * square_size)))
-        )
+        return self._coords.square_to_pixel(square.x, square.y)
 
 
 class CapturedImage:
-    def __init__(self, size=c.IMAGE.DEFAULT_SIZE):
+    def __init__(self):
         self._image_store = {}
-        self.init(size=size)
+        self.init()
 
     @property
     def qt_image_white(self):
@@ -366,28 +375,12 @@ class CapturedImage:
     def image_black(self):
         return self._captured_image_black
 
-    def init(self, size=c.IMAGE.DEFAULT_SIZE):
-        self._resize_factor = int(size / c.IMAGE.DEFAULT_SIZE)
-
-        self._image_width = int(
-            c.IMAGE.CAPTURABLES_IMAGE_WIDTH * self._resize_factor
-        )
-
-        self._image_height = int(
-            c.APP.LCD_HEIGHT * self._resize_factor
-        )
-
-        self._pawn_height = int(
-            c.IMAGE.PAWN_SMALL_IMAGE_SIZE * self._resize_factor
-        )
-
-        self._non_pawn_height = int(
-            c.IMAGE.NON_PAWN_SMALL_IMAGE_SIZE * self._resize_factor
-        )
-
-        self._lead_font_size = int(
-            c.IMAGE.LEAD_FONT_SIZE * self._resize_factor
-        )
+    def init(self):
+        self._image_width = c.IMAGE.CAPTURABLES_IMAGE_WIDTH
+        self._image_height = c.APP.LCD_HEIGHT
+        self._pawn_height = c.IMAGE.PAWN_SMALL_IMAGE_SIZE
+        self._non_pawn_height = c.IMAGE.NON_PAWN_SMALL_IMAGE_SIZE
+        self._lead_font_size = c.IMAGE.LEAD_FONT_SIZE
 
         self._x_coord_black = None
         self._x_coord_white = None
@@ -521,22 +514,8 @@ class CapturedImage:
         return image_path
 
     def _load_image(self, image_path):
-        size = int(self._resize_factor * c.IMAGE.DEFAULT_SIZE)
-        if (image_path, size) not in self._image_store:
+        if image_path not in self._image_store:
             image = Image.open(image_path)
-            image = self._resize_image(image)
-            self._image_store[(image_path, size)] = image
+            self._image_store[image_path] = image
 
-        return self._image_store[(image_path, size)]
-
-    def _resize_image(self, image):
-        if self._resize_factor == float(1):
-            return image
-
-        return image.resize(
-            (
-                int(image.width * self._resize_factor),
-                int(image.height * self._resize_factor),
-            ),
-            resample=Image.LANCZOS,
-        )
+        return self._image_store[image_path]

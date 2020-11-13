@@ -3,7 +3,6 @@ import contextlib
 import collections
 import functools
 import re
-import getpass
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -155,14 +154,8 @@ class BoardWidget(QtWidgets.QDialog):
         super().__init__(parent=parent)
 
         self._board = board
-        self._board_image = imager.BoardImage(
-            self._board,
-            size=c.IMAGE.DEFAULT_SIZE,
-        )
-        self._captured_image = imager.CapturedImage(
-            size=c.IMAGE.DEFAULT_SIZE,
-        )
-
+        self._board_image = imager.BoardImage(self._board)
+        self._captured_image = imager.CapturedImage()
         self._splash_pixmap = QtGui.QPixmap(c.IMAGE.SPLASH_IMAGE_FILE_PATH)
 
         self._setup_ui()
@@ -223,13 +216,8 @@ class BoardWidget(QtWidgets.QDialog):
         self._update()
 
     def reset(self):
-        self._board_image = imager.BoardImage(
-            self._board,
-            size=c.IMAGE.DEFAULT_SIZE,
-        )
-        self._captured_image = imager.CapturedImage(
-            size=c.IMAGE.DEFAULT_SIZE,
-        )
+        self._board_image = imager.BoardImage(self._board)
+        self._captured_image = imager.CapturedImage()
 
         self._board_image.update()
         self._update_captured_image_labels()
@@ -305,7 +293,7 @@ class BoardWidget(QtWidgets.QDialog):
         # NOTE: This event will be fired only when
         # the user has clicke somewhere in the gui
         # OUTSIDE of the chess board image. We can
-        # easily clear the first and the second square
+        # safely clear the first and the second square
         # selections
         self._first_square = None
         self._second_square = None
@@ -1111,8 +1099,6 @@ class OptionWidget(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-        self._size = c.IMAGE.DEFAULT_SIZE
-
         self._default_play_time = c.GAME.DEFAULT_PLAY_TIME
         self._default_bonus_time = c.GAME.DEFAULT_BONUS_TIME
 
@@ -1126,7 +1112,6 @@ class OptionWidget(QtWidgets.QDialog):
         self._white_promotion = self._default_white_promotion
         self._black_promotion = self._default_black_promotion
 
-        self._resize_factor = float(self._size / c.IMAGE.DEFAULT_SIZE)
         self._image_store = {}
         self._setup_ui()
         self._connect_signals()
@@ -1169,21 +1154,20 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _setup_ui(self):
         self.setModal(True)
-        self.setMaximumSize(c.IMAGE.DEFAULT_SIZE, c.IMAGE.DEFAULT_SIZE)
         self._main_layout = QtWidgets.QVBoxLayout(self)
 
         time_widget = self._create_time_widget()
         self._main_layout.addWidget(time_widget)
 
         self._main_layout.addSpacerItem(
-            QtWidgets.QSpacerItem(1, int(self._resize_factor * 20)),
+            QtWidgets.QSpacerItem(1, 20),
         )
 
         game_widget = self._create_game_widget()
         self._main_layout.addWidget(game_widget)
 
         self._main_layout.addSpacerItem(
-            QtWidgets.QSpacerItem(1, int(self._resize_factor * 20)),
+            QtWidgets.QSpacerItem(1, 20),
         )
 
         promotion_widget = self._create_promotion_widget()
@@ -1191,9 +1175,7 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _create_time_widget(self):
         widget = QtWidgets.QWidget()
-        widget.setMaximumHeight(
-            int(self._resize_factor * 220)
-        )
+        widget.setMaximumHeight(220)
         widget.setStyleSheet(
             'QWidget { border: 1px solid #5A5A5A }'
         )
@@ -1234,7 +1216,7 @@ class OptionWidget(QtWidgets.QDialog):
 
         layout.addLayout(play_time_layout)
         layout.addSpacerItem(
-            QtWidgets.QSpacerItem(1, int(self._resize_factor * 20))
+            QtWidgets.QSpacerItem(1, 20)
         )
         layout.addLayout(bonus_time_layout)
 
@@ -1242,9 +1224,7 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _create_game_widget(self):
         widget = QtWidgets.QWidget()
-        widget.setMaximumHeight(
-            int(self._resize_factor * 100)
-        )
+        widget.setMaximumHeight(100)
         widget.setStyleSheet(
             'QWidget { border: 1px solid #5A5A5A }'
         )
@@ -1274,9 +1254,7 @@ class OptionWidget(QtWidgets.QDialog):
 
     def _create_promotion_widget(self):
         widget = QtWidgets.QWidget()
-        widget.setMaximumHeight(
-            int(self._resize_factor * 150)
-        )
+        widget.setMaximumHeight(150)
         widget.setStyleSheet(
             'QWidget { border: 1px solid #5A5A5A }'
         )
@@ -1325,12 +1303,8 @@ class OptionWidget(QtWidgets.QDialog):
         )
         label.setAlignment(QtCore.Qt.AlignCenter)
         combobox = QtWidgets.QComboBox()
-        combobox.setMinimumWidth(
-            int(self._resize_factor * 150)
-        )
-        combobox.setMinimumHeight(
-            int(self._resize_factor * 30)
-        )
+        combobox.setMinimumWidth(150)
+        combobox.setMinimumHeight(30)
 
         for item in [t.name for t in self.PROMOTION_PIECES]:
             combobox.addItem(
@@ -1344,7 +1318,8 @@ class OptionWidget(QtWidgets.QDialog):
 
         return layout, combobox
 
-    def _create_icon(self, piece_name, color):
+    @staticmethod
+    def _create_icon(piece_name, color):
         def _get_piece_image_path(piece_name, color):
             color_name = color.name
             piece_images = getattr(c.IMAGE.PIECE_IMAGE, piece_name)
@@ -1366,12 +1341,13 @@ class OptionWidget(QtWidgets.QDialog):
         label.setStyleSheet('QWidget { border: none }')
         return label
 
-    def _create_slider(self, min_val, max_val, default_val, step=1):
+    @staticmethod
+    def _create_slider(min_val, max_val, default_val, step=1):
         slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         slider.setMinimum(min_val)
         slider.setMaximum(max_val)
         slider.setSingleStep(step)
-        slider.setMinimumWidth(int(self._resize_factor * 300))
+        slider.setMinimumWidth(300)
         slider.setValue(default_val)
         return slider
 
@@ -1451,8 +1427,6 @@ class SaveGameDataWidget(QtWidgets.QDialog):
 
     def __init__(self, parent=None, white=None, black=None, date=None):
         super().__init__(parent=parent)
-        self._size = c.IMAGE.DEFAULT_SIZE
-
         self._event = ''
         self._site = ''
         self._date = date or ''

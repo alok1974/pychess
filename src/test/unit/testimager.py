@@ -32,23 +32,8 @@ class TestImager(unittest.TestCase):
     def test_default_width(self):
         self.assertEqual(self.board_image.width, c.IMAGE.DEFAULT_SIZE)
 
-    def test_widht(self):
-        width = 450
-        self.board_image.resize(size=width)
-        self.assertEqual(self.board_image.width, width)
-
     def test_default_height(self):
         self.assertEqual(self.board_image.height, c.IMAGE.DEFAULT_SIZE)
-
-    def test_height(self):
-        height = 600
-        self.board_image.resize(size=height)
-        self.assertEqual(self.board_image.height, height)
-
-    def test_resize(self):
-        new_size = 300
-        self.board_image.resize(size=new_size)
-        self.assertEqual(self.board_image.image.size, (new_size, new_size))
 
 
 if __name__ == "__main__":
