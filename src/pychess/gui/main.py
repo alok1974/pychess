@@ -53,7 +53,7 @@ class MainWidget(QtWidgets.QDialog):
         self._timer_black.setInterval(1000)  # timeout per 1 second
         self._remaining_time_black = c.GAME.DEFAULT_PLAY_TIME * 60
 
-        self._is_paused = True
+        self._is_paused = False
         self._is_game_over = False
         self._has_game_started = False
         self._game_loaded = False
@@ -97,7 +97,7 @@ class MainWidget(QtWidgets.QDialog):
         self._timer_black.stop()
         self._remaining_time_black = c.GAME.DEFAULT_PLAY_TIME * 60
 
-        self._is_paused = True
+        self._is_paused = False
         self._is_game_over = False
         self._has_game_started = False
         self._game_loaded = False
@@ -183,24 +183,14 @@ class MainWidget(QtWidgets.QDialog):
         return result
 
     def _setup_ui(self):
-        layout = QtWidgets.QVBoxLayout(self)
+        layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-
-        # menuBar = MenuBar(self)
-        # layout.addWidget(menuBar)
-
-        self._lower_widget = QtWidgets.QWidget()
-
-        lower_layout = QtWidgets.QHBoxLayout(self._lower_widget)
-        lower_layout.setContentsMargins(0, 0, 0, 0)
 
         self._right_widget = self._create_right_widget()
         self._left_widget = self._create_left_widget()
 
-        lower_layout.addWidget(self._right_widget, 1)
-        lower_layout.addWidget(self._left_widget, 2)
-
-        layout.addWidget(self._lower_widget)
+        layout.addWidget(self._right_widget, 1)
+        layout.addWidget(self._left_widget, 2)
 
     def _create_right_widget(self):
         widget = QtWidgets.QWidget()
@@ -714,14 +704,23 @@ class MainWidget(QtWidgets.QDialog):
         if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
             self._toggle_pause()
 
+        if self._is_key_pressed(event, keys.Key_B, keys.ControlModifier):
+            self._toggle_adress()
+
     def _adjust_size(self):
         self._left_widget.adjustSize()
         self._moves_widget.adjustSize()
         self._board_widget.adjustSize()
         self._right_widget.adjustSize()
-        self._lower_widget.adjustSize()
         self.adjustSize()
         self.adjustPosition(self)
+
+    def _toggle_adress(self):
+        if self._is_paused:
+            return
+
+        if self._has_game_started or self._game_loaded:
+            self._board_widget.toggle_address()
 
 
 class MainWindow(QtWidgets.QMainWindow):

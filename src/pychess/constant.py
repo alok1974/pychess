@@ -152,6 +152,9 @@ class IMAGE:
     PAUSE_IMAGE_NAME = 'pause.png'
     PAUSE_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, PAUSE_IMAGE_NAME)
 
+    BORDER_IMAGE_NAME = 'border.png'
+    BORDER_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BORDER_IMAGE_NAME)
+
     PIECE_IMAGE = _declare_constants(
         obj_name='PIECE_IMAGE',
         pawn=_declare_constants(

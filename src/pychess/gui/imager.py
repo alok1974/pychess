@@ -121,6 +121,9 @@ class BoardImage:
     def height(self):
         return self._board_image.height
 
+    def is_border_clicked(self, x, y):
+        return self._coords.pixel_on_border(x, y)
+
     def handle_pause_screen(self, is_paused):
         if is_paused:
             self._pause_image = self._load_image(c.IMAGE.PAUSE_IMAGE_FILE_PATH)
@@ -209,6 +212,29 @@ class BoardImage:
         highlight_image = Image.new('RGBA', size, color=highlight_color)
         self._board_image.alpha_composite(highlight_image, (x, y))
         self._draw_piece(self.board.get_piece(square))
+
+    def toggle_address(self):
+        corner_pixel_color = self._base_image.getpixel((0, 0))
+        above_corner_color = self._base_image.getpixel(
+            (0, c.IMAGE.BORDER_SIZE + 1)
+        )
+
+        if corner_pixel_color == above_corner_color:
+            # Address is hidden show it
+            self._base_image = self._load_image(
+                c.IMAGE.BOARD_IMAGE_FILE_PATH,
+                flush=True)
+        else:
+            # Hide address by drawing a plain border on top of the image
+            self._border_image = self._load_image(
+                c.IMAGE.BORDER_IMAGE_FILE_PATH
+            )
+            self._base_image.alpha_composite(
+                self._border_image,
+                (0, 0),
+            )
+
+        self.update()
 
     def draw_threatened(self, pieces):
         to_draw = [self.board.get_square(p) for p in pieces]
@@ -327,8 +353,11 @@ class BoardImage:
             (x, y),
         )
 
-    def _load_image(self, image_path):
-        if image_path not in self._image_store:
+    def _load_image(self, image_path, flush=False):
+        if flush:
+            image = Image.open(image_path)
+            self._image_store[image_path] = image
+        elif image_path not in self._image_store:
             image = Image.open(image_path)
             self._image_store[image_path] = image
 

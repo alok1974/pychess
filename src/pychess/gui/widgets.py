@@ -475,11 +475,20 @@ class BoardWidget(QtWidgets.QDialog):
         self._white_resign_btn.clicked.connect(self._white_resign_btn_clicked)
         self._black_resign_btn.clicked.connect(self._black_resign_btn_clicked)
 
+    def toggle_address(self):
+        self._board_image.toggle_address()
+        self._update_image_label()
+        return
+
     def _image_clicked(self, event):
         if not self._is_image_clickable():
             return
 
         if event.button() != QtCore.Qt.MouseButton.LeftButton:
+            return
+
+        if self._board_image.is_border_clicked(event.x(), event.y()):
+            self.toggle_address()
             return
 
         square = self._board_image.pixel_to_square(event.x(), event.y())
