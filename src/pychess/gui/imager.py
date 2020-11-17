@@ -3,7 +3,7 @@ import collections
 
 
 from PIL import Image, ImageQt, ImageDraw, ImageFont
-
+from PySide2 import QtCore
 
 from .. import constant as c
 from ..element.squarer import Square
@@ -92,14 +92,29 @@ class Coordinates:
         )
 
 
-class BoardImage:
+class BoardImage(QtCore.QObject):
+    FRAME_UPDATED_SIGNAL = QtCore.Signal()
+    ANIM_FINISHED_SIGNAL = QtCore.Signal()
+
     COLOR_MOVE_HINT_CAPTURE = (255, 42, 14)
     COLOR_MOVE_HINT_EMPTY = (127, 127, 127)
 
-    def __init__(self, board):
+    FPS = 60
+    MIN_DURATION = 0.05  # seconds
+    MAX_DURATION = 0.15  # seconds
+
+    def __init__(self, board, parent=None):
+        super().__init__(parent=parent)
         self._image_store = {}
         self._coords = Coordinates()
         self.init(board=board)
+
+        # Parameters for handling piece move animation
+        self._timer = QtCore.QTimer()
+        interval = int(1000 / self.FPS)
+        self._timer.setInterval(interval)
+        self._timer.timeout.connect(self._update_frame)
+        self._init_anim_params()
 
     @property
     def board(self):
@@ -120,6 +135,9 @@ class BoardImage:
     @property
     def height(self):
         return self._board_image.height
+
+    def clear_selection(self):
+        self._selected_square = None
 
     def is_border_clicked(self, x, y):
         return self._coords.pixel_on_border(x, y)
@@ -180,17 +198,96 @@ class BoardImage:
         self._board_image.alpha_composite(self._base_image, (0, 0))
         self._draw_pieces()
 
+    def _init_anim_params(self):
+        self._frame = 0
+        self._anim_src = (0, 0)
+        self._anim_dst = (0, 0)
+        self._piece_image_to_animate = None
+        self._static_image = None
+        self._move_src = None
+        self._move_dst = None
+        self._move_distance = 0
+
+    def _reset_anim_params(self):
+        self._init_anim_params()
+
+    def animate_move(self, src, dst):
+        self._move_src = src
+        self._move_dst = dst
+
+        self._move_distance = (
+            (src.x - dst.x) ** 2 +
+            (src.y - dst.y) ** 2
+        ) ** 0.5
+
+        # The moved piece is now at dst already on the board
+        piece = self._board.get_piece(dst)
+        image_path = self._get_piece_image_path(piece)
+        self._piece_image_to_animate = self._load_image(image_path)
+        self._static_image = self._create_static_image(self._move_src)
+
+        self._anim_src = self._coords.get_image_coordinates(
+            self._piece_image_to_animate.width,
+            src.x,
+            src.y,
+        )
+
+        self._anim_dst = self._coords.get_image_coordinates(
+            self._piece_image_to_animate.width,
+            dst.x,
+            dst.y,
+        )
+
+        self._timer.start()
+
+    def _update_frame(self):
+        self._frame += 1
+
+        move_duration = self.MIN_DURATION * self._move_distance
+        duration = min(move_duration, self.MAX_DURATION)
+
+        t = self._frame / (self.FPS * duration)
+        coords = self._point_on_line(
+            t=t,
+            start_point=self._anim_src,
+            end_point=self._anim_dst,
+        )
+        if coords is None:
+            self.update()
+            self.ANIM_FINISHED_SIGNAL.emit()
+            self._timer.stop()
+            self._reset_anim_params()
+            return
+
+        # Draw piece at given coords
+        self._board_image.alpha_composite(self._static_image, (0, 0))
+        self._board_image.alpha_composite(self._piece_image_to_animate, coords)
+        self.FRAME_UPDATED_SIGNAL.emit()
+
+    @staticmethod
+    def _point_on_line(t, start_point, end_point):
+        if t >= 1.0:
+            return
+        x1, y1 = start_point
+        x2, y2 = end_point
+        x = int((1 - t) * x1 + (t * x2))
+        y = int((1 - t) * y1 + (t * y2))
+        return x, y
+
+    def _create_static_image(self, src_square):
+        static_image = Image.new('RGBA', (self.width, self.height))
+        static_image.alpha_composite(self._board_image, (0, 0))
+        self._clear_square(src_square, image=static_image)
+        return static_image
+
     def show(self):
         self._board_image.show()
 
     def clear_threatened_squares(self):
-        selected_in_threatened = (
-            self._selected_square in self._threatened_squares
-        )
         self._restore_color(self._threatened_squares)
         self._threatened_squares = []
 
-        if selected_in_threatened:
+        if self._selected_square is not None:
             self.highlight(
                 self._selected_square,
                 highlight_color=c.APP.HIGHLIGHT_COLOR.selected,
@@ -202,14 +299,11 @@ class BoardImage:
             self._selected_square = square
             self._draw_move_hint(square)
 
-        if self._selected_square in self._threatened_squares:
-            # This square is already highlighted under the rule of
-            # show threatened
-            return
-
         x, y = self.square_to_pixel(square)
         size = (self._square_size, self._square_size)
         highlight_image = Image.new('RGBA', size, color=highlight_color)
+        self._restore_color([square])
+        self._update_threatened()
         self._board_image.alpha_composite(highlight_image, (x, y))
         self._draw_piece(self.board.get_piece(square))
 
@@ -237,31 +331,34 @@ class BoardImage:
         self.update()
 
     def draw_threatened(self, pieces):
-        to_draw = [self.board.get_square(p) for p in pieces]
-        for s in to_draw:
-            if s not in self._threatened_squares:
-                self._threatened_squares.append(s)
+        self._threatened_squares = [self.board.get_square(p) for p in pieces]
+        self._update_threatened()
 
-        outline_image = Image.new(
+    def _update_threatened(self):
+        image = self._create_threatened_square_image()
+
+        for square in self._threatened_squares:
+            x, y = self.square_to_pixel(square)
+            self._board_image.alpha_composite(image, (x, y))
+
+    def _create_threatened_square_image(self):
+        image = Image.new(
             'RGBA',
             (self._square_size, self._square_size),
             (0, 0, 0, 0)
         )
-        draw_context = ImageDraw.Draw(outline_image)
+        draw_context = ImageDraw.Draw(image)
         draw_context.rectangle(
             [
                 (0, 0),
                 (self._square_size, self._square_size),
             ],
-            fill=c.APP.HIGHLIGHT_COLOR.threatened,
-            outline=(255, 0, 0, 100),
+            fill=None,
+            outline=(120, 0, 0, 255),
             width=4,
         )
-        for piece in pieces:
-            s = self.board.get_square(piece)
-            x, y = self.square_to_pixel(s)
-            self._board_image.alpha_composite(outline_image, (x, y))
-            self._draw_piece(piece)
+
+        return image
 
     def _draw_move_hint(self, square, width=0.03, circle=False):
         incr_min = int(self._square_size * (0.5 - width))
@@ -300,23 +397,23 @@ class BoardImage:
 
         hints = [s for s, _ in self.board.move_hint(square)]
         hints.append(square)
-        hints = list(
-            filter(
-                lambda s: s not in self._threatened_squares,
-                hints,
-            )
-        )
+
         self._restore_color(hints)
+        self._update_threatened()
 
     def _restore_color(self, squares):
         for square in squares:
-            x, y = self.square_to_pixel(square)
-            size = (self._square_size, self._square_size)
-            orig_color = self._initial_square_colors[square]
-            orig_square_image = Image.new('RGBA', size, color=orig_color)
-            self._board_image.alpha_composite(orig_square_image, (x, y))
+            self._clear_square(square)
             piece = self.board.get_piece(square)
             self._draw_piece(piece)
+
+    def _clear_square(self, square, image=None):
+        x, y = self.square_to_pixel(square)
+        size = (self._square_size, self._square_size)
+        orig_color = self._initial_square_colors[square]
+        orig_square_image = Image.new('RGBA', size, color=orig_color)
+        image = image or self._board_image
+        image.alpha_composite(orig_square_image, (x, y))
 
     def _init_board_image(self):
         self._base_image = self._load_image(c.IMAGE.BOARD_IMAGE_FILE_PATH)
@@ -328,7 +425,7 @@ class BoardImage:
 
         self._initial_square_colors = {
             square: self._base_image.getpixel(self.square_to_pixel(square))
-            for square in self.board.squares
+            for square in self._board.squares
         }
 
     def _draw_pieces(self):
@@ -342,7 +439,6 @@ class BoardImage:
         image_path = self._get_piece_image_path(piece)
         piece_image = self._load_image(image_path)
         piece_square = self._board.get_square(piece)
-        # x, y = self._get_coordinates(piece_square)
         x, y = self._coords.get_image_coordinates(
             image_size=piece_image.width,
             square_x=piece_square.x,
@@ -353,7 +449,7 @@ class BoardImage:
             (x, y),
         )
 
-    def _load_image(self, image_path, flush=False):
+    def _load_image(self, image_path=None, flush=False):
         if flush:
             image = Image.open(image_path)
             self._image_store[image_path] = image

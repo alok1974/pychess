@@ -147,14 +147,16 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
 
 class BoardWidget(QtWidgets.QDialog):
     MOVE_SIGNAL = QtCore.Signal(str)
-    WHITE_RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal(c.Color)
-    BLACK_RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal(c.Color)
+    RESIGN_BTN_CLICKED_SIGNAL = QtCore.Signal(c.Color)
+    ANIM_IN_PROGRESS_SIGNAL = QtCore.Signal()
+    ANIM_FINISHED_SIGNAL = QtCore.Signal()
 
     def __init__(self, board, parent=None):
         super().__init__(parent=parent)
-
         self._board = board
         self._board_image = imager.BoardImage(self._board)
+        self._board_image.FRAME_UPDATED_SIGNAL.connect(self._animate_move)
+        self._board_image.ANIM_FINISHED_SIGNAL.connect(self._animation_done)
         self._captured_image = imager.CapturedImage()
         self._splash_pixmap = QtGui.QPixmap(c.IMAGE.SPLASH_IMAGE_FILE_PATH)
 
@@ -217,6 +219,8 @@ class BoardWidget(QtWidgets.QDialog):
 
     def reset(self):
         self._board_image = imager.BoardImage(self._board)
+        self._board_image.FRAME_UPDATED_SIGNAL.connect(self._animate_move)
+        self._board_image.ANIM_FINISHED_SIGNAL.connect(self._animation_done)
         self._captured_image = imager.CapturedImage()
 
         self._board_image.update()
@@ -227,6 +231,7 @@ class BoardWidget(QtWidgets.QDialog):
 
         self._current_player = c.Color.white
 
+        self._game_data = None
         self._game_loaded = False
         self._is_paused = True
         self._is_game_over = False
@@ -265,9 +270,12 @@ class BoardWidget(QtWidgets.QDialog):
 
     def update_move(self, game_data):
         self._game_data = game_data
-        self._update()
 
-        self.highlight_move(src=game_data.src, dst=game_data.dst)
+        self.ANIM_IN_PROGRESS_SIGNAL.emit()
+        self._board_image.animate_move(
+            self._game_data.src,
+            self._game_data.dst
+        )
 
         self.clear_moves()
 
@@ -475,20 +483,33 @@ class BoardWidget(QtWidgets.QDialog):
         self._white_resign_btn.clicked.connect(self._white_resign_btn_clicked)
         self._black_resign_btn.clicked.connect(self._black_resign_btn_clicked)
 
+    def _animate_move(self):
+        self._update_image_label()
+
+    def _animation_done(self):
+        if self._show_threatened:
+            self._display_threatened()
+        else:
+            self._hide_threatened()
+
+        self.highlight_move(src=self._game_data.src, dst=self._game_data.dst)
+        self._board_image.clear_selection()
+        self.ANIM_FINISHED_SIGNAL.emit()
+
     def toggle_address(self):
         self._board_image.toggle_address()
         self._update_image_label()
         return
 
     def _image_clicked(self, event):
+        if self._board_image.is_border_clicked(event.x(), event.y()):
+            self.toggle_address()
+            return
+
         if not self._is_image_clickable():
             return
 
         if event.button() != QtCore.Qt.MouseButton.LeftButton:
-            return
-
-        if self._board_image.is_border_clicked(event.x(), event.y()):
-            self.toggle_address()
             return
 
         square = self._board_image.pixel_to_square(event.x(), event.y())
@@ -511,10 +532,10 @@ class BoardWidget(QtWidgets.QDialog):
             self.MOVE_SIGNAL.emit(move)
 
     def _white_resign_btn_clicked(self):
-        self.WHITE_RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.white)
+        self.RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.black)
 
     def _black_resign_btn_clicked(self):
-        self.BLACK_RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.black)
+        self.RESIGN_BTN_CLICKED_SIGNAL.emit(c.Color.white)
 
     def _is_image_clickable(self):
         is_engine_move = False

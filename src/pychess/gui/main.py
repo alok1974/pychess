@@ -61,6 +61,7 @@ class MainWidget(QtWidgets.QDialog):
         self._game_data = None
         self._history_player = None
         self._inspecting_history = False
+        self._move_index = None
 
         self._white_player_name = getpass.getuser().capitalize()
         self._black_player_name = 'Opponent'
@@ -105,6 +106,7 @@ class MainWidget(QtWidgets.QDialog):
         self._game_data = None
         self._history_player = None
         self._inspecting_history = False
+        self._move_index = None
 
         self._white_player_name = getpass.getuser().capitalize()
         self._black_player_name = 'Opponent'
@@ -219,8 +221,9 @@ class MainWidget(QtWidgets.QDialog):
         # Board Widget signals
         bw = self._board_widget
         bw.MOVE_SIGNAL.connect(self._recieved_move_string)
-        bw.WHITE_RESIGN_BTN_CLICKED_SIGNAL.connect(self._resign)
-        bw.BLACK_RESIGN_BTN_CLICKED_SIGNAL.connect(self._resign)
+        bw.RESIGN_BTN_CLICKED_SIGNAL.connect(self._resign)
+        bw.ANIM_IN_PROGRESS_SIGNAL.connect(self._anim_in_progress)
+        bw.ANIM_FINISHED_SIGNAL.connect(self._anim_finished)
 
         # Move Widget Signals
         mw = self._moves_widget
@@ -401,8 +404,8 @@ class MainWidget(QtWidgets.QDialog):
                 dst=result.move.dst,
             )
 
-        index = self._history_player.current_index
-        self._moves_widget.highlight_move(move_index=index)
+        self._move_index = self._history_player.current_index
+        self._moves_widget.highlight_move(move_index=self._move_index)
 
     def _toggle_show_threatened(self):
         self._board_widget.toggle_show_threatened()
@@ -721,3 +724,12 @@ class MainWidget(QtWidgets.QDialog):
 
         if self._has_game_started or self._game_loaded:
             self._board_widget.toggle_address()
+
+    def _anim_in_progress(self):
+        self._stop_current_player_time()
+
+    def _anim_finished(self):
+        if self._move_index is not None and self._move_index == -1:
+            self.update_board()
+
+        self._start_current_player_time()
