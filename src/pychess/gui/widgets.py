@@ -1080,8 +1080,8 @@ class MoveWidget(QtWidgets.QDialog):
     @staticmethod
     def _highlight_format():
         char_format = QtGui.QTextCharFormat()
-        char_format.setForeground(QtGui.QBrush(QtGui.QColor("red")))
-        char_format.setBackground(QtGui.QBrush(QtGui.QColor("yellow")))
+        char_format.setForeground(QtGui.QBrush(QtGui.QColor(221, 221, 221)))
+        char_format.setBackground(QtGui.QBrush(QtGui.QColor(255, 0, 0)))
         char_format.setFontWeight(QtGui.QFont.Bold)
         return char_format
 
