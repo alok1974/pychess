@@ -89,6 +89,7 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
         self._connect_signals()
 
     def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
         self.setWindowTitle('Choose Players')
         self.setMaximumSize(c.APP.MOVE_WIDGET_WIDTH, c.APP.MOVE_WIDGET_WIDTH)
         self.setModal(True)
@@ -678,7 +679,18 @@ class LoadGameWidget(QtWidgets.QDialog):
             QtCore.Qt.ScrollBarAlwaysOff
         )
 
+        h_scroll_bar = self._scroll_area.horizontalScrollBar()
+        h_scroll_bar.setStyleSheet(
+            """
+            QWidget {
+                border: 1px solid  rgb(90, 90, 90);
+                color: rgb(100, 18, 20);
+            }
+            """
+        )
+
         self._game_data_layout = QtWidgets.QVBoxLayout()
+        self._game_data_layout.setContentsMargins(0, 0, 0, 0)
         for index, game_data in enumerate(self._game_info):
             btn_text = f'\n{game_data}\n'
             btn = QtWidgets.QPushButton(btn_text)
@@ -697,6 +709,33 @@ class LoadGameWidget(QtWidgets.QDialog):
         self._scroll_widget.setLayout(self._game_data_layout)
         self._scroll_area.setWidget(self._scroll_widget)
         self._main_layout.addWidget(self._scroll_area)
+
+    def _add_btn(self, add_to_layout, index, game_data):
+        serial_text = str(index + 1).zfill(len(str(len(self._game_info))))
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        s_no_label = QtWidgets.QLabel(serial_text)
+        s_no_label.setStyleSheet('border: 1px solid rgb(90, 90, 90);')
+        s_no_label.setMinimumWidth(int(c.APP.MOVE_WIDGET_WIDTH / 4))
+
+        layout.addWidget(s_no_label)
+        btn_text = f'\n{game_data}\n'
+        btn = QtWidgets.QPushButton(btn_text)
+        btn.setStyleSheet('border: 1px solid rgb(90, 90, 90);')
+        btn.setMinimumWidth(c.APP.MOVE_WIDGET_WIDTH)
+        btn.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Expanding,
+        )
+        func = functools.partial(
+            self._btn_clicked,
+            index=index
+        )
+        btn.clicked.connect(func)
+        layout.addWidget(btn)
+        spacer_label = QtWidgets.QLabel(' ')
+        layout.addWidget(spacer_label)
+        add_to_layout.addLayout(layout)
 
     def _btn_clicked(self, index):
         self._selected_index = index
@@ -1470,6 +1509,7 @@ class SaveGameDataWidget(QtWidgets.QDialog):
         self._connect_signals()
 
     def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
         self.windowTitle = 'Enter game details'
         self.setModal(True)
 

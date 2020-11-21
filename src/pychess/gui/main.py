@@ -185,6 +185,7 @@ class MainWidget(QtWidgets.QDialog):
         return result
 
     def _setup_ui(self):
+        self.setStyleSheet('border: none;')
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
