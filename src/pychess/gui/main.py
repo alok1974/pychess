@@ -438,6 +438,8 @@ class MainWidget(QtWidgets.QDialog):
             return
 
         self._reset()
+        self._game_loaded = True
+        self._board_widget.game_loaded = True
         moves = self._pgn2moves.get_moves(game_index=game_index)
         bulk_moves = [
             (f'{src.address}{dst.address}', promotion)
@@ -446,19 +448,9 @@ class MainWidget(QtWidgets.QDialog):
         self.BULK_MOVE_SIGNAL.emit(bulk_moves)
         self._stop_all_timers()
 
-        self._game_loaded = True
-        self._board_widget.game_loaded = True
-        self._board_widget.set_panel_visibility(False)
-        self._toggle_left_widget(visibility=True)
-        self._collapse_btn.setVisible(False)
-        self._inspect_history(index=-1)
-        self._adjust_size()
-
         header = self._pgn2moves.header_info[game_index]
-
         result = header.result
         self._moves_widget.display_win(winning_text=result)
-
         self._white_player_name = header.white
         self._black_player_name = header.black
         self._game_date = header.date
@@ -468,6 +460,13 @@ class MainWidget(QtWidgets.QDialog):
             date=self._game_date,
             result=result,
         )
+
+        self._board_widget.set_panel_visibility(False)
+        self._toggle_left_widget(visibility=True)
+        self._collapse_btn.setVisible(False)
+        self._adjust_size()
+
+        self._inspect_history(start=True)
 
     def _handle_save_game(self):
         if self._game_loaded:

@@ -272,11 +272,14 @@ class BoardWidget(QtWidgets.QDialog):
     def update_move(self, game_data):
         self._game_data = game_data
 
-        self.ANIM_IN_PROGRESS_SIGNAL.emit()
-        self._board_image.animate_move(
-            self._game_data.src,
-            self._game_data.dst
-        )
+        if self.game_loaded:
+            self.update_board()
+        else:
+            self.ANIM_IN_PROGRESS_SIGNAL.emit()
+            self._board_image.animate_move(
+                self._game_data.src,
+                self._game_data.dst
+            )
 
         self.clear_moves()
 
