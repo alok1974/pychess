@@ -100,7 +100,7 @@ class BoardImage(QtCore.QObject):
     COLOR_MOVE_HINT_EMPTY = (127, 127, 127)
 
     FPS = 60
-    MIN_DURATION = 0.05  # seconds
+    MIN_DURATION = 0.06  # seconds
     MAX_DURATION = 0.15  # seconds
 
     def __init__(self, board, parent=None):
