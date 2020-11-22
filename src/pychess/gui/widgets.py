@@ -27,33 +27,26 @@ def block_signals(widgets):
             widget.blockSignals(is_signal_blocked)
 
 
-class MenuBar(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self._setup_ui()
-        self._connect_signals()
-
-    def _setup_ui(self):
-        self.setMaximumHeight(50)
-        layout = QtWidgets.QHBoxLayout(self)
-
-        for btn_text in 'abcdefghij':
-            btn = QtWidgets.QPushButton(f'B({btn_text})')
-            layout.addWidget(btn)
-
-        layout.addStretch(1)
-
-    def _connect_signals(self):
-        pass
-
-
 class ImageLabel(QtWidgets.QLabel):
-    def __init__(self, parent=None):
+    def __init__(self, pixmap, aspect=QtCore.Qt.IgnoreAspectRatio, parent=None):
         super().__init__(parent=parent)
+        self._random_bg = False
+        self._overlay_pixmap = None
+        self._aspect = aspect
+        self._pychess_pixmap = QtGui.QPixmap(
+            c.IMAGE.PYCHESS_IMAGE_FILE_PATH,
+        )
+        self.setPixmap(pixmap)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.MinimumExpanding,
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
+
+    def set_overlay(self, overlay):
+        self._overlay_pixmap = overlay
+
+    def remove_overlay(self):
+        self._overlay_pixmap = None
 
     def setPixmap(self, pixmap):
         self.pixmap = pixmap
@@ -64,7 +57,7 @@ class ImageLabel(QtWidgets.QLabel):
         point = QtCore.QPoint(0, 0)
         scaled_pixmap = self.pixmap.scaled(
             size,
-            QtCore.Qt.KeepAspectRatio,
+            self._aspect,
             transformMode=QtCore.Qt.SmoothTransformation,
         )
 
@@ -76,6 +69,62 @@ class ImageLabel(QtWidgets.QLabel):
         painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
         painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
         painter.drawPixmap(point, scaled_pixmap)
+
+        if self._overlay_pixmap is not None:
+            point2 = QtCore.QPoint(0, 0)
+            point2.setX((size.width() - self._pychess_pixmap.width()) / 2)
+            point2.setY((size.height() - self._pychess_pixmap.height()) / 2)
+            painter.drawPixmap(point2, self._pychess_pixmap)
+
+        painter.end()
+        painter = None
+
+
+class ButtonLabel(ImageLabel):
+    def __init__(self, default_pixmap, active_pixmap, parent=None):
+        super().__init__(
+            pixmap=default_pixmap,
+            aspect=QtCore.Qt.KeepAspectRatio,
+            parent=parent,
+        )
+        self._default_pixmap = default_pixmap
+        self._active_pixmap = active_pixmap
+
+    def enterEvent(self, event):
+        self.setPixmap(self._active_pixmap)
+
+    def leaveEvent(self, event):
+        self.setPixmap(self._default_pixmap)
+
+
+class ToolBar(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._setup_ui()
+        self._connect_signals()
+
+    def _setup_ui(self):
+        layout = QtWidgets.QVBoxLayout(self)
+        for image_data in c.IMAGE.BTN_IMAGE:
+            default_pixmap = QtGui.QPixmap(
+                os.path.join(c.IMAGE.IMAGE_DIR, image_data.default)
+            )
+            active_pixmap = QtGui.QPixmap(
+                os.path.join(c.IMAGE.IMAGE_DIR, image_data.active)
+            )
+            btn = ButtonLabel(
+                default_pixmap=default_pixmap,
+                active_pixmap=active_pixmap,
+            )
+            btn.setToolTip(image_data.tooltip)
+            btn.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Expanding,
+            )
+            layout.addWidget(btn)
+
+    def _connect_signals(self):
+        pass
 
 
 class ChoosePlayerWidget(QtWidgets.QDialog):
@@ -160,6 +209,7 @@ class BoardWidget(QtWidgets.QDialog):
         self._board_image.ANIM_FINISHED_SIGNAL.connect(self._animation_done)
         self._captured_image = imager.CapturedImage()
         self._splash_pixmap = QtGui.QPixmap(c.IMAGE.SPLASH_IMAGE_FILE_PATH)
+        self._pychess_pixmap = QtGui.QPixmap(c.IMAGE.PYCHESS_IMAGE_FILE_PATH)
 
         self._setup_ui()
         self._connect_signals()
@@ -390,34 +440,14 @@ class BoardWidget(QtWidgets.QDialog):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
 
         # Create Label and add the pixmap
-        self._image_label = ImageLabel()
-        self._image_label.setPixmap(self._pixmap)
-        # self._image_label.setMinimumWidth(self._board_image.qt_image.width())
-        # self._image_label.setMinimumHeight(self._board_image.qt_image.height())
+        self._image_label = ImageLabel(pixmap=self._pixmap)
         self._image_label.setCursor(
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
 
-        # Create an innner layout to prohibit horizontal stretching of the
-        # image label
-        # inner_layout = QtWidgets.QHBoxLayout()
-        # inner_layout.addWidget(self._image_label)
-
-        # Adding a spacer to the right of the label to make sure that the
-        # image label does not stretch otherwise we cannot get the right
-        # mouse position to pick the pixel
-        # inner_layout.addStretch(1)
-
-        # Create an outer layout to prohibit the vertical stretching
-        # of the image label
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self._image_label)
-        # layout.addLayout(inner_layout)
 
-        # Adding a spacer to the bottom of the label to make sure that the
-        # image label does not stretch otherwise we cannot get the right
-        # mouse position to pick the pixel
-        # layout.addStretch(1)
         return layout
 
     def _create_panel_widget(self, color, min_height=50):
@@ -506,11 +536,11 @@ class BoardWidget(QtWidgets.QDialog):
         return
 
     def _image_clicked(self, event):
-        if self._board_image.is_border_clicked(event.x(), event.y()):
-            self.toggle_address()
+        if not self._is_image_clickable():
             return
 
-        if not self._is_image_clickable():
+        if self._board_image.is_border_clicked(event.x(), event.y()):
+            self.toggle_address()
             return
 
         if event.button() != QtCore.Qt.MouseButton.LeftButton:
@@ -609,9 +639,11 @@ class BoardWidget(QtWidgets.QDialog):
     def _update_image_label(self):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
         self._image_label.setPixmap(self._pixmap)
+        self._image_label.remove_overlay()
 
     def _update_splash(self):
         self._image_label.setPixmap(self._splash_pixmap)
+        self._image_label.set_overlay(self._pychess_pixmap)
 
     def _update_captured_image_labels(self):
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(

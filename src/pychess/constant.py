@@ -155,6 +155,61 @@ class IMAGE:
     BORDER_IMAGE_NAME = 'border.png'
     BORDER_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BORDER_IMAGE_NAME)
 
+    PYCHESS_IMAGE_NAME = 'pychess.png'
+    PYCHESS_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, PYCHESS_IMAGE_NAME)
+
+    BTN_IMAGE = _declare_constants(
+        obj_name='BTN_IMAGE',
+        reset=_declare_constants(
+            obj_name='RESET_IMAGES',
+            default='btn_reset.png',
+            active='btn_reset_a.png',
+            tooltip='Reset',
+        ),
+        new=_declare_constants(
+            obj_name='NEW_IMAGES',
+            default='btn_new.png',
+            active='btn_new_a.png',
+            tooltip='Start a new game',
+        ),
+        threat=_declare_constants(
+            obj_name='THREAT_IMAGES',
+            default='btn_threat.png',
+            active='btn_threat_a.png',
+            tooltip='Toggle threatened pieces display',
+        ),
+        border=_declare_constants(
+            obj_name='BORDER_IMAGES',
+            default='btn_border.png',
+            active='btn_border_a.png',
+            tooltip='Toggle square address display',
+        ),
+        load=_declare_constants(
+            obj_name='LOAD_IMAGES',
+            default='btn_load.png',
+            active='btn_load_a.png',
+            tooltip='Load game from pgn file',
+        ),
+        option=_declare_constants(
+            obj_name='OPTION_IMAGES',
+            default='btn_option.png',
+            active='btn_option_a.png',
+            tooltip='Open settings',
+        ),
+        pause=_declare_constants(
+            obj_name='PAUSE_IMAGES',
+            default='btn_pause.png',
+            active='btn_pause_a.png',
+            tooltip='Toggle pause/resume game',
+        ),
+        save=_declare_constants(
+            obj_name='SAVE_IMAGES',
+            default='btn_save.png',
+            active='btn_save_a.png',
+            tooltip='Save game as pgn file',
+        ),
+    )
+
     PIECE_IMAGE = _declare_constants(
         obj_name='PIECE_IMAGE',
         pawn=_declare_constants(

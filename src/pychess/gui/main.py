@@ -18,7 +18,7 @@ from .widgets import (
     LoadGameWidget,
     SaveGameDataWidget,
     ChoosePlayerWidget,
-    # MenuBar,
+    ToolBar,
 )
 
 
@@ -35,6 +35,7 @@ class MainWidget(QtWidgets.QDialog):
         self._board = board
         self._board_widget = BoardWidget(board=self._board)
         self._moves_widget = MoveWidget()
+        self._tool_bar = ToolBar()
 
         self._collapsed_width = None
         self._history_player = None
@@ -171,8 +172,10 @@ class MainWidget(QtWidgets.QDialog):
         if self._is_paused:
             return
 
-        if self._has_game_started or not self._left_widget.isVisible():
-            self._toggle_left_widget()
+        if not self._has_game_started:
+            return
+
+        self._toggle_left_widget()
 
     def keyPressEvent(self, event):
         self._handle_keypress(event=event)
@@ -198,8 +201,9 @@ class MainWidget(QtWidgets.QDialog):
     def _create_right_widget(self):
         widget = QtWidgets.QWidget()
         widget.setStyleSheet('border: none;')
-        layout = QtWidgets.QVBoxLayout(widget)
-        layout.addWidget(self._board_widget)
+        layout = QtWidgets.QHBoxLayout(widget)
+        layout.addWidget(self._tool_bar)
+        layout.addWidget(self._board_widget, 1)
         return widget
 
     def _create_left_widget(self):
