@@ -28,11 +28,8 @@ def block_signals(widgets):
 
 
 class ImageLabel(QtWidgets.QLabel):
-    def __init__(self, pixmap, aspect=QtCore.Qt.IgnoreAspectRatio, parent=None):
+    def __init__(self, pixmap, parent=None):
         super().__init__(parent=parent)
-        self._random_bg = False
-        self._overlay_pixmap = None
-        self._aspect = aspect
         self._pychess_pixmap = QtGui.QPixmap(
             c.IMAGE.PYCHESS_IMAGE_FILE_PATH,
         )
@@ -42,11 +39,15 @@ class ImageLabel(QtWidgets.QLabel):
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
 
-    def set_overlay(self, overlay):
-        self._overlay_pixmap = overlay
+        self._draw_splash = True
 
-    def remove_overlay(self):
-        self._overlay_pixmap = None
+    @property
+    def draw_splash(self):
+        return self._draw_splash
+
+    @draw_splash.setter
+    def draw_splash(self, val):
+        self._draw_splash = val
 
     def setPixmap(self, pixmap):
         self.pixmap = pixmap
@@ -54,47 +55,95 @@ class ImageLabel(QtWidgets.QLabel):
 
     def paintEvent(self, event):
         size = self.size()
+        painter = QtGui.QPainter(self)
+
+        if self._draw_splash:
+            self._draw_grid(size=size, painter=painter)
+            self._draw_overlay(size=size, painter=painter)
+        else:
+            self._draw_pixmap(size=size, painter=painter)
+
+        painter.end()
+        painter = None
+
+    def _draw_pixmap(self, size, painter):
         point = QtCore.QPoint(0, 0)
         scaled_pixmap = self.pixmap.scaled(
             size,
-            self._aspect,
+            QtCore.Qt.IgnoreAspectRatio,
             transformMode=QtCore.Qt.SmoothTransformation,
         )
 
         point.setX((size.width() - scaled_pixmap.width()) / 2)
         point.setY((size.height() - scaled_pixmap.height()) / 2)
 
-        painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
         painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
         painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
         painter.drawPixmap(point, scaled_pixmap)
 
-        if self._overlay_pixmap is not None:
-            point2 = QtCore.QPoint(0, 0)
-            point2.setX((size.width() - self._pychess_pixmap.width()) / 2)
-            point2.setY((size.height() - self._pychess_pixmap.height()) / 2)
-            painter.drawPixmap(point2, self._pychess_pixmap)
-
-        painter.end()
-        painter = None
-
-
-class ButtonLabel(ImageLabel):
-    def __init__(self, default_pixmap, active_pixmap, parent=None):
-        super().__init__(
-            pixmap=default_pixmap,
-            aspect=QtCore.Qt.KeepAspectRatio,
-            parent=parent,
+    def _draw_grid(self, size, painter):
+        painter.setBrush(QtGui.QColor(255, 0, 0))
+        painter.setPen(QtGui.QColor(255, 0, 0))
+        painter.drawRect(
+            size.width() * 0.25, size.height() * 0.25, 100, 100
         )
+
+    def _draw_overlay(self, size, painter):
+        point2 = QtCore.QPoint(0, 0)
+        point2.setX((size.width() - self._pychess_pixmap.width()) / 2)
+        point2.setY((size.height() - self._pychess_pixmap.height()) / 2)
+        painter.drawPixmap(point2, self._pychess_pixmap)
+
+
+class ButtonLabel(QtWidgets.QLabel):
+    def __init__(self, default_pixmap, active_pixmap, parent=None):
+        super().__init__(parent=parent)
         self._default_pixmap = default_pixmap
         self._active_pixmap = active_pixmap
 
+        self._set_default()
+
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding,
+            QtWidgets.QSizePolicy.MinimumExpanding,
+        )
+
     def enterEvent(self, event):
-        self.setPixmap(self._active_pixmap)
+        self._set_active()
 
     def leaveEvent(self, event):
+        self._set_default()
+
+    def _set_active(self):
+        self.pixmap = self._active_pixmap
+        self.setPixmap(self._active_pixmap)
+
+    def _set_default(self):
+        self.pixmap = self._default_pixmap
         self.setPixmap(self._default_pixmap)
+
+    def paintEvent(self, event):
+        size = self.size()
+        painter = QtGui.QPainter(self)
+
+        point = QtCore.QPoint(0, 0)
+        scaled_pixmap = self.pixmap.scaled(
+            size,
+            QtCore.Qt.KeepAspectRatio,
+            transformMode=QtCore.Qt.SmoothTransformation,
+        )
+
+        point.setX((size.width() - scaled_pixmap.width()) / 2)
+        point.setY((size.height() - scaled_pixmap.height()) / 2)
+
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        painter.drawPixmap(point, scaled_pixmap)
+
+        painter.end()
+        painter = None
 
 
 class ToolBar(QtWidgets.QWidget):
@@ -637,13 +686,12 @@ class BoardWidget(QtWidgets.QDialog):
         return all_threatened
 
     def _update_image_label(self):
+        self._image_label.draw_splash = False
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
         self._image_label.setPixmap(self._pixmap)
-        self._image_label.remove_overlay()
 
     def _update_splash(self):
-        self._image_label.setPixmap(self._splash_pixmap)
-        self._image_label.set_overlay(self._pychess_pixmap)
+        self._image_label.draw_splash = True
 
     def _update_captured_image_labels(self):
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
