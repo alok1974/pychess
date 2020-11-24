@@ -141,15 +141,21 @@ class MainWidget(QtWidgets.QDialog):
         self._current_player = color
         self._board_widget.set_current_player(color)
         self._start_current_player_time()
+        self._handle_engine_move()
 
-        if self._engine_color is not None:
-            if self._current_player == self._engine_color:
-                moves = [(m.src, m.dst) for m in self._game_data.move_history]
-                best_move = self._engine.get_best_move(moves)
-                if best_move is not None:
-                    self.MOVE_SIGNAL.emit(best_move)
-                else:
-                    print('Computer was Unable to get the best move!')
+    def _handle_engine_move(self):
+        if self._engine_color is None:
+            return
+
+        if self._current_player != self._engine_color:
+            return
+
+        moves = [(m.src, m.dst) for m in self._game_data.move_history]
+        best_move = self._engine.get_best_move(moves)
+        if best_move is None:
+            return
+
+        self.MOVE_SIGNAL.emit(best_move)
 
     def update_board(self):
         self._board_widget.update_board()
@@ -238,6 +244,9 @@ class MainWidget(QtWidgets.QDialog):
         mw.PREV_BTN_CLICKED_SIGNAL.connect(self._previous_btn_clicked)
         mw.NEXT_BTN_CLICKED_SIGNAL.connect(self._next_btn_clicked)
         mw.LAST_BTN_CLICKED_SIGNAL.connect(self._last_btn_clicked)
+
+        # Toolbar Signals
+        self._tool_bar.BTN_CLICKED_SIGNAL.connect(self._handle_command)
 
         # Internal Signals
         self._timer_white.timeout.connect(self._timer_white_timeout)
@@ -737,3 +746,21 @@ class MainWidget(QtWidgets.QDialog):
             self.update_board()
 
         self._start_current_player_time()
+
+    def _handle_command(self, cmd):
+        if cmd == c.ToolCommand.reset:
+            self._handle_reset()
+        elif cmd == c.ToolCommand.new:
+            self._choose_player()
+        elif cmd == c.ToolCommand.load:
+            self._handle_load_game()
+        elif cmd == c.ToolCommand.option:
+            self._open_options()
+        elif cmd == c.ToolCommand.border:
+            self._toggle_adress()
+        elif cmd == c.ToolCommand.pause:
+            self._toggle_pause()
+        elif cmd == c.ToolCommand.save:
+            self._handle_save_game()
+        elif cmd == c.ToolCommand.threat:
+            self._toggle_show_threatened()

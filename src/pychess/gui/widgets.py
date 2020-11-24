@@ -3,9 +3,11 @@ import contextlib
 import collections
 import functools
 import re
+import itertools
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
+from PIL import Image
 
 
 from .. import constant as c
@@ -38,8 +40,14 @@ class ImageLabel(QtWidgets.QLabel):
             QtWidgets.QSizePolicy.MinimumExpanding,
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
-
         self._draw_splash = True
+
+        self._grid_colors = self._get_grid_color_map()
+
+        self._hue = 0
+        self._timer = QtCore.QTimer()
+        self._timer.timeout.connect(self._hue_change)
+        self._timer.start()
 
     @property
     def draw_splash(self):
@@ -83,11 +91,37 @@ class ImageLabel(QtWidgets.QLabel):
         painter.drawPixmap(point, scaled_pixmap)
 
     def _draw_grid(self, size, painter):
-        painter.setBrush(QtGui.QColor(255, 0, 0))
-        painter.setPen(QtGui.QColor(255, 0, 0))
-        painter.drawRect(
-            size.width() * 0.25, size.height() * 0.25, 100, 100
+        rect_size = c.IMAGE.SPLASH_RECT_SIZE
+        for row, column in itertools.product(range(8), range(8)):
+            color = self._grid_colors[(row, column)]
+            painter.setBrush(QtGui.QColor(*color))
+            painter.setPen(QtGui.QColor(*color))
+            x = size.width() * (row / 8)
+            y = size.height() * (column / 8)
+            painter.drawRect(x, y, rect_size, rect_size)
+
+    def _hue_change(self):
+        self._hue += 0.5
+        if self._hue > 359:
+            self._hue = 0
+
+        self.setStyleSheet(
+            f'background-color:hsv({self._hue}, 255, 255);'
         )
+
+    @staticmethod
+    def _get_grid_color_map():
+        image = Image.open(c.IMAGE.GRID_IMAGE_FILE_PATH)
+        coords = imager.Coordinates(
+            border_size=0,
+            square_size=c.IMAGE.SPLASH_RECT_SIZE,
+        )
+        colors = {}
+        for row, column in itertools.product(range(8), range(8)):
+            pixel_pos = coords.square_to_pixel(row, column)
+            colors[(row, column)] = image.getpixel(pixel_pos)
+
+        return colors
 
     def _draw_overlay(self, size, painter):
         point2 = QtCore.QPoint(0, 0)
@@ -147,6 +181,8 @@ class ButtonLabel(QtWidgets.QLabel):
 
 
 class ToolBar(QtWidgets.QWidget):
+    BTN_CLICKED_SIGNAL = QtCore.Signal(c.ToolCommand)
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._setup_ui()
@@ -170,7 +206,14 @@ class ToolBar(QtWidgets.QWidget):
                 QtWidgets.QSizePolicy.Expanding,
                 QtWidgets.QSizePolicy.Expanding,
             )
+            btn.mousePressEvent = functools.partial(
+                self._btn_label_clicked,
+                cmd=image_data.cmd,
+            )
             layout.addWidget(btn)
+
+    def _btn_label_clicked(self, event, cmd):
+        self.BTN_CLICKED_SIGNAL.emit(cmd)
 
     def _connect_signals(self):
         pass

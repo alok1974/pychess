@@ -46,6 +46,18 @@ class EngineType(enum.Enum):
 
 
 @enum.unique
+class ToolCommand(enum.Enum):
+    reset = 0
+    new = 1
+    load = 2
+    option = 3
+    border = 4
+    pause = 5
+    save = 6
+    threat = 7
+
+
+@enum.unique
 class PieceType(enum.Enum):
     pawn = 0
     knight = 1
@@ -158,6 +170,9 @@ class IMAGE:
     PYCHESS_IMAGE_NAME = 'pychess.png'
     PYCHESS_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, PYCHESS_IMAGE_NAME)
 
+    GRID_IMAGE_NAME = 'grid.png'
+    GRID_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, GRID_IMAGE_NAME)
+
     BTN_IMAGE = _declare_constants(
         obj_name='BTN_IMAGE',
         reset=_declare_constants(
@@ -165,48 +180,56 @@ class IMAGE:
             default='btn_reset.png',
             active='btn_reset_a.png',
             tooltip='Reset',
+            cmd=ToolCommand.reset,
         ),
         new=_declare_constants(
             obj_name='NEW_IMAGES',
             default='btn_new.png',
             active='btn_new_a.png',
             tooltip='Start a new game',
+            cmd=ToolCommand.new,
         ),
         threat=_declare_constants(
             obj_name='THREAT_IMAGES',
             default='btn_threat.png',
             active='btn_threat_a.png',
             tooltip='Toggle threatened pieces display',
+            cmd=ToolCommand.threat,
         ),
         border=_declare_constants(
             obj_name='BORDER_IMAGES',
             default='btn_border.png',
             active='btn_border_a.png',
             tooltip='Toggle square address display',
+            cmd=ToolCommand.border,
         ),
         load=_declare_constants(
             obj_name='LOAD_IMAGES',
             default='btn_load.png',
             active='btn_load_a.png',
             tooltip='Load game from pgn file',
+            cmd=ToolCommand.load,
         ),
         option=_declare_constants(
             obj_name='OPTION_IMAGES',
             default='btn_option.png',
             active='btn_option_a.png',
             tooltip='Open settings',
+            cmd=ToolCommand.option,
         ),
         pause=_declare_constants(
             obj_name='PAUSE_IMAGES',
             default='btn_pause.png',
             active='btn_pause_a.png',
             tooltip='Toggle pause/resume game',
+            cmd=ToolCommand.pause,
         ),
         save=_declare_constants(
             obj_name='SAVE_IMAGES',
             default='btn_save.png',
             active='btn_save_a.png',
             tooltip='Save game as pgn file',
+            cmd=ToolCommand.save,
         ),
     )
 
@@ -278,6 +301,7 @@ class IMAGE:
     CAPTURABLES_IMAGE_WIDTH = 600
     LEAD_FONT_SIZE = 18
     MOVIE_FONT_SIZE = 18
+    SPLASH_RECT_SIZE = int(BASE_IMAGE_SIZE / NB_SQUARES)
 
     NON_PAWN_SMALL_IMAGE_SIZE = int(NON_PAWN_IMAGE_SIZE / 2)
     PAWN_SMALL_IMAGE_SIZE = int(PAWN_IMAGE_SIZE / 2)
