@@ -53,8 +53,10 @@ class ToolCommand(enum.Enum):
     option = 3
     border = 4
     pause = 5
-    save = 6
-    threat = 7
+    play = 6
+    save = 7
+    threat = 8
+    zen = 9
 
 
 @enum.unique
@@ -224,12 +226,26 @@ class IMAGE:
             tooltip='Toggle pause/resume game',
             cmd=ToolCommand.pause,
         ),
+        play=_declare_constants(
+            obj_name='PLAY_IMAGES',
+            default='btn_play.png',
+            active='btn_play_a.png',
+            tooltip='Toggle pause/resume game',
+            cmd=ToolCommand.play,
+        ),
         save=_declare_constants(
             obj_name='SAVE_IMAGES',
             default='btn_save.png',
             active='btn_save_a.png',
             tooltip='Save game as pgn file',
             cmd=ToolCommand.save,
+        ),
+        zen=_declare_constants(
+            obj_name='ZEN_IMAGES',
+            default='btn_zen.png',
+            active='btn_zen_a.png',
+            tooltip='Zen mode minimal UI',
+            cmd=ToolCommand.zen,
         ),
     )
 

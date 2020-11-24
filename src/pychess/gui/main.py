@@ -117,6 +117,8 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.display_time_black(self._remaining_time_black)
 
         self._toggle_left_widget(visibility=False)
+        self._tool_bar.toogle_pause_icon(is_paused=self._is_paused)
+        self._tool_bar.setVisible(True)
         self._adjust_size()
 
     def _reset_custom_options(self):
@@ -181,6 +183,7 @@ class MainWidget(QtWidgets.QDialog):
         if not self._has_game_started:
             return
 
+        self._tool_bar.setVisible(True)
         self._toggle_left_widget()
 
     def keyPressEvent(self, event):
@@ -260,6 +263,7 @@ class MainWidget(QtWidgets.QDialog):
         width_increased = self.width() > self._collapsed_width
         left_widget_is_hidden = not self._left_widget.isVisible()
         if width_increased and left_widget_is_hidden:
+            self._tool_bar.setVisible(True)
             self._left_widget.setVisible(True)
             self._collapse_btn.setVisible(True)
             self._collapse_btn.setText('<')
@@ -273,9 +277,7 @@ class MainWidget(QtWidgets.QDialog):
         self._left_widget.setVisible(vis_to_set)
         self._collapse_btn.setVisible(vis_to_set)
 
-        if not vis_to_set:
-            self._collapse_btn.setText('>')
-        else:
+        if vis_to_set:
             self._collapse_btn.setVisible(vis_to_set)
             self._collapse_btn.setText('<')
             self._display_pgn_moves()
@@ -298,6 +300,8 @@ class MainWidget(QtWidgets.QDialog):
         else:
             self._pause_game()
 
+        self._tool_bar.toogle_pause_icon(is_paused=self._is_paused)
+
     def _first_btn_clicked(self):
         self._inspect_history(start=True)
 
@@ -311,6 +315,7 @@ class MainWidget(QtWidgets.QDialog):
         self._inspect_history(end=True)
 
     def _collapse_btn_clicked(self):
+        self._tool_bar.setVisible(False)
         self._toggle_left_widget()
         self._adjust_size()
         self._collapsed_width = self.width()
@@ -764,3 +769,5 @@ class MainWidget(QtWidgets.QDialog):
             self._handle_save_game()
         elif cmd == c.ToolCommand.threat:
             self._toggle_show_threatened()
+        elif cmd == c.ToolCommand.zen:
+            self._collapse_btn_clicked()

@@ -98,7 +98,7 @@ class ImageLabel(QtWidgets.QLabel):
             painter.setPen(QtGui.QColor(*color))
             x = size.width() * (row / 8)
             y = size.height() * (column / 8)
-            painter.drawRect(x, y, rect_size, rect_size)
+            painter.drawRect(x, y, rect_size - 2, rect_size - 2)
 
     def _hue_change(self):
         self._hue += 0.5
@@ -143,6 +143,14 @@ class ButtonLabel(QtWidgets.QLabel):
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
 
+    def set_active(self, pixmap):
+        self._active_pixmap = pixmap
+        self._set_active()
+
+    def set_default(self, pixmap):
+        self._default_pixmap = pixmap
+        self._set_default()
+
     def enterEvent(self, event):
         self._set_active()
 
@@ -186,11 +194,13 @@ class ToolBar(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._setup_ui()
-        self._connect_signals()
 
     def _setup_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
+        self._buttons = {}
         for image_data in c.IMAGE.BTN_IMAGE:
+            if image_data.cmd == c.ToolCommand.play:
+                continue
             default_pixmap = QtGui.QPixmap(
                 os.path.join(c.IMAGE.IMAGE_DIR, image_data.default)
             )
@@ -210,13 +220,37 @@ class ToolBar(QtWidgets.QWidget):
                 self._btn_label_clicked,
                 cmd=image_data.cmd,
             )
+
+            self._buttons[image_data.cmd] = btn
             layout.addWidget(btn)
 
     def _btn_label_clicked(self, event, cmd):
         self.BTN_CLICKED_SIGNAL.emit(cmd)
 
-    def _connect_signals(self):
-        pass
+    def toogle_pause_icon(self, is_paused):
+        if is_paused:
+            default_icon = c.IMAGE.BTN_IMAGE.play.default
+            active_icon = c.IMAGE.BTN_IMAGE.play.active
+        else:
+            default_icon = c.IMAGE.BTN_IMAGE.pause.default
+            active_icon = c.IMAGE.BTN_IMAGE.pause.active
+
+        default_pixmap = QtGui.QPixmap(
+            os.path.join(
+                c.IMAGE.IMAGE_DIR,
+                default_icon,
+            )
+        )
+        active_pixmap = QtGui.QPixmap(
+            os.path.join(
+                c.IMAGE.IMAGE_DIR,
+                active_icon,
+            )
+        )
+
+        btn = self._buttons[c.ToolCommand.pause]
+        btn.set_active(active_pixmap)
+        btn.set_default(default_pixmap)
 
 
 class ChoosePlayerWidget(QtWidgets.QDialog):
