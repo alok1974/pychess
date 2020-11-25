@@ -168,6 +168,8 @@ class MainWidget(QtWidgets.QDialog):
         self._has_game_started = False
         self._board_widget.game_over(winner)
         self._stop_all_timers()
+        self._toggle_left_widget(visibility=True)
+        self._tool_bar.setVisible(True)
 
     def resizeEvent(self, event):
         if self._is_paused:
@@ -315,6 +317,9 @@ class MainWidget(QtWidgets.QDialog):
         self._inspect_history(end=True)
 
     def _collapse_btn_clicked(self):
+        if not self._has_game_started:
+            return
+
         self._tool_bar.setVisible(False)
         self._toggle_left_widget()
         self._adjust_size()

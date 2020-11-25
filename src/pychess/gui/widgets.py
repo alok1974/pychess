@@ -98,7 +98,7 @@ class ImageLabel(QtWidgets.QLabel):
             painter.setPen(QtGui.QColor(*color))
             x = size.width() * (row / 8)
             y = size.height() * (column / 8)
-            painter.drawRect(x, y, rect_size - 2, rect_size - 2)
+            painter.drawRect(x, y, rect_size, rect_size)
 
     def _hue_change(self):
         self._hue += 0.5
