@@ -4,7 +4,7 @@ from glob import glob
 
 
 PACKAGE_NAME = 'pychess'
-PACKAGE_VERSION = '3.0'
+PACKAGE_VERSION = '4.0'
 
 
 setup(
@@ -27,7 +27,7 @@ setup(
     package_dir={
         'pychess': 'src/pychess'
     },
-    download_url='https://github.com/alok1974/pychess/archive/v3.0.tar.gz',
+    download_url='https://github.com/alok1974/pychess/archive/v4.0.tar.gz',
     scripts=glob('src/scripts/*'),
     install_requires=[
         'Pillow >=7.2.0',
