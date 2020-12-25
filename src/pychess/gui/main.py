@@ -267,6 +267,7 @@ class MainWidget(QtWidgets.QDialog):
         if width_increased and left_widget_is_hidden:
             self._tool_bar.setVisible(True)
             self._left_widget.setVisible(True)
+            self._display_pgn_moves()
             self._collapse_btn.setVisible(True)
             self._collapse_btn.setText('<')
 

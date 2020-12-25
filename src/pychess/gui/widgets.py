@@ -78,7 +78,7 @@ class ImageLabel(QtWidgets.QLabel):
         point = QtCore.QPoint(0, 0)
         scaled_pixmap = self.pixmap.scaled(
             size,
-            QtCore.Qt.IgnoreAspectRatio,
+            QtCore.Qt.KeepAspectRatio,
             transformMode=QtCore.Qt.SmoothTransformation,
         )
 
