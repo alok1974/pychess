@@ -1,4 +1,6 @@
-from pychess import imager, piecer, constant as c
+from pychess import constant as c
+from pychess.gui import imager
+from pychess.element import piecer
 
 ci = imager.CapturedImage()
 

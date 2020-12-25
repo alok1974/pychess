@@ -3,9 +3,9 @@ import itertools
 import copy
 
 
-from pychess.boarder import Board
-from pychess.piecer import Piece
-from pychess.squarer import Square
+from pychess.element.boarder import Board
+from pychess.element.piecer import Piece
+from pychess.element.squarer import Square
 from pychess import constant as c
 
 

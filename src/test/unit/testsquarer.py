@@ -2,7 +2,7 @@ import unittest
 import itertools
 
 
-from pychess.squarer import Square
+from pychess.element.squarer import Square
 
 
 def get_exception_string(address, error_no):

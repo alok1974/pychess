@@ -1,7 +1,7 @@
 import unittest
 
 
-from pychess.piecer import generate_pieces, Piece, get_piece_row_place
+from pychess.element.piecer import generate_pieces, Piece, get_piece_row_place
 from pychess import constant as c
 
 
