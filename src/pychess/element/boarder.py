@@ -206,10 +206,80 @@ class Board:
     def _set_pieces(self, is_standard=True):
         order = list(range(8))
         if not is_standard:
-            random.shuffle(order)
+            order = self._chess_960_order()
 
         self._set_color_pieces(color=c.Color.white, order=order)
         self._set_color_pieces(color=c.Color.black, order=order)
+
+    def _chess_960_order(self):
+        """
+        The order is following
+        [
+            _, # index 0 : file for the rook 0
+            _, # index 1 : file for the knight 0
+            _, # index 2 : file for bishop 0
+            _, # index 3 : file for queen
+            _, # index 4 : file for king
+            _, # index 5 : file for bishop 1
+            _, # index 6 : file for knight 1
+            _, # index 7 : file for rook 1
+        ]
+        """
+        orders = {}
+
+        remaining_files = list(range(8))
+
+        # Place the king on any square except 'a'(0) and 'h'(7) file
+        kings_file = random.randint(1, 6)
+        orders[4] = kings_file
+        remaining_files.remove(kings_file)
+
+        # Place the rooks on either side of the king
+        rook_0_file = random.choice(remaining_files)
+        orders[0] = rook_0_file
+        remaining_files.remove(rook_0_file)
+
+        rook_1_file_choices = []
+        for file_ in remaining_files:
+            if rook_0_file > kings_file:
+                if file_ < kings_file:
+                    rook_1_file_choices.append(file_)
+            else:
+                if file_ > kings_file:
+                    rook_1_file_choices.append(file_)
+
+        rook_1_file = random.choice(rook_1_file_choices)
+        orders[7] = rook_1_file
+        remaining_files.remove(rook_1_file)
+
+        # Place the bishops on opposite colors
+        bishop_0_file = random.choice(remaining_files)
+        orders[2] = bishop_0_file
+        remaining_files.remove(bishop_0_file)
+
+        # Next bishop should be on opposite color square. We just have to
+        # make sure that the next bishop is on odd numbered file if the
+        # first bishop is on the even numbered file else opposite
+        is_even = not(bishop_0_file % 2)
+        bishop_1_possible_files = [
+            file_
+            for file_ in remaining_files
+            if file_ % 2 == is_even
+        ]
+        bishop_1_file = random.choice(bishop_1_possible_files)
+        orders[5] = bishop_1_file
+        remaining_files.remove(bishop_1_file)
+
+        # Place the rest of the pieces
+        random.shuffle(remaining_files)
+        orders[1] = remaining_files.pop()
+        orders[3] = remaining_files.pop()
+        orders[6] = remaining_files.pop()
+
+        return [
+            orders[i]
+            for i in range(8)
+        ]
 
     def _set_color_pieces(self, color, order):
         row_1 = 0
