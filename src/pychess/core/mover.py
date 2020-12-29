@@ -60,7 +60,24 @@ class Move:
         if not move.is_legal:
             return False
 
-        # Case II (a): A king cannot capture another king
+        # Case II(a): King cannot move to a sqaure already threatened
+        # by another king
+        if piece.type == c.PieceType.king:
+            opposing_color = (
+                c.Color.black
+                if piece.color == c.Color.white
+                else c.Color.white
+            )
+            opposing_king = Piece(c.PieceType.king, opposing_color)
+            opposing_king_square = board.get_square(opposing_king)
+            is_destination_attacked = (
+                abs(dst.x - opposing_king_square.x) <= 1 and
+                abs(dst.y - opposing_king_square.y) <= 1
+            )
+            if is_destination_attacked:
+                return False
+
+        # Case II (b): A king cannot capture another king
         dst_piece = board.get_piece(dst)
         if dst_piece is not None:
             src_is_king = piece.type == c.PieceType.king
