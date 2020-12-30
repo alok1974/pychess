@@ -1,4 +1,5 @@
 import os
+import shutil
 import contextlib
 import collections
 import functools
@@ -260,8 +261,15 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._parent = parent
+        self._engine_exists = self._check_engine_exists()
         self._setup_ui()
         self._connect_signals()
+
+    def _check_engine_exists(self):
+        exe = shutil.which(c.APP.STOCKFISH_EXE_NAME)
+        if exe is not None:
+            return os.path.exists(exe)
+        return False
 
     def _setup_ui(self):
         self.setStyleSheet(c.APP.STYLESHEET)
@@ -274,6 +282,9 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
         self._human_vs_human_btn = self._create_btn()
         self._main_layout.addWidget(self._human_vs_human_btn)
 
+        if not self._engine_exists:
+            return
+
         self._human_vs_computer_btn = self._create_btn(c.Color.black)
         self._main_layout.addWidget(self._human_vs_computer_btn)
 
@@ -284,6 +295,9 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
         self._human_vs_human_btn.clicked.connect(
             lambda: self._set_player()
         )
+
+        if not self._engine_exists:
+            return
 
         self._computer_vs_human_btn.clicked.connect(
             lambda: self._set_player(c.Color.white)
