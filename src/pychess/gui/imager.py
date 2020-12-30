@@ -592,24 +592,24 @@ class CapturedImage:
             align="center",
         )
 
-    def draw_winner(self, winner):
+    def draw_winner(self, winner, text=None):
         image_to_use = None
         if winner == c.Color.black:
             image_to_use = self._captured_image_white
         else:
             image_to_use = self._captured_image_black
 
-        text = f'{winner.name.upper()}\nWINS!'
+        text = text or f'{winner.name.upper()}\nWINS!'
         draw_context = ImageDraw.Draw(image_to_use)
         font = ImageFont.truetype(
             c.APP.FONT_FILE_PATH,
             size=16,
             layout_engine=ImageFont.LAYOUT_BASIC,
         )
-        font_widht, font_height = font.getsize(text)
+        offset = int((75 / len(winner.name)) * len(text))
         draw_context.text(
             (
-                image_to_use.width - 75,
+                image_to_use.width - offset,
                 1,
             ),
             text,
@@ -617,6 +617,10 @@ class CapturedImage:
             fill=(230, 230, 230, 255),
             align="center",
         )
+
+    def draw_stalemate(self):
+        self.draw_winner(c.Color.white, text='DRAW\nSTALEMATE!')
+        self.draw_winner(c.Color.black, text='DRAW\nSTALEMATE!')
 
     def _get_y_coordinate(self, piece_type):
         non_pawn_y_coord = int((self._image_height - self._pawn_height) / 2)
