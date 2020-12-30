@@ -1,7 +1,6 @@
 import getpass
 from datetime import datetime
 
-
 from PySide2 import QtWidgets, QtCore
 
 
@@ -163,13 +162,13 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.update_board()
 
     def game_over(self, winner):
-        self._winner = winner
-        self._is_game_over = True
-        self._has_game_started = False
+        self._set_game_over()
         self._board_widget.game_over(winner)
-        self._stop_all_timers()
-        self._toggle_left_widget(visibility=True)
-        self._tool_bar.setVisible(True)
+
+    def stalemate(self):
+        self._set_game_over()
+        self._board_widget.stalemate()
+        self._moves_widget.display_win(winning_text='1/2-1/2')
 
     def resizeEvent(self, event):
         if self._is_paused:
@@ -756,6 +755,9 @@ class MainWidget(QtWidgets.QDialog):
         if self._move_index is not None and self._move_index == -1:
             self.update_board()
 
+        if self._is_game_over or self._is_paused:
+            return
+
         self._start_current_player_time()
 
     def _handle_command(self, cmd):
@@ -777,3 +779,11 @@ class MainWidget(QtWidgets.QDialog):
             self._toggle_show_threatened()
         elif cmd == c.ToolCommand.zen:
             self._collapse_btn_clicked()
+
+    def _set_game_over(self, winner=None):
+        self._winner = winner
+        self._is_game_over = True
+        self._has_game_started = False
+        self._stop_all_timers()
+        self._toggle_left_widget(visibility=True)
+        self._tool_bar.setVisible(True)

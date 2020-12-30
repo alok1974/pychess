@@ -487,10 +487,23 @@ class BoardWidget(QtWidgets.QDialog):
         self._second_square = None
 
     def game_over(self, winner):
+        self._set_game_over(winner=winner)
+
+    def stalemate(self):
+        self._set_game_over(is_stalemate=True)
+
+    def _set_game_over(self, winner=None, is_stalemate=False):
         self._winner = winner
         self._is_game_over = True
-        self._captured_image.draw_winner(winner)
+
+        if is_stalemate:
+            self._captured_image.draw_stalemate()
+        else:
+            self._captured_image.draw_winner(winner)
+
         self._update_captured_image_labels()
+
+        self.ANIM_FINISHED_SIGNAL.emit()
 
     def display_time_white(self, seconds=None):
         self._white_timer_lcd.display(
@@ -1002,9 +1015,28 @@ class MoveWidget(QtWidgets.QDialog):
                     move_index=move_index,
                 )
 
+            winning_text, move_string = self._extract_winning_text(move_string)
             cur_pos += len(move_string)
 
             self._textedit.insertPlainText(move_string)
+            if winning_text is not None:
+                self._add_winning_text_at_end(winning_text)
+
+    @staticmethod
+    def _extract_winning_text(move_string):
+        if move_string.strip().endswith('1-0'):
+            move_string = move_string.replace('1-0', '')
+            winning_text = '1-0'
+        elif move_string.strip().endswith('0-1'):
+            move_string = move_string.replace('0-1', '')
+            winning_text = '0-1'
+        elif move_string.strip().endswith('1/2-1/2'):
+            move_string = move_string.replace('1/2-1/2', '')
+            winning_text = '1/2-1/2'
+        else:
+            winning_text = None
+
+        return winning_text, move_string
 
     def _load_chess_fonts(self):
         font_id = QtGui.QFontDatabase().addApplicationFont(

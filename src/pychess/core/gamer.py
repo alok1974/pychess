@@ -68,6 +68,7 @@ class Game:
     MATE_SIGNAL = Signal(c.Color)
     PLAYER_CHANGED_SIGNAL = Signal(c.Color)
     NON_STANDARD_BOARD_SET_SIGNAL = Signal()
+    STALEMATE_SIGNAL = Signal()
 
     def __init__(self):
         self._move_no = 1
@@ -372,8 +373,24 @@ class Game:
             self.game_over(white_wins=white_wins)
             return True
 
+        opponent = (
+            c.Color.black
+            if self._current_player == c.Color.white
+            else c.Color.white
+        )
+        if self._is_stalemate(player=opponent):
+            self._stalemate()
+            return True
+
         self._toggle_player()
         return True
+
+    def _stalemate(self):
+        self._winner = None
+        self._is_game_over = True
+
+        if not self._signals_blocked:
+            self.STALEMATE_SIGNAL.emit()
 
     def game_over(self, white_wins):
         winner = c.Color.white
@@ -389,6 +406,58 @@ class Game:
         with self._try_move(src, dst):
             king = Piece(c.PieceType.king, color=player)
             return self._is_capturable(king)
+
+    def _is_stalemate(self, player):
+        for piece in self._get_pieces(player):
+            if self._piece_can_move(piece, player):
+                return False
+
+        return True
+
+    def _piece_can_move(self, piece, color):
+        src = self._board.get_square(piece)
+        dst_incr = None
+        if piece.type == c.PieceType.pawn:
+            y_incr = -1 if color == c.Color.black else 1
+            dst_incr = list(itertools.product((1, 0, -1), (y_incr,)))
+        elif piece.type == c.PieceType.knight:
+            dst_incr = (
+                list(itertools.product((-1, 1), (-2, 2))) +
+                list(itertools.product((-2, 2), (-1, 1)))
+            )
+        elif piece.type == c.PieceType.bishop:
+            dst_incr = list(itertools.product((-1, 1), (-1, 1)))
+        elif piece.type == c.PieceType.rook:
+            dst_incr = [(0, 1), (0, -1), (-1, 0), (1, 0)]
+        elif piece.type == c.PieceType.queen:
+            dst_incr = (
+                [(0, 1), (0, -1), (-1, 0), (1, 0)] +
+                list(itertools.product((-1, 1), (-1, 1)))
+            )
+        elif piece.type == c.PieceType.king:
+            dst_incr = [
+                (-1, 1), (0, 1), (1, 1), (1, 0),
+                (1, -1), (0, -1), (-1, -1), (-1, 0)
+            ]
+
+        for x_incr, y_incr in dst_incr:
+            if not 0 <= src.x + x_incr <= 7 or not 0 <= src.y + y_incr <= 7:
+                continue
+
+            dst = Square((src.x + x_incr, src.y + y_incr))
+            if self._move_causes_discovered_check(src, dst, color):
+                continue
+
+            if Move.is_board_move_legal(
+                self._board, src, dst, piece
+            ):
+                self._description.append(
+                    f'Not a stalemate as {piece} '
+                    f'can move from {src} to {dst}'
+                )
+                return True
+
+        return False
 
     def _record_move(self, result, src, dst):
         piece = result.moved_piece
