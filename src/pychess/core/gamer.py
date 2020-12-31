@@ -69,6 +69,7 @@ class Game:
     PLAYER_CHANGED_SIGNAL = Signal(c.Color)
     NON_STANDARD_BOARD_SET_SIGNAL = Signal()
     STALEMATE_SIGNAL = Signal()
+    PROMOTION_REQUIRED_SIGNAL = Signal(str)
 
     def __init__(self):
         self._move_no = 1
@@ -94,8 +95,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
-        self._black_promotion_piece_type = c.PieceType.queen
-        self._white_promotion_piece_type = c.PieceType.queen
+        self._black_promotion_piece_type = None
+        self._white_promotion_piece_type = None
         self._is_standard_type = True
 
     @contextlib.contextmanager
@@ -172,11 +173,9 @@ class Game:
         if self._game_started:
             return
 
-        (
-            self._black_promotion_piece_type,
-            self._white_promotion_piece_type,
-            self._is_standard_type,
-        ) = options
+        self._white_promotion_piece_type = options.white_promotion
+        self._black_promotion_piece_type = options.black_promotion
+        self._is_standard_type = options.is_standard
 
         self._board.set_pieces(self._is_standard_type)
 
@@ -207,8 +206,8 @@ class Game:
         self._white_king_moved = False
         self._white_rook_moved = False
 
-        self._black_promotion_piece_type = c.PieceType.queen
-        self._white_promotion_piece_type = c.PieceType.queen
+        self._black_promotion_piece_type = None
+        self._white_promotion_piece_type = None
         self._is_standard_type = True
 
     @property
@@ -296,7 +295,7 @@ class Game:
     def apply_moves(self, moves):
         with self.block_signals():
             for move, promotion in moves[:-1]:
-                result = self.move(move_spec=move, promotion=promotion)
+                result = self.move((move, promotion))
                 if not result:
                     error_msg = (
                         'Error happened while trying to apply the move: '
@@ -307,7 +306,7 @@ class Game:
 
         # This will send the final signal to update the UI
         last_move, last_promotion = moves[-1]
-        result = self.move(move_spec=last_move, promotion=last_promotion)
+        result = self.move((last_move, last_promotion))
         if not result:
             error_msg = (
                 'Error happened while trying to apply the move: '
@@ -316,7 +315,8 @@ class Game:
             )
             raise RuntimeError(error_msg)
 
-    def move(self, move_spec, promotion=None):
+    def move(self, move_data):
+        move_spec, promotion = move_data
         if self.is_game_over:
             return
 
@@ -331,6 +331,11 @@ class Game:
         except RuntimeError:
             if not self._signals_blocked:
                 self.INVALID_MOVE_SIGNAL.emit()
+            return
+
+        if self._promotion_required(src, dst):
+            if not self._signals_blocked:
+                self.PROMOTION_REQUIRED_SIGNAL.emit(move_spec)
             return
 
         if self._not_players_turn(src):
@@ -1010,3 +1015,20 @@ class Game:
             )
 
             self._move_history = copy.copy(move_history_copy)
+
+    def _promotion_required(self, src, dst):
+        if self._board.get_piece(src).type != c.PieceType.pawn:
+            return False
+
+        if self._current_player == c.Color.black:
+            if dst.y != 0:
+                return False
+            elif self._black_promotion_piece_type is not None:
+                return False
+            return True
+        else:
+            if dst.y != 7:
+                return False
+            elif self._white_promotion_piece_type is not None:
+                return False
+            return True
