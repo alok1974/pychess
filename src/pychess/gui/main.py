@@ -1,5 +1,6 @@
 import getpass
 from datetime import datetime
+import collections
 
 from PySide2 import QtWidgets, QtCore
 
@@ -18,11 +19,22 @@ from .widgets import (
     SaveGameDataWidget,
     ChoosePlayerWidget,
     ToolBar,
+    SelectPromotionWidget,
+)
+
+
+GAME_OPTIONS = collections.namedtuple(
+    'GAME_OPTIONS',
+    [
+        'white_promotion',
+        'black_promotion',
+        'is_standard'
+    ]
 )
 
 
 class MainWidget(QtWidgets.QDialog):
-    MOVE_SIGNAL = QtCore.Signal(str)
+    MOVE_SIGNAL = QtCore.Signal(tuple)
     GAME_RESET_SIGNAL = QtCore.Signal()
     UPDATE_BOARD_SIGNAL = QtCore.Signal()
     GAME_OPTIONS_SET_SIGNAL = QtCore.Signal(tuple)
@@ -156,7 +168,7 @@ class MainWidget(QtWidgets.QDialog):
         if best_move is None:
             return
 
-        self.MOVE_SIGNAL.emit(best_move)
+        self.MOVE_SIGNAL.emit((best_move, None))
 
     def update_board(self):
         self._board_widget.update_board()
@@ -169,6 +181,16 @@ class MainWidget(QtWidgets.QDialog):
         self._set_game_over()
         self._board_widget.stalemate()
         self._moves_widget.display_win(winning_text='1/2-1/2')
+
+    def promotion_required(self, move_spec):
+        w = SelectPromotionWidget(color=self._current_player)
+        w.SELECTED_PROMOTION_SIGNAL.connect(
+            lambda piece_type: self._recieved_move_string(
+                move_string=move_spec,
+                promotion=piece_type,
+            ),
+        )
+        w.show()
 
     def resizeEvent(self, event):
         if self._is_paused:
@@ -284,8 +306,8 @@ class MainWidget(QtWidgets.QDialog):
             self._collapse_btn.setText('<')
             self._display_pgn_moves()
 
-    def _recieved_move_string(self, move_string):
-        self.MOVE_SIGNAL.emit(move_string)
+    def _recieved_move_string(self, move_string, promotion=None):
+        self.MOVE_SIGNAL.emit((move_string, promotion))
 
     def _move_selected(self, move_index):
         self._inspect_history(index=move_index)
@@ -606,13 +628,12 @@ class MainWidget(QtWidgets.QDialog):
         self._remaining_time_white = self._custom_play_time * 60
         self._remaining_time_black = self._custom_play_time * 60
 
-        self.GAME_OPTIONS_SET_SIGNAL.emit(
-            (
-                self._custom_white_promotion,
-                self._custom_black_promotion,
-                self._custom_is_standard_type,
-            )
+        game_options = GAME_OPTIONS(
+            white_promotion=self._custom_white_promotion,
+            black_promotion=self._custom_black_promotion,
+            is_standard=self._custom_is_standard_type,
         )
+        self.GAME_OPTIONS_SET_SIGNAL.emit(game_options)
         return True
 
     def _check_valid_engine_game(self, engine_color=None):
@@ -652,7 +673,7 @@ class MainWidget(QtWidgets.QDialog):
         if self._engine_color == c.Color.white:
             best_move = self._engine.get_best_move()
             if best_move is not None:
-                self.MOVE_SIGNAL.emit(best_move)
+                self.MOVE_SIGNAL.emit((best_move, None))
 
     def _start_new_game(self, engine_color=None):
         result = self._update_data_for_start(engine_color=engine_color)

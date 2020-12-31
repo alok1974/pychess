@@ -96,6 +96,7 @@ class APP:
     BUTTON_HEIGHT = 60
     LCD_HEIGHT = 40
     MEDIUM_HEIGHT = 30
+    STOCKFISH_EXE_NAME = 'stockfish'
 
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
@@ -305,6 +306,62 @@ class IMAGE:
             obj_name='KING_IMAGES',
             white='king.png',
             black='king_b.png'
+        ),
+    )
+
+    PROMOTION_IMAGE = _declare_constants(
+        obj_name='PROMOTION_IMAGE',
+        knight=_declare_constants(
+            obj_name='KNIGHT_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='knight_p.png',
+                active='knight_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='knight_b_p.png',
+                active='knight_b_p_a.png',
+            ),
+        ),
+        bishop=_declare_constants(
+            obj_name='BISHOP_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='bishop_p.png',
+                active='bishop_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='bishop_b_p.png',
+                active='bishop_b_p_a.png',
+            ),
+        ),
+        rook=_declare_constants(
+            obj_name='ROOK_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='rook_p.png',
+                active='rook_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='rook_b_p.png',
+                active='rook_b_p_a.png',
+            ),
+        ),
+        queen=_declare_constants(
+            obj_name='QUEEN_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='queen_p.png',
+                active='queen_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='queen_b_p.png',
+                active='queen_b_p_a.png',
+            ),
         ),
     )
 

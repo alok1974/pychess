@@ -1,4 +1,5 @@
 import os
+import shutil
 import contextlib
 import collections
 import functools
@@ -260,8 +261,15 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._parent = parent
+        self._engine_exists = self._check_engine_exists()
         self._setup_ui()
         self._connect_signals()
+
+    def _check_engine_exists(self):
+        exe = shutil.which(c.APP.STOCKFISH_EXE_NAME)
+        if exe is not None:
+            return os.path.exists(exe)
+        return False
 
     def _setup_ui(self):
         self.setStyleSheet(c.APP.STYLESHEET)
@@ -274,6 +282,9 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
         self._human_vs_human_btn = self._create_btn()
         self._main_layout.addWidget(self._human_vs_human_btn)
 
+        if not self._engine_exists:
+            return
+
         self._human_vs_computer_btn = self._create_btn(c.Color.black)
         self._main_layout.addWidget(self._human_vs_computer_btn)
 
@@ -284,6 +295,9 @@ class ChoosePlayerWidget(QtWidgets.QDialog):
         self._human_vs_human_btn.clicked.connect(
             lambda: self._set_player()
         )
+
+        if not self._engine_exists:
+            return
 
         self._computer_vs_human_btn.clicked.connect(
             lambda: self._set_player(c.Color.white)
@@ -1339,6 +1353,7 @@ class MoveWidget(QtWidgets.QDialog):
 
 class OptionWidget(QtWidgets.QDialog):
     PROMOTION_PIECES = [
+        None,
         c.PieceType.queen,
         c.PieceType.rook,
         c.PieceType.bishop,
@@ -1366,8 +1381,8 @@ class OptionWidget(QtWidgets.QDialog):
         self._play_time = self._default_play_time
         self._bonus_time = self._default_bonus_time
 
-        self._default_white_promotion = c.PieceType.queen
-        self._default_black_promotion = c.PieceType.queen
+        self._default_white_promotion = None
+        self._default_black_promotion = None
 
         self._is_standard_type = True
         self._white_promotion = self._default_white_promotion
@@ -1381,8 +1396,8 @@ class OptionWidget(QtWidgets.QDialog):
         self._play_time = self._default_play_time
         self._bonus_time = self._default_bonus_time
         self._is_standard_type = True
-        self._white_promotion = c.PieceType.queen
-        self._black_promotion = c.PieceType.queen
+        self._white_promotion = self._default_white_promotion
+        self._black_promotion = self._default_black_promotion
 
         widgets = [
             self._play_time_slider, self._bonus_time_slider,
@@ -1398,20 +1413,8 @@ class OptionWidget(QtWidgets.QDialog):
             self._standard_button.setChecked(True)
             self._chess960_button.setChecked(False)
 
-            self._white_promotion_combobox.setCurrentIndex(
-                self._get_piece_type_index(
-                    self._default_white_promotion
-                )
-            )
-
-            self._black_promotion_combobox.setCurrentIndex(
-                self._get_piece_type_index(
-                    self._default_black_promotion
-                )
-            )
-
-    def _get_piece_type_index(self, piece_type):
-        return self.PROMOTION_PIECES.index(piece_type)
+            self._white_promotion_combobox.setCurrentIndex(0)
+            self._black_promotion_combobox.setCurrentIndex(0)
 
     def _setup_ui(self):
         self.setModal(True)
@@ -1564,14 +1567,17 @@ class OptionWidget(QtWidgets.QDialog):
         )
         label.setAlignment(QtCore.Qt.AlignCenter)
         combobox = QtWidgets.QComboBox()
-        combobox.setMinimumWidth(150)
+        combobox.setMinimumWidth(200)
         combobox.setMinimumHeight(30)
 
-        for item in [t.name for t in self.PROMOTION_PIECES]:
-            combobox.addItem(
-                self._create_icon(f'{item}_small', color),
-                '',
-            )
+        for item in self.PROMOTION_PIECES:
+            if item is None:
+                combobox.addItem('CHOOSE DURING GAME', '')
+            else:
+                combobox.addItem(
+                    self._create_icon(f'{item.name}_small', color),
+                    '',
+                )
 
         layout.addWidget(label)
         layout.addWidget(combobox)
@@ -1816,3 +1822,90 @@ class SaveGameDataWidget(QtWidgets.QDialog):
             self._black_text.setText(self._black)
 
         self.setFixedHeight(self.sizeHint().height())
+
+
+class SelectPromotionWidget(QtWidgets.QDialog):
+    PROMOTION_PIECES = [
+        c.PieceType.queen,
+        c.PieceType.rook,
+        c.PieceType.bishop,
+        c.PieceType.knight,
+    ]
+
+    SELECTED_PROMOTION_SIGNAL = QtCore.Signal(c.PieceType)
+
+    def __init__(self, color, parent=None):
+        super().__init__(parent=parent)
+        self._color = color
+        self._promotion = None
+        self.setModal(True)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setWindowTitle('SELECT A PROMOTION TYPE')
+        self.setStyleSheet('border: none;')
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        for piece_type in self.PROMOTION_PIECES:
+            piece_image = self._get_piece_image_path(
+                piece_type=piece_type,
+                color=self._color,
+            )
+            default_pixmap = QtGui.QPixmap(piece_image)
+
+            piece_image_active = self._get_piece_image_path(
+                piece_type=piece_type,
+                color=self._color,
+                active=True,
+            )
+            active_pixmap = QtGui.QPixmap(piece_image_active)
+            btn = ButtonLabel(
+                default_pixmap=default_pixmap,
+                active_pixmap=active_pixmap,
+            )
+
+            btn.setToolTip(f'Promote to {piece_type.name}')
+            btn.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Expanding,
+            )
+            btn.setStyleSheet('border: none;')
+            btn.mousePressEvent = functools.partial(
+                self._btn_label_clicked,
+                piece_type=piece_type,
+            )
+
+            layout.addWidget(btn)
+            layout.addStretch(1)
+
+    @staticmethod
+    def _get_piece_image_path(piece_type, color, active=False):
+        piece_name = piece_type.name
+        color_name = color.name
+        piece_images = getattr(c.IMAGE.PROMOTION_IMAGE, piece_name)
+        image_data = getattr(piece_images, color_name)
+        if active:
+            image_name = getattr(image_data, 'active')
+        else:
+            image_name = getattr(image_data, 'default')
+        return os.path.join(c.IMAGE.IMAGE_DIR, image_name)
+
+    def _btn_label_clicked(self, event, piece_type):
+        self._promotion = piece_type
+        self.close()
+
+    def showEvent(self, event):
+        self.adjustSize()
+        self.setFixedWidth(self.sizeHint().width())
+
+    def closeEvent(self, event):
+        if self._promotion is None:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setText("Please select a promotion type")
+            msg_box.exec_()
+            event.ignore()
+            return
+
+        self.SELECTED_PROMOTION_SIGNAL.emit(self._promotion)
