@@ -343,7 +343,7 @@ class Game:
                 self.INVALID_MOVE_SIGNAL.emit()
             return
 
-        if self._move_causes_discovered_check(src, dst, self._current_player):
+        if self.move_causes_discovered_check(src, dst, self._current_player):
             if not self._signals_blocked:
                 self.INVALID_MOVE_SIGNAL.emit()
             return
@@ -407,7 +407,7 @@ class Game:
         if not self._signals_blocked:
             self.MATE_SIGNAL.emit(self._winner)
 
-    def _move_causes_discovered_check(self, src, dst, player):
+    def move_causes_discovered_check(self, src, dst, player):
         with self._try_move(src, dst):
             king = Piece(c.PieceType.king, color=player)
             return self._is_capturable(king)
@@ -450,7 +450,7 @@ class Game:
                 continue
 
             dst = Square((src.x + x_incr, src.y + y_incr))
-            if self._move_causes_discovered_check(src, dst, color):
+            if self.move_causes_discovered_check(src, dst, color):
                 continue
 
             if Move.is_board_move_legal(
