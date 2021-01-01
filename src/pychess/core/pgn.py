@@ -223,6 +223,7 @@ class REGEX:
 
 class PGN2MOVES:
     def __init__(self, pgn_file_path=None):
+        self._pgn_file_path = pgn_file_path
         self._board = None
         self._games = self._parse_game_file(file_path=pgn_file_path)
         self._nb_games = len(self._games)
@@ -261,7 +262,7 @@ class PGN2MOVES:
                 game_index=game_index,
                 image_folder=folder,
             )
-            self._make_movie(folder, movie_file_path, fps=fps)
+            self._make_movie(folder, movie_file_path, game_index, fps=fps)
 
     @staticmethod
     @contextlib.contextmanager
@@ -282,10 +283,32 @@ class PGN2MOVES:
         finally:
             writer.close()
 
-    def _make_movie(self, image_folder, movie_file_path, fps=1):
+    def _make_movie(self, image_folder, movie_file_path, index, fps=1):
+        # NOTE: This needs to be called first
+        self._generate_movie_title(index, image_folder)
+
         images = self._gather_movie_images(image_folder)
         with self._mp4_writer(movie_file_path, fps=fps) as writer:
             list(map(writer.append_data, images))
+
+    def _generate_movie_title(self, index, image_folder):
+        text = self._create_movie_title_text(index=index)
+        save_to_path = self._create_movie_image_file_path(
+            frame_no=0,
+            image_folder=image_folder
+        )
+        BoardImage(self._board).create_title_image(text, save_to_path)
+
+    def _create_movie_title_text(self, index):
+        text = self.short_info[index]
+        text += (
+            f'\n\nPYCHESS MOVIE GENERATED FROM FILE:\n{self._pgn_file_path}'
+        )
+        wrapped = []
+        for t in text.split('\n'):
+            wrapped_text = '\n'.join(textwrap.wrap(t, width=40))
+            wrapped.append(wrapped_text)
+        return '\n'.join(wrapped)
 
     @staticmethod
     def _gather_movie_images(image_folder):
@@ -363,13 +386,25 @@ class PGN2MOVES:
 
         return moves
 
+    @staticmethod
+    def _create_movie_image_file_path(frame_no, image_folder):
+        return os.path.join(
+            image_folder,
+            f'pychess_img_{str(frame_no).zfill(3)}.png'
+        )
+
     def _create_movie_image(
             self, index, move,
-            castling_string, color, image_folder=None
+            castling_string, color, image_folder=None,
     ):
 
         if image_folder is None:
             return
+
+        image_file_path = self._create_movie_image_file_path(
+            frame_no=index,
+            image_folder=image_folder,
+        )
 
         src, dst, promotion = move
         piece = self._board.get_piece(dst)
@@ -392,11 +427,6 @@ class PGN2MOVES:
                     f'{piece.type.name.capitalize()} '
                     f'moves from {src.address} to {dst.address}'
                 )
-
-        image_file_path = os.path.join(
-            image_folder,
-            f'pychess_img_{str(index).zfill(3)}.png'
-        )
 
         move_no = int(index / 2) + (index % 2)
         move_no_str = (

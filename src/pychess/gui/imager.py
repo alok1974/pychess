@@ -161,13 +161,9 @@ class BoardImage(QtCore.QObject):
             square=dst,
             highlight_color=c.APP.HIGHLIGHT_COLOR.dst,
         )
-        block = 16
-        compliant_dim = self.width + block - (self.width % block)
-        band_hint = int(compliant_dim * 0.1)
-        height_hint = compliant_dim + band_hint
-        true_height = height_hint + block - (height_hint % block)
-        border = int((compliant_dim - self.width) / 2)
-        size = (compliant_dim, true_height)
+
+        size = self._get_movie_image_size()
+        border = int((size[0] - self.width) / 2)
         image = Image.new('RGBA', size, color=(59, 57, 55))
         image.alpha_composite(self._board_image, (border, border))
         font = ImageFont.truetype(
@@ -182,6 +178,69 @@ class BoardImage(QtCore.QObject):
             font=font,
         )
         image.save(save_to_path)
+
+    def create_title_image(self, text, save_to_path):
+        size = self._get_movie_image_size()
+        image = Image.new('RGBA', size, color=(25, 25, 25))
+
+        ctx = ImageDraw.Draw(image)
+        font = ImageFont.truetype(
+            c.APP.FONT_FILE_PATH,
+            c.IMAGE.MOVIE_TITLE_FONT_SIZE,
+        )
+
+        text_width, text_height = ctx.textsize(text, font=font)
+        band_height = text_height + 20
+
+        self._add_band(title_image=image, band_height=band_height)
+        self._add_logo(image=image)
+
+        x = int((size[0] - text_width) / 2)
+        y = int((size[1] - text_height) / 2)
+        ctx.multiline_text(
+            (x, y),
+            text,
+            fill=(0, 0, 0),
+            font=font,
+            align="center",
+        )
+
+        image.save(save_to_path)
+
+    def _add_logo(self, image):
+        logo = self._load_image(image_path=c.IMAGE.PYCHESS_IMAGE_FILE_PATH)
+        small_logo = logo.resize(
+            (int(logo.width / 2), int(logo.height / 2)),
+            resample=Image.LANCZOS,
+        )
+
+        image.alpha_composite(
+            small_logo,
+            (
+                int((image.width - small_logo.width) / 2),
+                (image.height - small_logo.height) - 50,
+            ),
+        )
+
+    @staticmethod
+    def _add_band(title_image, band_height):
+        band = Image.new(
+            'RGBA',
+            (title_image.width, band_height),
+            color=(135, 150, 169, 200)
+        )
+        title_image.alpha_composite(
+            band,
+            (0, int((title_image.height - band.height) / 2)),
+        )
+
+    def _get_movie_image_size(self):
+        block = 16
+        compliant_dim = self.width + block - (self.width % block)
+        band_hint = int(compliant_dim * 0.1)
+        height_hint = compliant_dim + band_hint
+        true_height = height_hint + block - (height_hint % block)
+        return compliant_dim, true_height
 
     def init(self, board):
         self._board = board
