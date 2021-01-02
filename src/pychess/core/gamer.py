@@ -333,11 +333,6 @@ class Game:
                 self.INVALID_MOVE_SIGNAL.emit()
             return
 
-        if self._promotion_required(src, dst):
-            if not self._signals_blocked:
-                self.PROMOTION_REQUIRED_SIGNAL.emit(move_spec)
-            return
-
         if self._not_players_turn(src):
             if not self._signals_blocked:
                 self.INVALID_MOVE_SIGNAL.emit()
@@ -346,6 +341,11 @@ class Game:
         if self.move_causes_discovered_check(src, dst, self._current_player):
             if not self._signals_blocked:
                 self.INVALID_MOVE_SIGNAL.emit()
+            return
+
+        if self._promotion_required(src, dst):
+            if not self._signals_blocked:
+                self.PROMOTION_REQUIRED_SIGNAL.emit(move_spec)
             return
 
         result = self._perform_move(src, dst)
@@ -594,6 +594,9 @@ class Game:
             piece_type = self._black_promotion_piece_type
         else:
             piece_type = self._white_promotion_piece_type
+
+        if piece_type is None:
+            return
 
         promoted_piece = self._create_promoted_piece(
             piece_type=piece_type,
