@@ -57,6 +57,7 @@ class ToolCommand(enum.Enum):
     save = 7
     threat = 8
     zen = 9
+    movie = 10
 
 
 @enum.unique
@@ -104,6 +105,11 @@ class APP:
     CHESS_FONT_FAMILY = 'DejaVuSans'
     CHESS_FONT_FILE_PATH = os.path.join(
         RESOURCE_DIR, f'font/{CHESS_FONT_FAMILY}.ttf'
+    )
+
+    MOVIE_FONT_FAMILY = 'SF'
+    MOVIE_FONT_FILE_PATH = os.path.join(
+        RESOURCE_DIR, f'font/{MOVIE_FONT_FAMILY}.ttf'
     )
 
     PIECE_UNICODE = _declare_constants(
@@ -248,6 +254,13 @@ class IMAGE:
             tooltip='Zen mode minimal UI',
             cmd=ToolCommand.zen,
         ),
+        movie=_declare_constants(
+            obj_name='MOVIE_IMAGES',
+            default='btn_movie.png',
+            active='btn_movie_a.png',
+            tooltip='Create a movie from a PGN file',
+            cmd=ToolCommand.movie,
+        ),
     )
 
     PIECE_IMAGE = _declare_constants(
@@ -374,9 +387,11 @@ class IMAGE:
     CAPTURABLES_IMAGE_WIDTH = 600
     LEAD_FONT_SIZE = 18
     MOVIE_FONT_SIZE = 18
-    MOVIE_TITLE_FONT_SIZE = 18
+    MOVIE_TITLE_FONT_SIZE = 37
+    MOVIE_INFO_FONT_SIZE = 14
     SPLASH_RECT_SIZE = int(BASE_IMAGE_SIZE / NB_SQUARES)
 
     NON_PAWN_SMALL_IMAGE_SIZE = int(NON_PAWN_IMAGE_SIZE / 2)
     PAWN_SMALL_IMAGE_SIZE = int(PAWN_IMAGE_SIZE / 2)
     SMALL_PIECE_STR = 'small'
+    MOVIE_TITLE = 'MOVIE FROM PGN'

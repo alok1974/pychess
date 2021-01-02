@@ -456,9 +456,11 @@ class MainWidget(QtWidgets.QDialog):
     def _toggle_show_threatened(self):
         self._board_widget.toggle_show_threatened()
 
-    def _handle_load_game(self):
-        if self._has_game_started:
-            return
+    @staticmethod
+    def _get_pgn2moves():
+        msg_box = QtWidgets.QMessageBox()
+        msg_box.setText("Please select a PGN game file")
+        msg_box.exec_()
 
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             parent=None,
@@ -469,13 +471,41 @@ class MainWidget(QtWidgets.QDialog):
         if not file_path:
             return
 
-        self._pgn2moves = PGN2MOVES(pgn_file_path=file_path)
+        return PGN2MOVES(pgn_file_path=file_path)
+
+    def _handle_load_game(self):
+        if self._has_game_started:
+            return
+
+        pgn2moves = self._get_pgn2moves()
+        if pgn2moves is None:
+            return
+
+        self._pgn2moves = pgn2moves
+
         if self._pgn2moves.nb_games == 1:
             self._load_game()
         else:
             game_info = self._pgn2moves.short_info
             w = LoadGameWidget(game_info=game_info, parent=self)
             w.SELECTED_GAME_SIGNAL.connect(self._load_game)
+            w.show()
+
+    def _handle_make_movie(self):
+        if self._has_game_started:
+            return
+
+        pgn2moves = self._get_pgn2moves()
+        if pgn2moves is None:
+            return
+
+        self._pgn2moves = pgn2moves
+        if self._pgn2moves.nb_games == 1:
+            self._make_movie()
+        else:
+            game_info = self._pgn2moves.short_info
+            w = LoadGameWidget(game_info=game_info, parent=self)
+            w.SELECTED_GAME_SIGNAL.connect(self._make_movie)
             w.show()
 
     def _load_game(self, game_index=0):
@@ -512,6 +542,28 @@ class MainWidget(QtWidgets.QDialog):
         self._adjust_size()
 
         self._inspect_history(start=True)
+
+    def _make_movie(self, game_index=0):
+        if game_index == -1:  # No game was selected
+            return
+
+        msg_box = QtWidgets.QMessageBox()
+        msg_box.setText("Please select the save location for the movie file")
+        msg_box.exec_()
+
+        movie_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Create movie (.mp4)',
+            filter='*.mp4'
+
+        )
+        if not movie_file_path:
+            return
+
+        self._pgn2moves.create_movie(
+            game_index=game_index,
+            movie_file_path=movie_file_path,
+        )
 
     def _handle_save_game(self):
         if self._game_loaded:
@@ -800,6 +852,8 @@ class MainWidget(QtWidgets.QDialog):
             self._toggle_show_threatened()
         elif cmd == c.ToolCommand.zen:
             self._collapse_btn_clicked()
+        elif cmd == c.ToolCommand.movie:
+            self._handle_make_movie()
 
     def _set_game_over(self, winner=None):
         self._winner = winner

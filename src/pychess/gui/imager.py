@@ -167,7 +167,7 @@ class BoardImage(QtCore.QObject):
         image = Image.new('RGBA', size, color=(59, 57, 55))
         image.alpha_composite(self._board_image, (border, border))
         font = ImageFont.truetype(
-            c.APP.FONT_FILE_PATH,
+            c.APP.MOVIE_FONT_FAMILY,
             c.IMAGE.MOVIE_FONT_SIZE,
         )
         ctx = ImageDraw.Draw(image)
@@ -180,59 +180,89 @@ class BoardImage(QtCore.QObject):
         image.save(save_to_path)
 
     def create_title_image(self, text, save_to_path):
-        size = self._get_movie_image_size()
-        image = Image.new('RGBA', size, color=(25, 25, 25))
-
-        ctx = ImageDraw.Draw(image)
-        font = ImageFont.truetype(
-            c.APP.FONT_FILE_PATH,
-            c.IMAGE.MOVIE_TITLE_FONT_SIZE,
+        movie_width, movie_height = self._get_movie_image_size()
+        image = Image.new(
+            'RGBA',
+            (movie_width, movie_height),
+            color=(59, 57, 55),
         )
 
-        text_width, text_height = ctx.textsize(text, font=font)
-        band_height = text_height + 20
+        # Add title
+        end_y = self._add_text_with_band(
+            image=image,
+            text=c.IMAGE.MOVIE_TITLE,
+            text_color=(168, 179, 193),
+            font_size=c.IMAGE.MOVIE_TITLE_FONT_SIZE,
+            start_y=250,
+            band_color=(14, 14, 14),
+        )
 
-        self._add_band(title_image=image, band_height=band_height)
+        # Add game info
+        end_y = self._add_text_with_band(
+            image=image,
+            text=text,
+            text_color=(14, 14, 14),
+            font_size=c.IMAGE.MOVIE_INFO_FONT_SIZE,
+            start_y=end_y,
+            band_color=(131, 141, 154),
+        )
+
         self._add_logo(image=image)
-
-        x = int((size[0] - text_width) / 2)
-        y = int((size[1] - text_height) / 2)
-        ctx.multiline_text(
-            (x, y),
-            text,
-            fill=(0, 0, 0),
-            font=font,
-            align="center",
-        )
-
         image.save(save_to_path)
 
     def _add_logo(self, image):
         logo = self._load_image(image_path=c.IMAGE.PYCHESS_IMAGE_FILE_PATH)
-        small_logo = logo.resize(
-            (int(logo.width / 2), int(logo.height / 2)),
+        logo = logo.resize(
+            (int(logo.width / 3), int(logo.height / 3)),
             resample=Image.LANCZOS,
         )
 
         image.alpha_composite(
-            small_logo,
+            logo,
             (
-                int((image.width - small_logo.width) / 2),
-                (image.height - small_logo.height) - 50,
+                int((image.width - logo.width) / 2),
+                (image.height - logo.height) - 50,
+                # int((image.height - logo.height) / 2),
             ),
         )
 
     @staticmethod
-    def _add_band(title_image, band_height):
+    def _add_text_with_band(
+            image, text, text_color,
+            font_size, start_y, band_color,
+    ):
+        ctx = ImageDraw.Draw(image)
+        font = ImageFont.truetype(
+            c.APP.MOVIE_FONT_FILE_PATH,
+            font_size,
+        )
+
+        text_width, text_height = ctx.textsize(text, font=font)
+        band_height = int(text_height * 1.5)
         band = Image.new(
             'RGBA',
-            (title_image.width, band_height),
-            color=(135, 150, 169, 200)
+            (image.width, band_height),
+            color=band_color,
         )
-        title_image.alpha_composite(
+        image.alpha_composite(
             band,
-            (0, int((title_image.height - band.height) / 2)),
+            (0, start_y),
         )
+
+        x = int((image.width - text_width) / 2)
+        y = (
+            start_y - int(text_height * 0.1) +
+            int((band_height - text_height) / 2)
+        )
+        ctx.multiline_text(
+            (x, y),
+            text,
+            fill=text_color,
+            font=font,
+            align="center",
+        )
+
+        return start_y + band_height
 
     def _get_movie_image_size(self):
         block = 16

@@ -293,11 +293,15 @@ class PGN2MOVES:
 
     def _generate_movie_title(self, index, image_folder):
         text = self._create_movie_title_text(index=index)
-        save_to_path = self._create_movie_image_file_path(
-            frame_no=0,
-            image_folder=image_folder
-        )
-        BoardImage(self._board).create_title_image(text, save_to_path)
+
+        # NOTE: Generating five frame here for the movie image so that it
+        # stays for five seconds in the movie.
+        for frame_no in range(-5, 1):
+            save_to_path = self._create_movie_image_file_path(
+                frame_no=frame_no,
+                image_folder=image_folder
+            )
+            BoardImage(self._board).create_title_image(text, save_to_path)
 
     def _create_movie_title_text(self, index):
         text = self.short_info[index]
