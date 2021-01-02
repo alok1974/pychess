@@ -167,7 +167,7 @@ class BoardImage(QtCore.QObject):
         image = Image.new('RGBA', size, color=(59, 57, 55))
         image.alpha_composite(self._board_image, (border, border))
         font = ImageFont.truetype(
-            c.APP.MOVIE_FONT_FAMILY,
+            c.APP.MOVIE_FONT_FILE_PATH,
             c.IMAGE.MOVIE_FONT_SIZE,
         )
         ctx = ImageDraw.Draw(image)
