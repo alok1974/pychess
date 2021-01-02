@@ -57,6 +57,7 @@ class ToolCommand(enum.Enum):
     save = 7
     threat = 8
     zen = 9
+    movie = 10
 
 
 @enum.unique
@@ -96,6 +97,7 @@ class APP:
     BUTTON_HEIGHT = 60
     LCD_HEIGHT = 40
     MEDIUM_HEIGHT = 30
+    STOCKFISH_EXE_NAME = 'stockfish'
 
     FONT_FAMILY = 'Andale Mono'
     FONT_FILE_PATH = os.path.join(RESOURCE_DIR, f'font/{FONT_FAMILY}.ttf')
@@ -103,6 +105,11 @@ class APP:
     CHESS_FONT_FAMILY = 'DejaVuSans'
     CHESS_FONT_FILE_PATH = os.path.join(
         RESOURCE_DIR, f'font/{CHESS_FONT_FAMILY}.ttf'
+    )
+
+    MOVIE_FONT_FAMILY = 'SF'
+    MOVIE_FONT_FILE_PATH = os.path.join(
+        RESOURCE_DIR, f'font/{MOVIE_FONT_FAMILY}.ttf'
     )
 
     PIECE_UNICODE = _declare_constants(
@@ -247,6 +254,13 @@ class IMAGE:
             tooltip='Zen mode minimal UI',
             cmd=ToolCommand.zen,
         ),
+        movie=_declare_constants(
+            obj_name='MOVIE_IMAGES',
+            default='btn_movie.png',
+            active='btn_movie_a.png',
+            tooltip='Create a movie from a PGN file',
+            cmd=ToolCommand.movie,
+        ),
     )
 
     PIECE_IMAGE = _declare_constants(
@@ -308,6 +322,62 @@ class IMAGE:
         ),
     )
 
+    PROMOTION_IMAGE = _declare_constants(
+        obj_name='PROMOTION_IMAGE',
+        knight=_declare_constants(
+            obj_name='KNIGHT_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='knight_p.png',
+                active='knight_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='knight_b_p.png',
+                active='knight_b_p_a.png',
+            ),
+        ),
+        bishop=_declare_constants(
+            obj_name='BISHOP_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='bishop_p.png',
+                active='bishop_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='bishop_b_p.png',
+                active='bishop_b_p_a.png',
+            ),
+        ),
+        rook=_declare_constants(
+            obj_name='ROOK_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='rook_p.png',
+                active='rook_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='rook_b_p.png',
+                active='rook_b_p_a.png',
+            ),
+        ),
+        queen=_declare_constants(
+            obj_name='QUEEN_IMAGES',
+            white=_declare_constants(
+                obj_name='WHITE',
+                default='queen_p.png',
+                active='queen_p_a.png',
+            ),
+            black=_declare_constants(
+                obj_name='WHITE',
+                default='queen_b_p.png',
+                active='queen_b_p_a.png',
+            ),
+        ),
+    )
+
     BASE_IMAGE_SIZE = 600
     SQUARE_SIZE = 68
     BORDER_SIZE = 28
@@ -317,8 +387,11 @@ class IMAGE:
     CAPTURABLES_IMAGE_WIDTH = 600
     LEAD_FONT_SIZE = 18
     MOVIE_FONT_SIZE = 18
+    MOVIE_TITLE_FONT_SIZE = 37
+    MOVIE_INFO_FONT_SIZE = 14
     SPLASH_RECT_SIZE = int(BASE_IMAGE_SIZE / NB_SQUARES)
 
     NON_PAWN_SMALL_IMAGE_SIZE = int(NON_PAWN_IMAGE_SIZE / 2)
     PAWN_SMALL_IMAGE_SIZE = int(PAWN_IMAGE_SIZE / 2)
     SMALL_PIECE_STR = 'small'
+    MOVIE_TITLE = 'MOVIE FROM PGN'

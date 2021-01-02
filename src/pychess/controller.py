@@ -25,6 +25,7 @@ def run():
     game.MATE_SIGNAL.connect(w.game_over)
     game.NON_STANDARD_BOARD_SET_SIGNAL.connect(w.update_board)
     game.STALEMATE_SIGNAL.connect(w.stalemate)
+    game.PROMOTION_REQUIRED_SIGNAL.connect(w.promotion_required)
 
     w.show()
     app.setStyleSheet(c.APP.STYLESHEET)
