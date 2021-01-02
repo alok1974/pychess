@@ -58,6 +58,7 @@ class ToolCommand(enum.Enum):
     threat = 8
     zen = 9
     movie = 10
+    flip = 11
 
 
 @enum.unique
@@ -167,6 +168,12 @@ class IMAGE:
     BOARD_IMAGE_NAME = 'board.png'
     BOARD_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, BOARD_IMAGE_NAME)
 
+    FLIPPED_BOARD_IMAGE_NAME = 'board_f.png'
+    FLIPPED_BOARD_IMAGE_FILE_PATH = os.path.join(
+        IMAGE_DIR,
+        FLIPPED_BOARD_IMAGE_NAME,
+    )
+
     SPLASH_IMAGE_NAME = 'splash.png'
     SPLASH_IMAGE_FILE_PATH = os.path.join(IMAGE_DIR, SPLASH_IMAGE_NAME)
 
@@ -260,6 +267,15 @@ class IMAGE:
             active='btn_movie_a.png',
             tooltip='Create a movie from a PGN file',
             cmd=ToolCommand.movie,
+
+        ),
+        flip=_declare_constants(
+            obj_name='FLIP_IMAGES',
+            default='btn_flip.png',
+            active='btn_flip_a.png',
+            tooltip='Flip board',
+            cmd=ToolCommand.flip,
+
         ),
     )
 
