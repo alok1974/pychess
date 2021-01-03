@@ -387,7 +387,16 @@ class BoardWidget(QtWidgets.QDialog):
     @is_paused.setter
     def is_paused(self, val):
         self._is_paused = val
-        self._handle_pause(self._is_paused)
+        self._handle_pause()
+
+    @property
+    def is_flipped(self):
+        return self._is_flipped
+
+    @is_flipped.setter
+    def is_flipped(self, val):
+        self._is_flipped = val
+        self._handle_flip()
 
     @property
     def game_loaded(self):
@@ -430,6 +439,8 @@ class BoardWidget(QtWidgets.QDialog):
 
         self._show_threatened = False
         self._inspecting_history = False
+
+        self._is_flipped = False
 
         self._white_timer_lcd.display(
             self._format_time(c.GAME.DEFAULT_PLAY_TIME * 60)
@@ -550,7 +561,7 @@ class BoardWidget(QtWidgets.QDialog):
 
     def _setup_ui(self):
         self.setStyleSheet('border: none;')
-        main_layout = QtWidgets.QVBoxLayout(self)
+        self._main_layout = QtWidgets.QVBoxLayout(self)
 
         # Add black panel widget
         (
@@ -558,7 +569,7 @@ class BoardWidget(QtWidgets.QDialog):
             self._black_timer_lcd,
             self._black_resign_btn
         ) = self._create_panel_widget(color=c.Color.black)
-        main_layout.addWidget(self._black_panel_widget)
+        self._main_layout.addWidget(self._black_panel_widget)
 
         # Add white capture image
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
@@ -566,11 +577,11 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_label_white = QtWidgets.QLabel()
         self._captured_label_white.setPixmap(self._captured_pixmap_white)
 
-        main_layout.addWidget(self._captured_label_white)
+        self._main_layout.addWidget(self._captured_label_white)
 
         # Add main board image
-        image_layout = self._create_image_layout()
-        main_layout.addLayout(image_layout)
+        self._image_widget = self._create_image_widget()
+        self._main_layout.addWidget(self._image_widget)
 
         # Add black capture image
         self._captured_pixmap_black = QtGui.QPixmap.fromImage(
@@ -578,7 +589,7 @@ class BoardWidget(QtWidgets.QDialog):
         )
         self._captured_label_black = QtWidgets.QLabel()
         self._captured_label_black.setPixmap(self._captured_pixmap_black)
-        main_layout.addWidget(self._captured_label_black)
+        self._main_layout.addWidget(self._captured_label_black)
 
         # Add white panel widget
         (
@@ -586,9 +597,10 @@ class BoardWidget(QtWidgets.QDialog):
             self._white_timer_lcd,
             self._white_resign_btn,
         ) = self._create_panel_widget(color=c.Color.white)
-        main_layout.addWidget(self._white_panel_widget)
+        self._main_layout.addWidget(self._white_panel_widget)
 
-    def _create_image_layout(self):
+    def _create_image_widget(self):
+        widget = QtWidgets.QWidget()
         # Create Pixmap
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
 
@@ -598,10 +610,10 @@ class BoardWidget(QtWidgets.QDialog):
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
 
-        layout = QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout(widget)
         layout.addWidget(self._image_label)
 
-        return layout
+        return widget
 
     def _create_panel_widget(self, color, min_height=50):
         widget = QtWidgets.QWidget()
@@ -821,11 +833,55 @@ class BoardWidget(QtWidgets.QDialog):
 
         return f'{hours}:{minutes}:{seconds}'
 
-    def _handle_pause(self, is_paused):
-        self._board_image.handle_pause_screen(is_paused=is_paused)
+    def _handle_pause(self):
+        self._board_image.is_paused = self._is_paused
+        if not self._is_paused and self._game_data is not None:
+            self.highlight_move(
+                src=self._game_data.src,
+                dst=self._game_data.dst,
+            )
+
         self._update_image_label()
-        self.set_panel_visibility(not is_paused)
+
+        self.set_panel_visibility(not self._is_paused)
         self.adjustSize()
+
+    def _handle_flip(self):
+        self._handle_ui_flip()
+        self._handle_board_image_flip()
+
+    def _handle_board_image_flip(self):
+        self._board_image.is_flipped = self._is_flipped
+        if self._game_data is not None:
+            self.highlight_move(
+                src=self._game_data.src,
+                dst=self._game_data.dst,
+            )
+
+        self._update_image_label()
+
+    def _handle_ui_flip(self):
+        if self._is_flipped:
+            widgets = [
+                self._white_panel_widget,
+                self._captured_label_black,
+                self._image_widget,
+                self._captured_label_white,
+                self._black_panel_widget,
+
+            ]
+        else:
+            widgets = [
+                self._black_panel_widget,
+                self._captured_label_white,
+                self._image_widget,
+                self._captured_label_black,
+                self._white_panel_widget,
+            ]
+
+        for index, w in enumerate(widgets):
+            self._main_layout.removeWidget(w)
+            self._main_layout.insertWidget(index, w)
 
 
 class LoadGameWidget(QtWidgets.QDialog):

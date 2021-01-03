@@ -79,6 +79,8 @@ class MainWidget(QtWidgets.QDialog):
         self._black_player_name = 'Opponent'
         self._game_date = None
 
+        self._is_flipped = False
+
         # Custom Options
         self._custom_options_set = False
         self._custom_bonus_time = None
@@ -123,6 +125,8 @@ class MainWidget(QtWidgets.QDialog):
         self._white_player_name = getpass.getuser().capitalize()
         self._black_player_name = 'Opponent'
         self._game_date = None
+
+        self._is_flipped = False
 
         self._board_widget.display_time_white(self._remaining_time_white)
         self._board_widget.display_time_black(self._remaining_time_black)
@@ -854,6 +858,8 @@ class MainWidget(QtWidgets.QDialog):
             self._collapse_btn_clicked()
         elif cmd == c.ToolCommand.movie:
             self._handle_make_movie()
+        elif cmd == c.ToolCommand.flip:
+            self._handle_flip()
 
     def _set_game_over(self, winner=None):
         self._winner = winner
@@ -862,3 +868,10 @@ class MainWidget(QtWidgets.QDialog):
         self._stop_all_timers()
         self._toggle_left_widget(visibility=True)
         self._tool_bar.setVisible(True)
+
+    def _handle_flip(self):
+        if not self._has_game_started:
+            return
+
+        self._is_flipped = not self._is_flipped
+        self._board_widget.is_flipped = self._is_flipped

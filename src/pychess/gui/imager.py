@@ -54,7 +54,17 @@ class Coordinates:
 
         self._border_size = border_size
         self._square_size = square_size
-        self._nb_square = nb_square
+        self._max_square_no = nb_square - 1
+
+        self._is_flipped = False
+
+    @property
+    def is_flipped(self):
+        return self._is_flipped
+
+    @is_flipped.setter
+    def is_flipped(self, val):
+        self._is_flipped = val
 
     def get_image_coordinates(self, image_size, square_x, square_y):
         x, y = self.square_to_pixel(square_x, square_y)
@@ -66,16 +76,23 @@ class Coordinates:
             return
 
         square_x = int((x - self._border_size) / self._square_size)
-        square_y = c.IMAGE.NB_SQUARES - 1 - int(
-            (y - self._border_size) / self._square_size
-        )
+        square_y = int((y - self._border_size) / self._square_size)
+
+        if self._is_flipped:
+            square_x = self._max_square_no - square_x
+        else:
+            square_y = self._max_square_no - square_y
+
         return square_x, square_y
 
     def square_to_pixel(self, square_x, square_y):
-        x = (square_x * self._square_size) + self._border_size
+        if self._is_flipped:
+            square_x = self._max_square_no - square_x
+        else:
+            square_y = self._max_square_no - square_y
 
-        reverse_y_coordinate = c.IMAGE.NB_SQUARES - 1 - square_y
-        y = (reverse_y_coordinate * self._square_size) + self._border_size
+        x = (square_x * self._square_size) + self._border_size
+        y = (square_y * self._square_size) + self._border_size
 
         return x, y
 
@@ -90,6 +107,9 @@ class Coordinates:
             (x > (bdr_sz + (nb_sqr * sqr_sz))) or
             (y > (bdr_sz + (nb_sqr * sqr_sz)))
         )
+
+    def _get_board_pixel(self, val):
+        return int((val - self._border_size) / self._square_size)
 
 
 class BoardImage(QtCore.QObject):
@@ -133,6 +153,24 @@ class BoardImage(QtCore.QObject):
         return self._board_image.width
 
     @property
+    def is_paused(self):
+        return self._is_paused
+
+    @is_paused.setter
+    def is_paused(self, val):
+        self._is_paused = val
+        self._handle_pause()
+
+    @property
+    def is_flipped(self):
+        return self._is_flipped
+
+    @is_flipped.setter
+    def is_flipped(self, val):
+        self._is_flipped = val
+        self._handle_flip()
+
+    @property
     def height(self):
         return self._board_image.height
 
@@ -142,8 +180,8 @@ class BoardImage(QtCore.QObject):
     def is_border_clicked(self, x, y):
         return self._coords.pixel_on_border(x, y)
 
-    def handle_pause_screen(self, is_paused):
-        if is_paused:
+    def _handle_pause(self):
+        if self._is_paused:
             self._pause_image = self._load_image(c.IMAGE.PAUSE_IMAGE_FILE_PATH)
             self._board_image.alpha_composite(
                 self._pause_image,
@@ -151,6 +189,21 @@ class BoardImage(QtCore.QObject):
             )
         else:
             self.update()
+
+    def _handle_flip(self):
+        self._coords.is_flipped = self._is_flipped
+        image_to_use = (
+            c.IMAGE.FLIPPED_BOARD_IMAGE_FILE_PATH
+            if self._is_flipped
+            else c.IMAGE.BOARD_IMAGE_FILE_PATH
+        )
+
+        self._base_image = self._load_image(image_to_use, flush=True)
+        self._initial_square_colors = {
+            square: self._base_image.getpixel(self.square_to_pixel(square))
+            for square in self._board.squares
+        }
+        self.update()
 
     def create_image_with_move(self, src, dst, move_text, save_to_path):
         self.highlight(
@@ -403,15 +456,27 @@ class BoardImage(QtCore.QObject):
         )
 
         if corner_pixel_color == above_corner_color:
-            # Address is hidden show it
-            self._base_image = self._load_image(
-                c.IMAGE.BOARD_IMAGE_FILE_PATH,
-                flush=True)
+            # Address is hidden show it by reloading the board image
+            # which contains the adress
+            image_to_use = (
+                c.IMAGE.FLIPPED_BOARD_IMAGE_FILE_PATH
+                if self._is_flipped
+                else c.IMAGE.BOARD_IMAGE_FILE_PATH
+            )
+            self._base_image = self._load_image(image_to_use, flush=True)
+            self._initial_square_colors = {
+                square: self._base_image.getpixel(self.square_to_pixel(square))
+                for square in self._board.squares
+            }
         else:
             # Hide address by drawing a plain border on top of the image
             self._border_image = self._load_image(
                 c.IMAGE.BORDER_IMAGE_FILE_PATH
             )
+            self._initial_square_colors = {
+                square: self._base_image.getpixel(self.square_to_pixel(square))
+                for square in self._board.squares
+            }
             self._base_image.alpha_composite(
                 self._border_image,
                 (0, 0),
