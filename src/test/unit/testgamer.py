@@ -32,29 +32,29 @@ class TestGamer(unittest.TestCase):
         cls.game = Game()
 
         # Illegal Move - White rook trying to move diagonally
-        cls.game.move(('a1h8'))
+        cls.game.move(('a1h8', None))
         _check_win(cls.game)
 
         # Move 1 - White opening with d4
-        cls.game.move(('d2d4'))
+        cls.game.move(('d2d4', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(p, wt, 3), s('d2'), s('d4'))
         )
 
         # Move 2 - Black opening with c6
-        cls.game.move(('c7c6'))
+        cls.game.move(('c7c6', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(p, bl, 2), s('c7'), s('c6'))
         )
 
         # Illegal Move - Trying to capture white pawn at d4 by white queen
-        cls.game.move(('d1d4'))
+        cls.game.move(('d1d4', None))
         _check_win(cls.game)
 
         # Move 3 - White Queen to d3
-        cls.game.move(('d1d3'))
+        cls.game.move(('d1d3', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(q, wt, 0), s('d1'), s('d3'))
@@ -62,32 +62,32 @@ class TestGamer(unittest.TestCase):
 
         # Illegal Move - Queen trying to jump over white pawn at d4
         # nothing will happen
-        cls.game.move(('d3d5'))
+        cls.game.move(('d3d5', None))
         _check_win(cls.game)
 
         # Move 4 - Black moves pawn a6
-        cls.game.move(('a7a6'))
+        cls.game.move(('a7a6', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(p, bl, 0), s('a7'), s('a6'))
         )
 
         # Move 5 - Black pawn at h7 captured by the white queen
-        cls.game.move(('d3h7'))
+        cls.game.move(('d3h7', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(q, wt, 0), s('d3'), s('h7'))
         )
 
         # Move 6 - Black pawn to a5
-        cls.game.move(('a6a5'))
+        cls.game.move(('a6a5', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(p, bl, 0), s('a6'), s('a5'))
         )
 
         # Move 7 - White queen to f5
-        cls.game.move(('h7f5'))
+        cls.game.move(('h7f5', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(q, wt, 0), s('h7'), s('f5'))
@@ -95,42 +95,42 @@ class TestGamer(unittest.TestCase):
 
         # Move 8 - Black rook to h6, where it comes under attack
         # by the black bishop at c1
-        cls.game.move(('h8h6'))
+        cls.game.move(('h8h6', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(r, bl, 1), s('h8'), s('h6'))
         )
 
         # Move 9 - White pawn to e4
-        cls.game.move(('e2e4'))
+        cls.game.move(('e2e4', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(p, wt, 4), s('e2'), s('e4'))
         )
 
         # Move 10 - Black pawn to a4
-        cls.game.move(('a5a4'))
+        cls.game.move(('a5a4', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(p, bl, 0), s('a5'), s('a4'))
         )
 
         # Move 11 - White rook to c4
-        cls.game.move(('f1c4'))
+        cls.game.move(('f1c4', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(b, wt, 1), s('f1'), s('c4'))
         )
 
         # Move 12 - White rook to h5 attacking the queen
-        cls.game.move(('h6h5'))
+        cls.game.move(('h6h5', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(r, bl, 1), s('h6'), s('h5'))
         )
 
         # Move 13 - White queen to f7, it's a mate!
-        cls.game.move(('f5f7'))
+        cls.game.move(('f5f7', None))
         _check_win(cls.game)
         cls.expected_move_history.append(
             Move(Piece(q, wt, 0), s('f5'), s('f7'))
