@@ -143,6 +143,7 @@ class ButtonLabel(QtWidgets.QLabel):
             QtWidgets.QSizePolicy.MinimumExpanding,
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
+        self.setStyleSheet('QToolTip {font-size: 14px;}')
 
     def set_active(self, pixmap):
         self._active_pixmap = pixmap

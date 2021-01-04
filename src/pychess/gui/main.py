@@ -786,29 +786,50 @@ class MainWidget(QtWidgets.QDialog):
 
     def _handle_keypress(self, event):
         keys = QtCore.Qt
-        if self._is_key_pressed(event, keys.Key_C):
-            self._toggle_show_threatened()
 
-        if self._is_key_pressed(event, keys.Key_S, keys.ControlModifier):
-            self._handle_save_game()
-
-        if self._is_key_pressed(event, keys.Key_O, keys.ControlModifier):
-            self._handle_load_game()
-
+        # Reset
         if self._is_key_pressed(event, keys.Key_R, keys.ControlModifier):
             self._handle_reset()
 
-        if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
-            self._open_options()
-
+        # Choose Player
         if self._is_key_pressed(event, keys.Key_N, keys.ControlModifier):
             self._choose_player()
 
+        # Load Game
+        if self._is_key_pressed(event, keys.Key_O, keys.ControlModifier):
+            self._handle_load_game()
+
+        # Open Options
+        if self._is_key_pressed(event, keys.Key_T, keys.ControlModifier):
+            self._open_options()
+
+        # Toggle Addrress
+        if self._is_key_pressed(event, keys.Key_B, keys.ControlModifier):
+            self._toggle_adress()
+
+        # Toggle Pause
         if self._is_key_pressed(event, keys.Key_P, keys.ControlModifier):
             self._toggle_pause()
 
-        if self._is_key_pressed(event, keys.Key_B, keys.ControlModifier):
-            self._toggle_adress()
+        # Save Game
+        if self._is_key_pressed(event, keys.Key_S, keys.ControlModifier):
+            self._handle_save_game()
+
+        # Show Threatened
+        if self._is_key_pressed(event, keys.Key_C):
+            self._toggle_show_threatened()
+
+        # Toogle Zen Mode
+        if self._is_key_pressed(event, keys.Key_J):
+            self._collapse_btn_clicked()
+
+        # Make Movie
+        if self._is_key_pressed(event, keys.Key_K, keys.ControlModifier):
+            self._make_movie()
+
+        # Flip Board
+        if self._is_key_pressed(event, keys.Key_I, keys.ControlModifier):
+            self._handle_flip()
 
     def _adjust_size(self):
         self._left_widget.adjustSize()
