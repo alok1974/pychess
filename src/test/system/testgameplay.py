@@ -37,7 +37,7 @@ def parse_moves(move_string=None, game_file=None):
 
 def run(move_string=None, game_file=None):
     moves = parse_moves(move_string)
-    run_game(moves)
+    run_game([(m, None) for m in moves])
 
 
 if __name__ == '__main__':
