@@ -6,7 +6,6 @@ import functools
 import re
 import itertools
 import random
-import math
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -38,7 +37,7 @@ RECT_DATA = collections.namedtuple(
 )
 
 
-class ImageLabel(QtWidgets.QLabel):
+class BoardImageLabel(QtWidgets.QLabel):
     NB_RANDOMS = 12
 
     def __init__(self, pixmap, parent=None):
@@ -320,6 +319,22 @@ class ImageLabel(QtWidgets.QLabel):
         center.setX((size.width() - self._pychess_pixmap.width()) / 2)
         center.setY((size.height() - self._pychess_pixmap.height()) / 2)
         painter.drawPixmap(center, self._pychess_pixmap)
+
+
+class SmoothImageLabel(QtWidgets.QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    def setPixmap(self, pixmap):
+        self.pixmap = pixmap
+        super().setPixmap(pixmap)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        painter.drawPixmap(0, 0, self.pixmap)
+        painter.end()
+        painter = None
 
 
 class ButtonLabel(QtWidgets.QLabel):
@@ -766,7 +781,7 @@ class BoardWidget(QtWidgets.QDialog):
         # Add white capture image
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_white)
-        self._captured_label_white = QtWidgets.QLabel()
+        self._captured_label_white = SmoothImageLabel()
         self._captured_label_white.setPixmap(self._captured_pixmap_white)
 
         self._main_layout.addWidget(self._captured_label_white)
@@ -779,7 +794,7 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_pixmap_black = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_black
         )
-        self._captured_label_black = QtWidgets.QLabel()
+        self._captured_label_black = SmoothImageLabel()
         self._captured_label_black.setPixmap(self._captured_pixmap_black)
         self._main_layout.addWidget(self._captured_label_black)
 
@@ -797,7 +812,7 @@ class BoardWidget(QtWidgets.QDialog):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
 
         # Create Label and add the pixmap
-        self._image_label = ImageLabel(pixmap=self._pixmap)
+        self._image_label = BoardImageLabel(pixmap=self._pixmap)
         self._image_label.setCursor(
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
