@@ -333,6 +333,7 @@ class BoardImage(QtCore.QObject):
         self._border_size = c.IMAGE.BORDER_SIZE
         self._non_pawn_image_size = c.IMAGE.NON_PAWN_IMAGE_SIZE
         self._pawn_image_size = c.IMAGE.PAWN_IMAGE_SIZE
+        self._is_flipped = False
         self._init_board_image()
         self.update()
 
