@@ -20,6 +20,7 @@ from .widgets import (
     ChoosePlayerWidget,
     ToolBar,
     SelectPromotionWidget,
+    CustomMessageBox
 )
 
 
@@ -460,10 +461,12 @@ class MainWidget(QtWidgets.QDialog):
     def _toggle_show_threatened(self):
         self._board_widget.toggle_show_threatened()
 
-    @staticmethod
-    def _get_pgn2moves():
-        msg_box = QtWidgets.QMessageBox()
-        msg_box.setText("Please select a PGN game file")
+    def _get_pgn2moves(self):
+        msg_box = CustomMessageBox(
+            text="Please select a PGN game file",
+            title="Pgn to movie",
+            parent=self,
+        )
         msg_box.exec_()
 
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -551,8 +554,10 @@ class MainWidget(QtWidgets.QDialog):
         if game_index == -1:  # No game was selected
             return
 
-        msg_box = QtWidgets.QMessageBox()
-        msg_box.setText("Please select the save location for the movie file")
+        msg_box = CustomMessageBox(
+            text="Please select the save location for the movie file",
+            title="Pgn to movie"
+        )
         msg_box.exec_()
 
         movie_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -696,12 +701,15 @@ class MainWidget(QtWidgets.QDialog):
         engine_set = engine_color is not None
         chess960 = not self._custom_is_standard_type
         if engine_set and chess960:
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setText(
-                'Currently, Chess 960 format is not available '
-                'while playing against computer. It might be implemented '
-                'in future. For now, please select the standard format '
-                'for playing against computer.'
+            msg_box = CustomMessageBox(
+                text=(
+                    'Currently \'Chess 960\' format is not available '
+                    'while playing against computer '
+                    'and might be implemented in future.\n\n'
+                    'For now please select the standard format '
+                    'for playing against computer.'
+                ),
+                title="Chess 960 not available"
             )
             msg_box.exec_()
             return False
@@ -771,18 +779,20 @@ class MainWidget(QtWidgets.QDialog):
 
     def _handle_reset(self):
         if self._has_game_started:
-            msg_box = QtWidgets.QMessageBox()
-            result = msg_box.question(
-                self,
-                'Reset Game?',
-                'There is a game in progress, '
-                'do you really want to reset?',
-                QtWidgets.QMessageBox.Yes,
-                QtWidgets.QMessageBox.Cancel,
+            msg_box = CustomMessageBox(
+                text=(
+                    'There is a game in progress.\n'
+                    'Do you really want to reset?'
+                ),
+                title="Reset game?",
+                is_yes_no=True,
             )
-            if result != QtWidgets.QMessageBox.Yes:
-                return
-        self._reset()
+            msg_box.YES_SELECTED_SIGNAL.connect(self._reset_result)
+            msg_box.exec_()
+
+    def _reset_result(self, result):
+        if result:
+            self._reset()
 
     def _handle_keypress(self, event):
         keys = QtCore.Qt

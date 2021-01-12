@@ -2023,8 +2023,10 @@ class SaveGameDataWidget(QtWidgets.QDialog):
         ]
 
         if not all(data):
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setText("Missing details! Please fill all fields.")
+            msg_box = CustomMessageBox(
+                text="Missing details! Please fill all fields.",
+                title="Game details missing"
+            )
             msg_box.exec_()
             return
 
@@ -2165,10 +2167,106 @@ class SelectPromotionWidget(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         if self._promotion is None:
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setText("Please select a promotion type")
+            msg_box = CustomMessageBox(
+                text="Please select a promotion type",
+                title="Select a promotion type",
+            )
             msg_box.exec_()
             event.ignore()
             return
 
         self.SELECTED_PROMOTION_SIGNAL.emit(self._promotion)
+
+
+class CustomMessageBox(QtWidgets.QDialog):
+    YES_SELECTED_SIGNAL = QtCore.Signal(bool)
+
+    BTN_TYPE = collections.namedtuple(
+        'BTN_TYPE', ['yes', 'no', 'ok']
+    )('YES', 'NO', 'OK')
+
+    def __init__(self, text, title, is_yes_no=False, parent=None):
+        super().__init__(parent=parent)
+        text = self._format_text(text)
+        self._text = f'\n{text}\n'
+        self._title = title
+        self._is_yes_no = is_yes_no
+        self._setup_ui()
+
+    @staticmethod
+    def _format_text(text, width=45):
+        regex = r"([\S/\n]+)"
+        words = [m.group(1) for m in re.finditer(regex, text, re.MULTILINE)]
+        running_line_width = 0
+        lines = []
+        line = []
+        for word in words:
+            end = None
+            if '\n' in word:
+                word, end = word.split('\n', 1)
+                line.append(word)
+                lines.append(' '.join(line))
+                line = [end]
+                running_line_width = len(end)
+                continue
+
+            running_line_width += len(word)
+            line.append(word)
+
+            if running_line_width > width:
+                lines.append(' '.join(line))
+                line = []
+                running_line_width = 0
+
+        if line:
+            lines.append(' '.join(line))
+
+        return '\n'.join(lines)
+
+    def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
+        self.setWindowTitle(self._title)
+        self.setModal(True)
+        self._layout = QtWidgets.QVBoxLayout(self)
+        self._layout.setContentsMargins(30, 30, 30, 30)
+
+        self._text_box = QtWidgets.QLabel()
+        self._text_box.setStyleSheet('font-size: 18px;')
+        self._text_box.setText(self._text)
+        self._layout.addWidget(self._text_box)
+
+        button_layout = self._create_button_layout()
+        self._layout.addLayout(button_layout)
+
+    def _create_button_layout(self):
+        btn_layout = QtWidgets.QHBoxLayout()
+
+        btn_types = [self.BTN_TYPE.ok]
+        if self._is_yes_no:
+            btn_types = [self.BTN_TYPE.yes, self.BTN_TYPE.no]
+
+        for btn_type in btn_types:
+            btn = QtWidgets.QPushButton(btn_type)
+            btn.setMinimumHeight(50)
+            btn.setMinimumWidth(100)
+            btn.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Expanding,
+            )
+            func = functools.partial(
+                self._btn_clicked,
+                btn_type=btn_type,
+            )
+            btn.clicked.connect(func)
+            btn_layout.addWidget(btn)
+
+        return btn_layout
+
+    def _btn_clicked(self, btn_type):
+        if self._is_yes_no:
+            self.YES_SELECTED_SIGNAL.emit(btn_type == self.BTN_TYPE.yes)
+
+        self.close()
+
+    def showEvent(self, event):
+        self.setFixedSize(self.sizeHint())
