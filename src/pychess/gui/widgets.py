@@ -1224,9 +1224,6 @@ class MoveWidget(QtWidgets.QDialog):
 
         self._highlight_format = self._highlight_format()
         self._plain_format = self._plain_format()
-
-        self._font = self._load_chess_fonts()
-
         self._cursor_pos_map = {}
         self._move_index_word_data = {}
         self._last_highlighted = None
@@ -1314,18 +1311,6 @@ class MoveWidget(QtWidgets.QDialog):
             winning_text = None
 
         return winning_text, move_string
-
-    def _load_chess_fonts(self):
-        font_id = QtGui.QFontDatabase().addApplicationFont(
-            c.APP.CHESS_FONT_FILE_PATH
-        )
-        if font_id == -1:
-            error_msg = (
-                f'Could not load font from {c.APP.CHESS_FONT_FILE_PATH}'
-            )
-            raise RuntimeError(error_msg)
-
-        self._font = QtGui.QFont(c.APP.CHESS_FONT_FAMILY)
 
     def _apply_chess_fonts(self, text, color):
         piece_str = None
@@ -1445,8 +1430,10 @@ class MoveWidget(QtWidgets.QDialog):
     @staticmethod
     def _create_text_edit():
         textedit = QtWidgets.QTextEdit()
-        textedit.setFontFamily(c.APP.CHESS_FONT_FAMILY)
-        textedit.setStyleSheet('border: 1px solid rgb(90, 90, 90)')
+        textedit.setStyleSheet(
+            'border: 1px solid rgb(90, 90, 90); '
+            f'font-family: {c.APP.CHESS_FONT_FAMILY}; '
+        )
         textedit.setReadOnly(True)
         textedit.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         textedit.viewport().setCursor(
@@ -2267,6 +2254,155 @@ class CustomMessageBox(QtWidgets.QDialog):
             self.YES_SELECTED_SIGNAL.emit(btn_type == self.BTN_TYPE.yes)
 
         self.close()
+
+    def showEvent(self, event):
+        self.setFixedSize(self.sizeHint())
+
+
+class MovieGenerationThread(QtCore.QThread):
+    TOTAL_IMAGES_SIGNAL = QtCore.Signal(int)
+    MOVIE_IMAGE_GENERATED_SIGNAL = QtCore.Signal()
+    TITLE_IMAGE_CREATED_SIGNAL = QtCore.Signal()
+    MOVIE_IMAGE_COMPILED_SIGNAL = QtCore.Signal()
+    MOVIE_IMAGES_DONE = QtCore.Signal()
+    MOVIE_DONE = QtCore.Signal()
+
+    def __init__(self, creator, game_index, movie_file_path, parent=None):
+        super().__init__(parent=parent)
+        self._creator = creator
+        self._game_index = game_index
+        self._movie_file_path = movie_file_path
+
+    def create_movie(self):
+        self.start()
+
+    def run(self):
+        self._creator.create_movie(
+            thread=self,
+            game_index=self._game_index,
+            movie_file_path=self._movie_file_path,
+        )
+        self.quit()
+
+
+class MovieProgressBar(QtWidgets.QDialog):
+    MAX_WIDTH = 400
+    PBAR_HEIGHT = 3
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._total = 0
+        self._current = 0
+        self._closed_by_process = False
+        self._state = ''
+        self._hue = 0
+
+        self._setup_ui()
+
+    @property
+    def total(self):
+        return self._total
+
+    @total.setter
+    def total(self, val):
+        self._total = val
+
+    def _setup_ui(self):
+        self.setWindowTitle('Generating movie from pgn')
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(40, 40, 40, 40)
+
+        status_layout = QtWidgets.QHBoxLayout()
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(0)
+
+        self._status_label = QtWidgets.QLabel()
+        self._status_label.setStyleSheet('font-size: 16px;')
+        status_layout.addWidget(self._status_label)
+
+        status_layout.addStretch(1)
+
+        self._percent_label = QtWidgets.QLabel()
+        self._percent_label.setStyleSheet(
+            f'font-family: {c.APP.FONT_FAMILY}; '
+            'font-size: 16px;'
+        )
+        status_layout.addWidget(self._percent_label)
+
+        layout.addLayout(status_layout)
+
+        # Empty label to create extra space
+        empty_label_top = QtWidgets.QLabel()
+        empty_label_top.setFixedHeight(4)
+        layout.addWidget(empty_label_top)
+
+        progress_bar_layout = QtWidgets.QHBoxLayout()
+        progress_bar_layout.setSpacing(0)
+
+        self._progress_label = QtWidgets.QLabel()
+        self._progress_label.setFixedWidth(0)
+        self._progress_label.setFixedHeight(self.PBAR_HEIGHT)
+        progress_bar_layout.addWidget(self._progress_label)
+
+        self._progress_bg_label = QtWidgets.QLabel()
+        self._progress_bg_label.setFixedWidth(self.MAX_WIDTH)
+        self._progress_bg_label.setFixedHeight(self.PBAR_HEIGHT)
+        self._progress_bg_label.setStyleSheet(
+            'background: rgb(100, 100, 100);'
+        )
+        self._progress_bg_label.setContentsMargins(0, 0, 0, 0)
+        progress_bar_layout.addWidget(self._progress_bg_label)
+
+        layout.addLayout(progress_bar_layout)
+
+    def display_text(self, text):
+        self._state = text
+        self._status_label.clear()
+        self._status_label.setText(text)
+
+    def update_move(self):
+        self._update()
+
+    def update_compile(self):
+        self._update()
+
+    def _update(self):
+        if not self._total:
+            return
+
+        self._current += 1
+        fraction_completed = self._current / self._total
+        self._hue = 359 * fraction_completed
+        self._progress_label.setFixedWidth(fraction_completed * self.MAX_WIDTH)
+        if self._hue <= 180:
+            c_hue = 179 + self._hue
+        else:
+            c_hue = self._hue - 180
+
+        self._progress_label.setStyleSheet(
+            f'background: hsv({self._hue}, 255, 255); '
+            f'color: hsv({c_hue}, 255, 255);'
+        )
+        percent = str(f'{fraction_completed * 100:05.2f}%').zfill(2)
+        self._percent_label.setText(percent)
+
+        self._progress_bg_label.setFixedWidth(
+            (1 - fraction_completed) * self.MAX_WIDTH
+        )
+
+    def finish(self):
+        self._closed_by_process = True
+        self._total = 0
+        self._current = 0
+        self._state = ''
+        self._hue = 0
+        self.close()
+
+    def closeEvent(self, event):
+        if not self._closed_by_process:
+            event.ignore()
+
+        self._closed_by_process = False
 
     def showEvent(self, event):
         self.setFixedSize(self.sizeHint())

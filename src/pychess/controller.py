@@ -1,7 +1,7 @@
 import sys
 
 
-from PySide2 import QtWidgets
+from PySide2 import QtWidgets, QtGui
 
 
 from .core.gamer import Game
@@ -11,6 +11,10 @@ from . import constant as c
 
 def run():
     app = QtWidgets.QApplication(sys.argv)
+
+    QtGui.QFontDatabase.addApplicationFont(c.APP.FONT_FILE_PATH)
+    QtGui.QFontDatabase.addApplicationFont(c.APP.CHESS_FONT_FILE_PATH)
+
     game = Game()
     w = MainWidget(board=game.board)
     w.MOVE_SIGNAL.connect(game.move)

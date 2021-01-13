@@ -222,14 +222,21 @@ class REGEX:
 
 
 class PGN2MOVES:
+    NB_TITLE_IMAGES = 5
+
     def __init__(self, pgn_file_path=None):
         self._pgn_file_path = pgn_file_path
-        self._board = None
+        self._board = Board()
         self._games = self._parse_game_file(file_path=pgn_file_path)
         self._nb_games = len(self._games)
         self._game_info = None
         self._short_info = None
         self._header_info = None
+        self._thread = None
+
+    @property
+    def pgn_file_path(self):
+        return self._pgn_file_path
 
     @property
     def nb_games(self):
@@ -256,13 +263,24 @@ class PGN2MOVES:
     def get_moves(self, game_index):
         return self._get_moves(game_index=game_index)
 
-    def create_movie(self, game_index, movie_file_path, fps=1):
+    def create_movie(self, thread, game_index, movie_file_path, fps=1):
+        self._thread = thread
         with self._movie_folder() as folder:
+            self._emit_total_movie_images(game_index)
+            self._generate_movie_title(game_index, folder)
             self._get_moves(
                 game_index=game_index,
                 image_folder=folder,
             )
             self._make_movie(folder, movie_file_path, game_index, fps=fps)
+
+    def _emit_total_movie_images(self, game_index):
+        game = self._games[game_index]
+        nb_move_images = len(game.moves_data) * 2  # 2 moves, 1 each player
+        total_images = self.NB_TITLE_IMAGES + nb_move_images
+        total_image_steps = total_images * 2  # 2 = 1 creation + 1 compilation
+        if self._thread is not None:
+            self._thread.TOTAL_IMAGES_SIGNAL.emit(total_image_steps)
 
     @staticmethod
     @contextlib.contextmanager
@@ -284,24 +302,30 @@ class PGN2MOVES:
             writer.close()
 
     def _make_movie(self, image_folder, movie_file_path, index, fps=1):
-        # NOTE: This needs to be called first
-        self._generate_movie_title(index, image_folder)
-
         images = self._gather_movie_images(image_folder)
         with self._mp4_writer(movie_file_path, fps=fps) as writer:
-            list(map(writer.append_data, images))
+            for image in images:
+                writer.append_data(image)
+                if self._thread is not None:
+                    self._thread.MOVIE_IMAGE_COMPILED_SIGNAL.emit()
+        if self._thread is not None:
+            self._thread.MOVIE_DONE.emit()
 
     def _generate_movie_title(self, index, image_folder):
         text = self._create_movie_title_text(index=index)
 
-        # NOTE: Generating five frame here for the movie image so that it
-        # stays for five seconds in the movie.
-        for frame_no in range(-5, 1):
+        # NOTE: Generating frames for the movie image so that it
+        # stays for some time before the moves images start playing
+        for frame_no in range(1 - self.NB_TITLE_IMAGES, 1):
             save_to_path = self._create_movie_image_file_path(
                 frame_no=frame_no,
                 image_folder=image_folder
             )
             BoardImage(self._board).create_title_image(text, save_to_path)
+            if self._thread is not None:
+                self._thread.MOVIE_IMAGE_GENERATED_SIGNAL.emit()
+        if self._thread is not None:
+            self._thread.TITLE_IMAGE_CREATED_SIGNAL.emit()
 
     def _create_movie_title_text(self, index):
         text = self.short_info[index]
@@ -325,7 +349,6 @@ class PGN2MOVES:
         ]
 
     def _get_moves(self, game_index, image_folder=None):
-        self._board = Board()
         game = self._games[game_index]
         return self._get_game_moves(game, image_folder=image_folder)
 
@@ -387,7 +410,8 @@ class PGN2MOVES:
                         color=c.Color.black,
                         image_folder=image_folder,
                     )
-
+        if self._thread is not None:
+            self._thread.MOVIE_IMAGES_DONE.emit()
         return moves
 
     @staticmethod
@@ -449,6 +473,8 @@ class PGN2MOVES:
             move_text=move_text,
             save_to_path=image_file_path,
         )
+        if self._thread is not None:
+            self._thread.MOVIE_IMAGE_GENERATED_SIGNAL.emit()
 
     def _get_player_move(self, move, player):
         promotion = None
