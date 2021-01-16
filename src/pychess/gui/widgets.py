@@ -9,7 +9,6 @@ import random
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
-from PIL import Image
 
 
 from .. import constant as c
@@ -59,7 +58,7 @@ class BoardImageLabel(QtWidgets.QLabel):
             ),
         )
 
-        self._grid_colors = self._get_grid_color_map()
+        self._grid_colors = imager.get_grid_color_map()
         self._grid_max = c.IMAGE.NB_SQUARES - 1
 
         randoms = self._grid_iter[:]
@@ -256,22 +255,6 @@ class BoardImageLabel(QtWidgets.QLabel):
             self._hue = 0
 
         self.setStyleSheet(f'background-color:hsv({self._hue}, 255, 60);')
-
-    @staticmethod
-    def _get_grid_color_map():
-        n = c.IMAGE.NB_SQUARES
-        image = Image.open(c.IMAGE.GRID_IMAGE_FILE_PATH)
-        square_size = int(c.IMAGE.BASE_IMAGE_SIZE / n)
-        coords = imager.Coordinates(
-            border_size=0,
-            square_size=square_size,
-        )
-        colors = {}
-        for row, column in itertools.product(range(n), range(n)):
-            pixel_pos = coords.square_to_pixel(row, column)
-            colors[(row, column)] = image.getpixel(pixel_pos)
-
-        return colors
 
     def _randomize_colors(self):
         values = list(self._grid_colors.values())[:]
