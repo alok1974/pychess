@@ -2,6 +2,7 @@ import getpass
 from datetime import datetime
 import collections
 
+
 from PySide2 import QtWidgets, QtCore
 
 
@@ -20,6 +21,9 @@ from .widgets import (
     ChoosePlayerWidget,
     ToolBar,
     SelectPromotionWidget,
+    CustomMessageBox,
+    MovieGenerationThread,
+    MovieProgressBar,
 )
 
 
@@ -102,6 +106,7 @@ class MainWidget(QtWidgets.QDialog):
 
         self._engine_color = None
         self._history_player = None
+        self._movie_generator = None
 
         self._current_player = c.Color.white
         self._winner = None
@@ -460,10 +465,12 @@ class MainWidget(QtWidgets.QDialog):
     def _toggle_show_threatened(self):
         self._board_widget.toggle_show_threatened()
 
-    @staticmethod
-    def _get_pgn2moves():
-        msg_box = QtWidgets.QMessageBox()
-        msg_box.setText("Please select a PGN game file")
+    def _get_pgn2moves(self):
+        msg_box = CustomMessageBox(
+            text="Please select a PGN game file",
+            title="Pgn to movie",
+            parent=self,
+        )
         msg_box.exec_()
 
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -481,11 +488,9 @@ class MainWidget(QtWidgets.QDialog):
         if self._has_game_started:
             return
 
-        pgn2moves = self._get_pgn2moves()
-        if pgn2moves is None:
+        self._pgn2moves = self._get_pgn2moves()
+        if self._pgn2moves is None:
             return
-
-        self._pgn2moves = pgn2moves
 
         if self._pgn2moves.nb_games == 1:
             self._load_game()
@@ -499,11 +504,10 @@ class MainWidget(QtWidgets.QDialog):
         if self._has_game_started:
             return
 
-        pgn2moves = self._get_pgn2moves()
-        if pgn2moves is None:
+        self._pgn2moves = self._get_pgn2moves()
+        if self._pgn2moves is None:
             return
 
-        self._pgn2moves = pgn2moves
         if self._pgn2moves.nb_games == 1:
             self._make_movie()
         else:
@@ -551,8 +555,10 @@ class MainWidget(QtWidgets.QDialog):
         if game_index == -1:  # No game was selected
             return
 
-        msg_box = QtWidgets.QMessageBox()
-        msg_box.setText("Please select the save location for the movie file")
+        msg_box = CustomMessageBox(
+            text="Please select the save location for the movie file",
+            title="Pgn to movie"
+        )
         msg_box.exec_()
 
         movie_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -564,10 +570,56 @@ class MainWidget(QtWidgets.QDialog):
         if not movie_file_path:
             return
 
-        self._pgn2moves.create_movie(
+        QtWidgets.QApplication.processEvents()
+
+        self._movie_thread = MovieGenerationThread(
+            creator=self._pgn2moves,
             game_index=game_index,
-            movie_file_path=movie_file_path,
+            movie_file_path=movie_file_path
         )
+
+        self._movie_progress_bar = MovieProgressBar()
+        self._movie_progress_bar.show()
+
+        # Movie Thread Signals
+        mt = self._movie_thread
+        mt.TOTAL_IMAGES_SIGNAL.connect(self._total_images_found)
+        mt.MOVIE_IMAGE_GENERATED_SIGNAL.connect(self._image_written)
+        mt.MOVIE_IMAGE_COMPILED_SIGNAL.connect(self._image_compiled)
+        mt.TITLE_IMAGE_CREATED_SIGNAL.connect(self._movie_title_created)
+        mt.MOVIE_IMAGES_DONE.connect(self._images_done)
+        mt.MOVIE_DONE.connect(self._movie_created)
+
+        # NOTE: Create Movie should be called in the end after the
+        # the progress bar and the thread have been created and are
+        # connected through the signals properly. Otherwise a few signals from
+        # thread would be missed and cause progress bar crashes or bugs
+        self._movie_thread.create_movie()
+
+    def _total_images_found(self, nb_images):
+        self._movie_progress_bar.display_text(
+            f'Total {nb_images} images to compile'
+        )
+        self._movie_progress_bar.total = nb_images
+
+    def _movie_title_created(self):
+        self._movie_progress_bar.display_text('Title created')
+
+    def _image_written(self):
+        self._movie_progress_bar.display_text('Creating movie images')
+        self._movie_progress_bar.update_move()
+
+    def _image_compiled(self):
+        self._movie_progress_bar.display_text('Compiling movie')
+        self._movie_progress_bar.update_compile()
+
+    def _images_done(self):
+        self._movie_progress_bar.display_text('Images Created')
+
+    def _movie_created(self):
+        self._movie_progress_bar.display_text('Movie successfully created')
+        self._movie_progress_bar.finish()
+        self._movie_thread.quit()
 
     def _handle_save_game(self):
         if self._game_loaded:
@@ -696,12 +748,15 @@ class MainWidget(QtWidgets.QDialog):
         engine_set = engine_color is not None
         chess960 = not self._custom_is_standard_type
         if engine_set and chess960:
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setText(
-                'Currently, Chess 960 format is not available '
-                'while playing against computer. It might be implemented '
-                'in future. For now, please select the standard format '
-                'for playing against computer.'
+            msg_box = CustomMessageBox(
+                text=(
+                    'Currently \'Chess 960\' format is not available '
+                    'while playing against computer '
+                    'and might be implemented in future.\n\n'
+                    'For now please select the standard format '
+                    'for playing against computer.'
+                ),
+                title="Chess 960 not available"
             )
             msg_box.exec_()
             return False
@@ -771,18 +826,20 @@ class MainWidget(QtWidgets.QDialog):
 
     def _handle_reset(self):
         if self._has_game_started:
-            msg_box = QtWidgets.QMessageBox()
-            result = msg_box.question(
-                self,
-                'Reset Game?',
-                'There is a game in progress, '
-                'do you really want to reset?',
-                QtWidgets.QMessageBox.Yes,
-                QtWidgets.QMessageBox.Cancel,
+            msg_box = CustomMessageBox(
+                text=(
+                    'There is a game in progress.\n'
+                    'Do you really want to reset?'
+                ),
+                title="Reset game?",
+                is_yes_no=True,
             )
-            if result != QtWidgets.QMessageBox.Yes:
-                return
-        self._reset()
+            msg_box.YES_SELECTED_SIGNAL.connect(self._reset_result)
+            msg_box.exec_()
+
+    def _reset_result(self, result):
+        if result:
+            self._reset()
 
     def _handle_keypress(self, event):
         keys = QtCore.Qt

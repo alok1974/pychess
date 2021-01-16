@@ -1,5 +1,7 @@
 import os
 import collections
+import itertools
+import random
 
 
 from PIL import Image, ImageQt, ImageDraw, ImageFont
@@ -7,6 +9,22 @@ from PySide2 import QtCore
 
 from .. import constant as c
 from ..element.squarer import Square
+
+
+def get_grid_color_map():
+    n = c.IMAGE.NB_SQUARES
+    image = Image.open(c.IMAGE.GRID_IMAGE_FILE_PATH)
+    square_size = int(c.IMAGE.BASE_IMAGE_SIZE / n)
+    coords = Coordinates(
+        border_size=0,
+        square_size=square_size,
+    )
+    colors = {}
+    for row, column in itertools.product(range(n), range(n)):
+        pixel_pos = coords.square_to_pixel(row, column)
+        colors[(row, column)] = image.getpixel(pixel_pos)
+
+    return colors
 
 
 class Coordinates:
@@ -240,6 +258,8 @@ class BoardImage(QtCore.QObject):
             color=(59, 57, 55),
         )
 
+        self._add_title_square_bg(image)
+
         # Add title
         end_y = self._add_text_with_band(
             image=image,
@@ -262,6 +282,58 @@ class BoardImage(QtCore.QObject):
 
         self._add_logo(image=image)
         image.save(save_to_path)
+
+    def _add_title_square_bg(self, image):
+        sizes = self._get_title_images_square_sizes(
+            w=image.width,
+            h=image.height,
+            n=8,
+        )
+        color_map = get_grid_color_map()
+        colors = list(color_map.values())
+        random.shuffle(colors)
+        color_map = {k: colors[i] for i, k in enumerate(color_map.keys())}
+        ctx = ImageDraw.Draw(image)
+        curr_pos_x = 0
+        curr_pos_y = 0
+        h = 0
+        for i, row in enumerate(sizes):
+            for j, (w, h) in enumerate(row):
+                ctx.rectangle(
+                    [
+                        (curr_pos_x, curr_pos_y),
+                        (curr_pos_x + w, curr_pos_y + h)
+                    ],
+                    fill=color_map[(i, j)]
+                )
+                curr_pos_x += w
+            curr_pos_y += h
+            curr_pos_x = 0
+
+    @staticmethod
+    def _get_title_images_square_sizes(w, h, n):
+        nw, rw = divmod(w, n)
+        nh, rh = divmod(h, n)
+
+        last_w = nw + rw
+        last_h = nh + rh
+
+        row = [
+            (nw, nh)
+            for i in range(n - 1)
+
+        ]
+        row.append((last_w, nh))
+
+        last_row = [
+            (nw, last_h)
+            for _ in range(n - 1)
+        ]
+        last_row.append((last_w, last_h))
+
+        sizes = [row for _ in range(n - 1)]
+        sizes.append(last_row)
+        return sizes
 
     def _add_logo(self, image):
         logo = self._load_image(image_path=c.IMAGE.PYCHESS_IMAGE_FILE_PATH)
@@ -333,6 +405,7 @@ class BoardImage(QtCore.QObject):
         self._border_size = c.IMAGE.BORDER_SIZE
         self._non_pawn_image_size = c.IMAGE.NON_PAWN_IMAGE_SIZE
         self._pawn_image_size = c.IMAGE.PAWN_IMAGE_SIZE
+        self._is_flipped = False
         self._init_board_image()
         self.update()
 

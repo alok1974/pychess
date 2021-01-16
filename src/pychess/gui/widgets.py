@@ -5,10 +5,10 @@ import collections
 import functools
 import re
 import itertools
+import random
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
-from PIL import Image
 
 
 from .. import constant as c
@@ -30,7 +30,15 @@ def block_signals(widgets):
             widget.blockSignals(is_signal_blocked)
 
 
-class ImageLabel(QtWidgets.QLabel):
+RECT_DATA = collections.namedtuple(
+    'RECT_DATA',
+    ['width', 'height', 'extra_width', 'extra_height'],
+)
+
+
+class BoardImageLabel(QtWidgets.QLabel):
+    NB_RANDOMS = 12
+
     def __init__(self, pixmap, parent=None):
         super().__init__(parent=parent)
         self._pychess_pixmap = QtGui.QPixmap(
@@ -41,14 +49,45 @@ class ImageLabel(QtWidgets.QLabel):
             QtWidgets.QSizePolicy.MinimumExpanding,
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
-        self._draw_splash = True
 
-        self._grid_colors = self._get_grid_color_map()
+        self._draw_splash = True
+        self._grid_iter = list(
+            itertools.product(
+                range(c.IMAGE.NB_SQUARES),
+                range(c.IMAGE.NB_SQUARES),
+            ),
+        )
+
+        self._grid_colors = imager.get_grid_color_map()
+        self._grid_max = c.IMAGE.NB_SQUARES - 1
+
+        randoms = self._grid_iter[:]
+        random.shuffle(randoms)
+        self._randoms = randoms[:self.NB_RANDOMS]
+
+        self._border_size = 2
 
         self._hue = 0
-        self._timer = QtCore.QTimer()
-        self._timer.timeout.connect(self._hue_change)
-        self._timer.start()
+        self._hue_timer = QtCore.QTimer()
+        self._hue_timer.timeout.connect(self._hue_change)
+        self._hue_timer.start()
+
+        self._color_timer = QtCore.QTimer()
+        self._color_timer.setInterval(500)
+        self._color_timer.timeout.connect(self._randomize_colors)
+        self._color_timer.start()
+
+        self._random_timer = QtCore.QTimer()
+        self._random_timer.setInterval(500)
+        self._random_timer.timeout.connect(self._randomize_squares)
+        self._random_timer.start()
+
+        self._current_band_no = 2
+        self._current_band = self._get_band(self._current_band_no)
+        self._band_timer = QtCore.QTimer()
+        self._band_timer.setInterval(500)
+        self._band_timer.timeout.connect(self._change_band)
+        self._band_timer.start()
 
     @property
     def draw_splash(self):
@@ -65,9 +104,13 @@ class ImageLabel(QtWidgets.QLabel):
     def paintEvent(self, event):
         size = self.size()
         painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
 
         if self._draw_splash:
             self._draw_grid(size=size, painter=painter)
+            self._draw_rays(size=size, painter=painter)
             self._draw_overlay(size=size, painter=painter)
         else:
             self._draw_pixmap(size=size, painter=painter)
@@ -91,44 +134,190 @@ class ImageLabel(QtWidgets.QLabel):
         painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
         painter.drawPixmap(point, scaled_pixmap)
 
+    def _draw_rays(self, size, painter):
+        lcolor = QtGui.QColor()
+        lcolor.setHsv(self._hue, 100, 255, 60)
+        painter.setBrush(lcolor)
+        painter.setPen(lcolor)
+
+        center_x = (
+                int((size.width() - self._pychess_pixmap.width()) / 2) +
+                c.IMAGE.PYCHESS_FOCUS[0]
+        )
+        center_y = (
+                int((size.height() - self._pychess_pixmap.height()) / 2) +
+                c.IMAGE.PYCHESS_FOCUS[1]
+        )
+
+        sign_x = random.choice([-1, 1])
+        x_mult = random.randint(0, 100)
+        x = sign_x * size.width() * x_mult / 100
+
+        sign_y = random.choice([-1, 1])
+        y_mult = random.randint(0, 100)
+        y = sign_y * size.height() * y_mult / 100
+
+        painter.drawLine(
+            center_x,
+            center_y,
+            center_x + x,
+            center_y + y,
+        )
+
     def _draw_grid(self, size, painter):
-        rect_size = c.IMAGE.SPLASH_RECT_SIZE
-        for row, column in itertools.product(range(8), range(8)):
-            color = self._grid_colors[(row, column)]
-            painter.setBrush(QtGui.QColor(*color))
-            painter.setPen(QtGui.QColor(*color))
-            x = size.width() * (row / 8)
-            y = size.height() * (column / 8)
-            painter.drawRect(x, y, rect_size, rect_size)
+        rect_data = self._get_rect_data(
+            size=size,
+            nb_squares=c.IMAGE.NB_SQUARES,
+            border=self._border_size,
+        )
 
-    def _hue_change(self):
-        self._hue += 0.5
-        if self._hue > 359:
-            self._hue = 0
+        last_row, last_column = max(self._grid_iter)
+        for row, column in self._grid_iter:
+            is_random = (row, column) in self._randoms
+            is_band = (row, column) in self._current_band
+            to_color = is_random or is_band
 
-        self.setStyleSheet(
-            f'background-color:hsv({self._hue}, 255, 255);'
+            if to_color:
+                qcolor = QtGui.QColor()
+                qcolor.setHsv(self._hue, 100, 120)
+            else:
+                color = self._grid_colors[(row, column)]
+                qcolor = QtGui.QColor(*color)
+
+            painter.setBrush(qcolor)
+            painter.setPen(qcolor)
+
+            draw_width = rect_data.width
+            if row == last_row:
+                draw_width = rect_data.width + rect_data.extra_width
+
+            draw_height = rect_data.height
+            if column == last_column:
+                draw_height = rect_data.height + rect_data.extra_height
+
+            x, y = self._get_rect_position(
+                row=row,
+                column=column,
+                width=rect_data.width,
+                height=rect_data.height,
+                border=self._border_size
+            )
+            painter.drawRect(x, y, draw_width, draw_height)
+
+    @staticmethod
+    def _get_band(band_no):
+        box_1 = list(itertools.product(range(3, 5), range(3, 5)))
+        box_2 = list(itertools.product(range(2, 6), range(2, 6)))
+        box_3 = list(itertools.product(range(1, 7), range(1, 7)))
+        box_4 = list(itertools.product(range(8), range(8)))
+        if band_no == 0:
+            return box_1
+        elif band_no == 1:
+            return list(set(box_2) - set(box_1))
+        elif band_no == 2:
+            return list(set(box_3) - set(box_2))
+        elif band_no == 3:
+            return list(set(box_4) - set(box_3))
+        else:
+            raise ValueError(f'Band No.{band_no} is defined!')
+
+    @staticmethod
+    def _get_rect_data(size, nb_squares, border):
+        """
+        Given a width, height, number of sqaures and border size between
+        the squares, returns the size of the rectangles and the extra width
+        and height left after all borders and rectangle sizes are considered
+        """
+        w, h = size.width(), size.height()
+        n = nb_squares
+        b = border
+        width = int((w - ((n + 1) * b)) / n)
+        height = int((h - ((n + 1) * b)) / n)
+        extra_width = w - (((n + 1)) * b + (n * width))
+        extra_height = h - (((n + 1)) * b + (n * height))
+
+        return RECT_DATA(
+            width=width,
+            height=height,
+            extra_width=extra_width,
+            extra_height=extra_height
         )
 
     @staticmethod
-    def _get_grid_color_map():
-        image = Image.open(c.IMAGE.GRID_IMAGE_FILE_PATH)
-        coords = imager.Coordinates(
-            border_size=0,
-            square_size=c.IMAGE.SPLASH_RECT_SIZE,
-        )
-        colors = {}
-        for row, column in itertools.product(range(8), range(8)):
-            pixel_pos = coords.square_to_pixel(row, column)
-            colors[(row, column)] = image.getpixel(pixel_pos)
+    def _get_rect_position(row, column, width, height, border):
+        x = ((row + 1) * border) + (row * width)
+        y = ((column + 1) * border) + (column * height)
+        return x, y
 
-        return colors
+    def _hue_change(self):
+        self._hue += 0.7
+        if self._hue > 359:
+            self._hue = 0
+
+        self.setStyleSheet(f'background-color:hsv({self._hue}, 255, 60);')
+
+    def _randomize_colors(self):
+        values = list(self._grid_colors.values())[:]
+        random.shuffle(values)
+        keys = list(self._grid_colors.keys())[:]
+        self._grid_colors.clear()
+        self._grid_colors = dict([(k, v) for k, v in zip(keys, values)])
+
+    def _randomize_squares(self):
+        randoms = self._grid_iter[:]
+        random.shuffle(randoms)
+        self._randoms = self._prune_neighbors(randoms[:self.NB_RANDOMS])
+
+    def _prune_neighbors(self, squares):
+        first_random = random.randint(0, len(squares) - 1)
+        pruned = [squares.pop(first_random)]
+        for row, column in squares:
+            if self._is_neigbour((row, column), pruned):
+                continue
+            else:
+                pruned.append((row, column))
+        return pruned
+
+    @staticmethod
+    def _is_neigbour(square, squares):
+        if square[0] in [s[0] for s in squares]:
+            for y in [s[1] for s in squares]:
+                if square[1] in (y - 1, y + 1):
+                    return True
+        if square[1] in [s[1] for s in squares]:
+            for x in [s[0] for s in squares]:
+                if square[0] in (x - 1, x + 1):
+                    return True
+        return False
+
+    def _change_band(self):
+        self._current_band_no -= 1
+        if self._current_band_no < 0:
+            self._current_band_no = 2
+
+        self._current_band = self._get_band(band_no=self._current_band_no)
 
     def _draw_overlay(self, size, painter):
-        point2 = QtCore.QPoint(0, 0)
-        point2.setX((size.width() - self._pychess_pixmap.width()) / 2)
-        point2.setY((size.height() - self._pychess_pixmap.height()) / 2)
-        painter.drawPixmap(point2, self._pychess_pixmap)
+        center = QtCore.QPoint(0, 0)
+        center.setX((size.width() - self._pychess_pixmap.width()) / 2)
+        center.setY((size.height() - self._pychess_pixmap.height()) / 2)
+        painter.drawPixmap(center, self._pychess_pixmap)
+
+
+class SmoothImageLabel(QtWidgets.QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    def setPixmap(self, pixmap):
+        self.pixmap = pixmap
+        super().setPixmap(pixmap)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        painter.drawPixmap(0, 0, self.pixmap)
+        painter.end()
+        painter = None
 
 
 class ButtonLabel(QtWidgets.QLabel):
@@ -575,7 +764,7 @@ class BoardWidget(QtWidgets.QDialog):
         # Add white capture image
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_white)
-        self._captured_label_white = QtWidgets.QLabel()
+        self._captured_label_white = SmoothImageLabel()
         self._captured_label_white.setPixmap(self._captured_pixmap_white)
 
         self._main_layout.addWidget(self._captured_label_white)
@@ -588,7 +777,7 @@ class BoardWidget(QtWidgets.QDialog):
         self._captured_pixmap_black = QtGui.QPixmap.fromImage(
             self._captured_image.qt_image_black
         )
-        self._captured_label_black = QtWidgets.QLabel()
+        self._captured_label_black = SmoothImageLabel()
         self._captured_label_black.setPixmap(self._captured_pixmap_black)
         self._main_layout.addWidget(self._captured_label_black)
 
@@ -606,7 +795,7 @@ class BoardWidget(QtWidgets.QDialog):
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
 
         # Create Label and add the pixmap
-        self._image_label = ImageLabel(pixmap=self._pixmap)
+        self._image_label = BoardImageLabel(pixmap=self._pixmap)
         self._image_label.setCursor(
             QtGui.QCursor(QtCore.Qt.PointingHandCursor)
         )
@@ -1018,9 +1207,6 @@ class MoveWidget(QtWidgets.QDialog):
 
         self._highlight_format = self._highlight_format()
         self._plain_format = self._plain_format()
-
-        self._font = self._load_chess_fonts()
-
         self._cursor_pos_map = {}
         self._move_index_word_data = {}
         self._last_highlighted = None
@@ -1108,18 +1294,6 @@ class MoveWidget(QtWidgets.QDialog):
             winning_text = None
 
         return winning_text, move_string
-
-    def _load_chess_fonts(self):
-        font_id = QtGui.QFontDatabase().addApplicationFont(
-            c.APP.CHESS_FONT_FILE_PATH
-        )
-        if font_id == -1:
-            error_msg = (
-                f'Could not load font from {c.APP.CHESS_FONT_FILE_PATH}'
-            )
-            raise RuntimeError(error_msg)
-
-        self._font = QtGui.QFont(c.APP.CHESS_FONT_FAMILY)
 
     def _apply_chess_fonts(self, text, color):
         piece_str = None
@@ -1239,8 +1413,10 @@ class MoveWidget(QtWidgets.QDialog):
     @staticmethod
     def _create_text_edit():
         textedit = QtWidgets.QTextEdit()
-        textedit.setFontFamily(c.APP.CHESS_FONT_FAMILY)
-        textedit.setStyleSheet('border: 1px solid rgb(90, 90, 90)')
+        textedit.setStyleSheet(
+            'border: 1px solid rgb(90, 90, 90); '
+            f'font-family: {c.APP.CHESS_FONT_FAMILY}; '
+        )
         textedit.setReadOnly(True)
         textedit.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         textedit.viewport().setCursor(
@@ -1817,8 +1993,10 @@ class SaveGameDataWidget(QtWidgets.QDialog):
         ]
 
         if not all(data):
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setText("Missing details! Please fill all fields.")
+            msg_box = CustomMessageBox(
+                text="Missing details! Please fill all fields.",
+                title="Game details missing"
+            )
             msg_box.exec_()
             return
 
@@ -1959,10 +2137,255 @@ class SelectPromotionWidget(QtWidgets.QDialog):
 
     def closeEvent(self, event):
         if self._promotion is None:
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setText("Please select a promotion type")
+            msg_box = CustomMessageBox(
+                text="Please select a promotion type",
+                title="Select a promotion type",
+            )
             msg_box.exec_()
             event.ignore()
             return
 
         self.SELECTED_PROMOTION_SIGNAL.emit(self._promotion)
+
+
+class CustomMessageBox(QtWidgets.QDialog):
+    YES_SELECTED_SIGNAL = QtCore.Signal(bool)
+
+    BTN_TYPE = collections.namedtuple(
+        'BTN_TYPE', ['yes', 'no', 'ok']
+    )('YES', 'NO', 'OK')
+
+    def __init__(self, text, title, is_yes_no=False, parent=None):
+        super().__init__(parent=parent)
+        text = self._format_text(text)
+        self._text = f'\n{text}\n'
+        self._title = title
+        self._is_yes_no = is_yes_no
+        self._setup_ui()
+
+    @staticmethod
+    def _format_text(text, width=45):
+        regex = r"([\S/\n]+)"
+        words = [m.group(1) for m in re.finditer(regex, text, re.MULTILINE)]
+        running_line_width = 0
+        lines = []
+        line = []
+        for word in words:
+            end = None
+            if '\n' in word:
+                word, end = word.split('\n', 1)
+                line.append(word)
+                lines.append(' '.join(line))
+                line = [end]
+                running_line_width = len(end)
+                continue
+
+            running_line_width += len(word)
+            line.append(word)
+
+            if running_line_width > width:
+                lines.append(' '.join(line))
+                line = []
+                running_line_width = 0
+
+        if line:
+            lines.append(' '.join(line))
+
+        return '\n'.join(lines)
+
+    def _setup_ui(self):
+        self.setStyleSheet(c.APP.STYLESHEET)
+        self.setWindowTitle(self._title)
+        self.setModal(True)
+        self._layout = QtWidgets.QVBoxLayout(self)
+        self._layout.setContentsMargins(30, 30, 30, 30)
+
+        self._text_box = QtWidgets.QLabel()
+        self._text_box.setStyleSheet('font-size: 18px;')
+        self._text_box.setText(self._text)
+        self._layout.addWidget(self._text_box)
+
+        button_layout = self._create_button_layout()
+        self._layout.addLayout(button_layout)
+
+    def _create_button_layout(self):
+        btn_layout = QtWidgets.QHBoxLayout()
+
+        btn_types = [self.BTN_TYPE.ok]
+        if self._is_yes_no:
+            btn_types = [self.BTN_TYPE.yes, self.BTN_TYPE.no]
+
+        for btn_type in btn_types:
+            btn = QtWidgets.QPushButton(btn_type)
+            btn.setMinimumHeight(50)
+            btn.setMinimumWidth(100)
+            btn.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Expanding,
+            )
+            func = functools.partial(
+                self._btn_clicked,
+                btn_type=btn_type,
+            )
+            btn.clicked.connect(func)
+            btn_layout.addWidget(btn)
+
+        return btn_layout
+
+    def _btn_clicked(self, btn_type):
+        if self._is_yes_no:
+            self.YES_SELECTED_SIGNAL.emit(btn_type == self.BTN_TYPE.yes)
+
+        self.close()
+
+    def showEvent(self, event):
+        self.setFixedSize(self.sizeHint())
+
+
+class MovieGenerationThread(QtCore.QThread):
+    TOTAL_IMAGES_SIGNAL = QtCore.Signal(int)
+    MOVIE_IMAGE_GENERATED_SIGNAL = QtCore.Signal()
+    TITLE_IMAGE_CREATED_SIGNAL = QtCore.Signal()
+    MOVIE_IMAGE_COMPILED_SIGNAL = QtCore.Signal()
+    MOVIE_IMAGES_DONE = QtCore.Signal()
+    MOVIE_DONE = QtCore.Signal()
+
+    def __init__(self, creator, game_index, movie_file_path, parent=None):
+        super().__init__(parent=parent)
+        self._creator = creator
+        self._game_index = game_index
+        self._movie_file_path = movie_file_path
+
+    def create_movie(self):
+        self.start()
+
+    def run(self):
+        self._creator.create_movie(
+            thread=self,
+            game_index=self._game_index,
+            movie_file_path=self._movie_file_path,
+        )
+        self.quit()
+
+
+class MovieProgressBar(QtWidgets.QDialog):
+    MAX_WIDTH = 400
+    PBAR_HEIGHT = 3
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._total = 0
+        self._current = 0
+        self._closed_by_process = False
+        self._state = ''
+        self._hue = 0
+
+        self._setup_ui()
+
+    @property
+    def total(self):
+        return self._total
+
+    @total.setter
+    def total(self, val):
+        self._total = val
+
+    def _setup_ui(self):
+        self.setWindowTitle('Generating movie from pgn')
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(40, 40, 40, 40)
+
+        status_layout = QtWidgets.QHBoxLayout()
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(0)
+
+        self._status_label = QtWidgets.QLabel()
+        self._status_label.setStyleSheet('font-size: 16px;')
+        status_layout.addWidget(self._status_label)
+
+        status_layout.addStretch(1)
+
+        self._percent_label = QtWidgets.QLabel()
+        self._percent_label.setStyleSheet(
+            f'font-family: {c.APP.FONT_FAMILY}; '
+            'font-size: 16px;'
+        )
+        status_layout.addWidget(self._percent_label)
+
+        layout.addLayout(status_layout)
+
+        # Empty label to create extra space
+        empty_label_top = QtWidgets.QLabel()
+        empty_label_top.setFixedHeight(4)
+        layout.addWidget(empty_label_top)
+
+        progress_bar_layout = QtWidgets.QHBoxLayout()
+        progress_bar_layout.setSpacing(0)
+
+        self._progress_label = QtWidgets.QLabel()
+        self._progress_label.setFixedWidth(0)
+        self._progress_label.setFixedHeight(self.PBAR_HEIGHT)
+        progress_bar_layout.addWidget(self._progress_label)
+
+        self._progress_bg_label = QtWidgets.QLabel()
+        self._progress_bg_label.setFixedWidth(self.MAX_WIDTH)
+        self._progress_bg_label.setFixedHeight(self.PBAR_HEIGHT)
+        self._progress_bg_label.setStyleSheet(
+            'background: rgb(100, 100, 100);'
+        )
+        self._progress_bg_label.setContentsMargins(0, 0, 0, 0)
+        progress_bar_layout.addWidget(self._progress_bg_label)
+
+        layout.addLayout(progress_bar_layout)
+
+    def display_text(self, text):
+        self._state = text
+        self._status_label.clear()
+        self._status_label.setText(text)
+
+    def update_move(self):
+        self._update()
+
+    def update_compile(self):
+        self._update()
+
+    def _update(self):
+        if not self._total:
+            return
+
+        self._current += 1
+        fraction_completed = self._current / self._total
+        self._hue = 359 * fraction_completed
+        self._progress_label.setFixedWidth(fraction_completed * self.MAX_WIDTH)
+        if self._hue <= 180:
+            c_hue = 179 + self._hue
+        else:
+            c_hue = self._hue - 180
+
+        self._progress_label.setStyleSheet(
+            f'background: hsv({self._hue}, 255, 255); '
+            f'color: hsv({c_hue}, 255, 255);'
+        )
+        percent = str(f'{fraction_completed * 100:05.2f}%').zfill(2)
+        self._percent_label.setText(percent)
+
+        self._progress_bg_label.setFixedWidth(
+            (1 - fraction_completed) * self.MAX_WIDTH
+        )
+
+    def finish(self):
+        self._closed_by_process = True
+        self._total = 0
+        self._current = 0
+        self._state = ''
+        self._hue = 0
+        self.close()
+
+    def closeEvent(self, event):
+        if not self._closed_by_process:
+            event.ignore()
+
+        self._closed_by_process = False
+
+    def showEvent(self, event):
+        self.setFixedSize(self.sizeHint())
