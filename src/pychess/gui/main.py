@@ -836,6 +836,8 @@ class MainWidget(QtWidgets.QDialog):
             )
             msg_box.YES_SELECTED_SIGNAL.connect(self._reset_result)
             msg_box.exec_()
+        else:
+            self._reset()
 
     def _reset_result(self, result):
         if result:
