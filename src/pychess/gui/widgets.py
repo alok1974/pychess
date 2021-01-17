@@ -254,7 +254,12 @@ class BoardImageLabel(QtWidgets.QLabel):
         if self._hue > 359:
             self._hue = 0
 
-        self.setStyleSheet(f'background-color:hsv({self._hue}, 255, 60);')
+        if not self._draw_splash:
+            self.setStyleSheet(
+                'background-color: rgb(25, 25, 25);'
+            )
+        else:
+            self.setStyleSheet(f'background-color:hsv({self._hue}, 255, 60);')
 
     def _randomize_colors(self):
         values = list(self._grid_colors.values())[:]
