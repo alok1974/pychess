@@ -263,7 +263,7 @@ class PGN2MOVES:
     def get_moves(self, game_index):
         return self._get_moves(game_index=game_index)
 
-    def create_movie(self, thread, game_index, movie_file_path, fps=1):
+    def create_movie(self, game_index, movie_file_path, fps=1, thread=None):
         self._thread = thread
         with self._movie_folder() as folder:
             self._emit_total_movie_images(game_index)
