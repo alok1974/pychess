@@ -11,22 +11,6 @@ from .. import constant as c
 from ..element.squarer import Square
 
 
-def get_grid_color_map():
-    n = c.IMAGE.NB_SQUARES
-    image = Image.open(c.IMAGE.GRID_IMAGE_FILE_PATH)
-    square_size = int(c.IMAGE.BASE_IMAGE_SIZE / n)
-    coords = Coordinates(
-        border_size=0,
-        square_size=square_size,
-    )
-    colors = {}
-    for row, column in itertools.product(range(n), range(n)):
-        pixel_pos = coords.square_to_pixel(row, column)
-        colors[(row, column)] = image.getpixel(pixel_pos)
-
-    return colors
-
-
 class Coordinates:
     """
     The image is assumed to be composed as following,
@@ -153,6 +137,49 @@ class BoardImage(QtCore.QObject):
         self._timer.setInterval(interval)
         self._timer.timeout.connect(self._update_frame)
         self._init_anim_params()
+
+    @classmethod
+    def get_grid_color_map(cls):
+        n = c.IMAGE.NB_SQUARES
+        image = Image.open(c.IMAGE.GRID_IMAGE_FILE_PATH)
+        square_size = int(c.IMAGE.BASE_IMAGE_SIZE / n)
+        coords = Coordinates(
+            border_size=0,
+            square_size=square_size,
+        )
+        colors = {}
+        for row, column in itertools.product(range(n), range(n)):
+            pixel_pos = coords.square_to_pixel(row, column)
+            colors[(row, column)] = image.getpixel(pixel_pos)
+
+        return colors
+
+    @classmethod
+    def get_active_pixels(cls, piece_type, dart_size=2):
+        piece_name = piece_type.name
+        piece_images = getattr(c.IMAGE.PROMOTION_IMAGE, piece_name)
+        image_data = getattr(piece_images, c.Color.black.name)
+        image_name = getattr(image_data, 'default')
+        image_path = os.path.join(c.IMAGE.IMAGE_DIR, image_name)
+        image = Image.open(image_path)
+        cx = int(image.width / 2)
+        cy = int(image.height / 2)
+        nb_rows = int(image.width / dart_size)
+        nb_columns = int(image.height / dart_size)
+        actives = []
+        for row in range(nb_rows):
+            for column in range(nb_columns):
+                x = int(row * dart_size)
+                y = int(column * dart_size)
+                _, _, _, a = image.getpixel((x, y))
+                if a:
+                    actives.append((x, y))
+
+        # Adding image center as last value. It can be extracted for applying
+        # transformations from the the center
+        actives.append((cx, cy))
+
+        return actives
 
     @property
     def board(self):
@@ -289,7 +316,7 @@ class BoardImage(QtCore.QObject):
             h=image.height,
             n=8,
         )
-        color_map = get_grid_color_map()
+        color_map = self.get_grid_color_map()
         colors = list(color_map.values())
         random.shuffle(colors)
         color_map = {k: colors[i] for i, k in enumerate(color_map.keys())}

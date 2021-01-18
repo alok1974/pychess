@@ -6,6 +6,7 @@ import functools
 import re
 import itertools
 import random
+import math
 
 
 from PySide2 import QtWidgets, QtCore, QtGui
@@ -37,7 +38,7 @@ RECT_DATA = collections.namedtuple(
 
 
 class BoardImageLabel(QtWidgets.QLabel):
-    NB_RANDOMS = 12
+    NB_RANDOMS = 8
 
     def __init__(self, pixmap, parent=None):
         super().__init__(parent=parent)
@@ -50,26 +51,54 @@ class BoardImageLabel(QtWidgets.QLabel):
             QtWidgets.QSizePolicy.MinimumExpanding,
         )
 
-        self._draw_splash = True
-        self._grid_iter = list(
-            itertools.product(
-                range(c.IMAGE.NB_SQUARES),
-                range(c.IMAGE.NB_SQUARES),
-            ),
-        )
+        self._splash_on = True
 
-        self._grid_colors = imager.get_grid_color_map()
-        self._grid_max = c.IMAGE.NB_SQUARES - 1
+        self._init_splash_graphics_params()
+        self._init_splash_graphics_timers()
 
-        randoms = self._grid_iter[:]
-        random.shuffle(randoms)
-        self._randoms = randoms[:self.NB_RANDOMS]
+    @property
+    def splash_on(self):
+        return self._splash_on
 
-        self._border_size = 2
+    @splash_on.setter
+    def splash_on(self, val):
+        self._splash_on = val
 
+    def paintEvent(self, event):
+        size = self.size()
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+
+        if self._splash_on:
+            self._draw_splash_graphics(size=size, painter=painter)
+        else:
+            self._draw_board(size=size, painter=painter)
+
+        painter.end()
+        painter = None
+
+    def showEvent(self, event):
+        self._init_width = self.sizeHint().width()
+        self._init_height = self.sizeHint().height()
+
+    def resizeEvent(self, event):
+        self._scale = (
+            (
+                (self.size().width() / self._init_width) +
+                (self.size().height() / self._init_height)
+            ) / 2
+        ) ** 2
+
+    def setPixmap(self, pixmap):
+        self.pixmap = pixmap
+        super().setPixmap(self.pixmap)
+
+    def _init_splash_graphics_timers(self):
         self._hue = 0
         self._hue_timer = QtCore.QTimer()
-        self._hue_timer.timeout.connect(self._hue_change)
+        self._hue_timer.timeout.connect(self._update_hue)
         self._hue_timer.start()
 
         self._color_timer = QtCore.QTimer()
@@ -89,82 +118,48 @@ class BoardImageLabel(QtWidgets.QLabel):
         self._band_timer.timeout.connect(self._change_band)
         self._band_timer.start()
 
-    @property
-    def draw_splash(self):
-        return self._draw_splash
-
-    @draw_splash.setter
-    def draw_splash(self, val):
-        self._draw_splash = val
-
-    def setPixmap(self, pixmap):
-        self.pixmap = pixmap
-        super().setPixmap(self.pixmap)
-
-    def paintEvent(self, event):
-        size = self.size()
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
-        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
-        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
-
-        if self._draw_splash:
-            self._draw_grid(size=size, painter=painter)
-            self._draw_rays(size=size, painter=painter)
-            self._draw_overlay(size=size, painter=painter)
-        else:
-            self._draw_pixmap(size=size, painter=painter)
-
-        painter.end()
-        painter = None
-
-    def _draw_pixmap(self, size, painter):
-        point = QtCore.QPoint(0, 0)
-        scaled_pixmap = self.pixmap.scaled(
-            size,
-            QtCore.Qt.KeepAspectRatio,
-            transformMode=QtCore.Qt.SmoothTransformation,
+    def _init_splash_graphics_params(self):
+        self._grid_iter = list(
+            itertools.product(
+                range(c.IMAGE.NB_SQUARES),
+                range(c.IMAGE.NB_SQUARES),
+            ),
         )
 
-        point.setX((size.width() - scaled_pixmap.width()) / 2)
-        point.setY((size.height() - scaled_pixmap.height()) / 2)
+        self._grid_colors = imager.BoardImage.get_grid_color_map()
+        self._grid_max = c.IMAGE.NB_SQUARES - 1
 
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
-        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
-        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
-        painter.drawPixmap(point, scaled_pixmap)
+        randoms = self._grid_iter[:]
+        random.shuffle(randoms)
+        self._randoms = randoms[:self.NB_RANDOMS]
 
-    def _draw_rays(self, size, painter):
-        lcolor = QtGui.QColor()
-        lcolor.setHsv(self._hue, 100, 255, 60)
-        painter.setBrush(lcolor)
-        painter.setPen(lcolor)
+        self._border_size = 2
 
-        center_x = (
-                int((size.width() - self._pychess_pixmap.width()) / 2) +
-                c.IMAGE.PYCHESS_FOCUS[0]
-        )
-        center_y = (
-                int((size.height() - self._pychess_pixmap.height()) / 2) +
-                c.IMAGE.PYCHESS_FOCUS[1]
-        )
+        self._init_width = self.sizeHint().width()
+        self._init_height = self.sizeHint().height()
 
-        sign_x = random.choice([-1, 1])
-        x_mult = random.randint(0, 100)
-        x = sign_x * size.width() * x_mult / 100
+        self._scale = ((self._init_width + self._init_height) / 2) ** 2
 
-        sign_y = random.choice([-1, 1])
-        y_mult = random.randint(0, 100)
-        y = sign_y * size.height() * y_mult / 100
-
-        painter.drawLine(
-            center_x,
-            center_y,
-            center_x + x,
-            center_y + y,
+        self._alpha_scale = 0.0
+        self._quad_it = itertools.cycle(
+            [
+                ((0, 50), (0, 50)),
+                ((51, 200), (0, 50)),
+                ((51, 200), (51, 200)),
+                ((0, 50), (51, 200)),
+            ]
         )
 
-    def _draw_grid(self, size, painter):
+        self._piece_types = []
+
+        self._rest_piece_anim_params()
+
+    def _draw_splash_graphics(self, size, painter):
+        self._draw_bg_grid(size=size, painter=painter)
+        self._draw_piece_anim(size=size, painter=painter)
+        self._draw_logo(size=size, painter=painter)
+
+    def _draw_bg_grid(self, size, painter):
         rect_data = self._get_rect_data(
             size=size,
             nb_squares=c.IMAGE.NB_SQUARES,
@@ -179,10 +174,17 @@ class BoardImageLabel(QtWidgets.QLabel):
 
             if to_color:
                 qcolor = QtGui.QColor()
-                qcolor.setHsv(self._hue, 100, 120)
+                qcolor.setHsv(self._hue, 100, 50)
             else:
                 color = self._grid_colors[(row, column)]
                 qcolor = QtGui.QColor(*color)
+                tcolor = QtGui.QColor()
+                tcolor.setHsv(
+                    qcolor.hue(),
+                    qcolor.saturation(),
+                    qcolor.value() / 2,
+                )
+                qcolor = tcolor
 
             painter.setBrush(qcolor)
             painter.setPen(qcolor)
@@ -203,6 +205,112 @@ class BoardImageLabel(QtWidgets.QLabel):
                 border=self._border_size
             )
             painter.drawRect(x, y, draw_width, draw_height)
+
+    def _draw_piece_anim(self, size, painter):
+        self._t += (4 * self._scale)
+        self._size_scale += 0.06
+        self._alpha_scale += 0.05
+
+        x1 = size.width() * 0.5
+        y1 = size.height() * 0.5
+        x2 = self._dest_x * size.width()
+        y2 = self._dest_y * size.height()
+
+        curr_x, curr_y = self._get_curr_pos_along_line(x1, y1, x2, y2, self._t)
+        dot_scale = 0.5
+
+        out_of_bounds = (
+            curr_x < 0 or
+            curr_x > size.width() or
+            curr_y < 0 or
+            curr_y > size.height()
+        )
+
+        if out_of_bounds:
+            self._rest_piece_anim_params()
+
+        for (x, y) in self._active_pixels:
+            x = x - self._piece_cx  # Apply transform from center
+            y = y - self._piece_cy  # Apply transform from center
+            x = x * dot_scale * self._scale * self._size_scale  # Scale image
+            y = y * dot_scale * self._scale * self._size_scale  # Scale image
+            dot_size = dot_scale * 2 * self._scale * self._size_scale
+            color = QtGui.QColor()
+            alpha = random.randint(50, 255)
+            color.setHsv(self._hue, 80, 255, alpha)
+            painter.setBrush(color)
+            painter.setPen(color)
+            painter.drawEllipse(
+                curr_x + x, curr_y + y, dot_size, dot_size
+            )
+
+            if random.choice([True, False]):
+                continue
+
+            self._draw_rays(
+                size=size,
+                cx=curr_x + (curr_x * random.randint(-3, 3) / 100),
+                cy=curr_y + (curr_y * random.randint(-3, 3) / 100),
+                painter=painter,
+            )
+
+    def _rest_piece_anim_params(self):
+        self._t = 0.0
+        self._size_scale = 0.0
+        self._size_scale = 0.0
+
+        ((x_min, x_max), (y_min, y_max)) = next(self._quad_it)
+        self._dest_x = random.randint(x_min, x_max) / 100
+        self._dest_y = random.randint(y_min, y_max) / 100
+        if not self._piece_types:
+            self._piece_types = [
+                    c.PieceType.queen, c.PieceType.knight,
+                    c.PieceType.rook, c.PieceType.bishop,
+            ]
+            random.shuffle(self._piece_types)
+
+        self._piece_type = self._piece_types.pop()
+        self._active_pixels = imager.BoardImage.get_active_pixels(
+            piece_type=self._piece_type,
+            dart_size=4
+        )
+
+        # Extracting the center of the image. It is packed as the last value
+        # in the active pixels list
+        (self._piece_cx, self._piece_cy) = self._active_pixels.pop()
+
+    def _draw_rays(self, size, cx, cy, painter, alpha_percent=5):
+        lcolor = QtGui.QColor()
+        alpha = int(255 * alpha_percent / 100)
+        lcolor.setHsv(self._hue, 100, 255, alpha)
+        painter.setBrush(lcolor)
+        painter.setPen(lcolor)
+
+        sign_x = random.choice([-1, 1])
+        x_mult = random.randint(0, 50)
+        x = sign_x * size.width() * x_mult / 100
+
+        sign_y = random.choice([-1, 1])
+        y_mult = random.randint(0, 50)
+        y = sign_y * size.height() * y_mult / 100
+
+        painter.drawLine(cx, cy, cx + x, cy + y)
+
+    def _draw_board(self, size, painter):
+        point = QtCore.QPoint(0, 0)
+        scaled_pixmap = self.pixmap.scaled(
+            size,
+            QtCore.Qt.KeepAspectRatio,
+            transformMode=QtCore.Qt.SmoothTransformation,
+        )
+
+        point.setX((size.width() - scaled_pixmap.width()) / 2)
+        point.setY((size.height() - scaled_pixmap.height()) / 2)
+
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        painter.drawPixmap(point, scaled_pixmap)
 
     @staticmethod
     def _get_band(band_no):
@@ -249,17 +357,29 @@ class BoardImageLabel(QtWidgets.QLabel):
         y = ((column + 1) * border) + (column * height)
         return x, y
 
-    def _hue_change(self):
+    @staticmethod
+    def _get_curr_pos_along_line(x1, y1, x2, y2, t):
+        # Using the parametric form of the two point form of straight line
+        theta = math.atan2((y2 - y1), (x2 - x1))
+
+        curr_x = x1 + (t * math.cos(theta))
+        curr_y = y1 + (t * math.sin(theta))
+
+        return curr_x, curr_y
+
+    def _update_hue(self):
         self._hue += 0.7
         if self._hue > 359:
             self._hue = 0
 
-        if not self._draw_splash:
+        if not self._splash_on:
             self.setStyleSheet(
                 'background-color: rgb(25, 25, 25);'
             )
         else:
-            self.setStyleSheet(f'background-color:hsv({self._hue}, 255, 60);')
+            self.setStyleSheet(
+                'background-color: rgb(0, 0, 0);'
+            )
 
     def _randomize_colors(self):
         values = list(self._grid_colors.values())[:]
@@ -302,7 +422,7 @@ class BoardImageLabel(QtWidgets.QLabel):
 
         self._current_band = self._get_band(band_no=self._current_band_no)
 
-    def _draw_overlay(self, size, painter):
+    def _draw_logo(self, size, painter):
         center = QtCore.QPoint(0, 0)
         center.setX((size.width() - self._pychess_pixmap.width()) / 2)
         center.setY((size.height() - self._pychess_pixmap.height()) / 2)
@@ -997,12 +1117,12 @@ class BoardWidget(QtWidgets.QDialog):
         return all_threatened
 
     def _update_image_label(self):
-        self._image_label.draw_splash = False
+        self._image_label.splash_on = False
         self._pixmap = QtGui.QPixmap.fromImage(self._board_image.qt_image)
         self._image_label.setPixmap(self._pixmap)
 
     def _update_splash(self):
-        self._image_label.draw_splash = True
+        self._image_label.splash_on = True
 
     def _update_captured_image_labels(self):
         self._captured_pixmap_white = QtGui.QPixmap.fromImage(
