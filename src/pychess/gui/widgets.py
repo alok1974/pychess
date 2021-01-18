@@ -2386,9 +2386,9 @@ class MovieGenerationThread(QtCore.QThread):
 
     def run(self):
         self._creator.create_movie(
-            thread=self,
             game_index=self._game_index,
             movie_file_path=self._movie_file_path,
+            thread=self,
         )
         self.quit()
 
