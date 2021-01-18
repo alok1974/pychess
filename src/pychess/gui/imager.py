@@ -4,7 +4,7 @@ import itertools
 import random
 
 
-from PIL import Image, ImageQt, ImageDraw, ImageFont
+from PIL import Image, ImageQt, ImageDraw, ImageFont, ImageColor
 from PySide2 import QtCore
 
 from .. import constant as c
@@ -250,7 +250,7 @@ class BoardImage(QtCore.QObject):
         }
         self.update()
 
-    def create_image_with_move(self, src, dst, move_text, save_to_path):
+    def create_image_with_move(self, src, dst, move_text, save_to_path=None):
         self.highlight(
             square=src,
             highlight_color=c.APP.HIGHLIGHT_COLOR.src,
@@ -275,14 +275,17 @@ class BoardImage(QtCore.QObject):
             fill=(255, 255, 255),
             font=font,
         )
-        image.save(save_to_path)
+        if save_to_path is not None:
+            image.save(save_to_path)
 
-    def create_title_image(self, text, save_to_path):
+        return image
+
+    def create_title_image(self, text, save_to_path=None):
         movie_width, movie_height = self._get_movie_image_size()
         image = Image.new(
             'RGBA',
             (movie_width, movie_height),
-            color=(59, 57, 55),
+            color=(0, 0, 0),
         )
 
         self._add_title_square_bg(image)
@@ -294,7 +297,8 @@ class BoardImage(QtCore.QObject):
             text_color=(168, 179, 193),
             font_size=c.IMAGE.MOVIE_TITLE_FONT_SIZE,
             start_y=250,
-            band_color=(14, 14, 14),
+            band_color=(14, 14, 14, 200),
+            extra_height=50,
         )
 
         # Add game info
@@ -304,11 +308,15 @@ class BoardImage(QtCore.QObject):
             text_color=(14, 14, 14),
             font_size=c.IMAGE.MOVIE_INFO_FONT_SIZE,
             start_y=end_y,
-            band_color=(131, 141, 154),
+            band_color=(131, 141, 154, 220),
         )
 
         self._add_logo(image=image)
-        image.save(save_to_path)
+
+        if save_to_path is not None:
+            image.save(save_to_path)
+
+        return image
 
     def _add_title_square_bg(self, image):
         sizes = self._get_title_images_square_sizes(
@@ -316,26 +324,47 @@ class BoardImage(QtCore.QObject):
             h=image.height,
             n=8,
         )
+
+        nb_randoms = 8
+        random_indices = []
+        for i, row in enumerate(sizes):
+            for j, _ in enumerate(row):
+                random_indices.append((i, j))
+
+        random.shuffle(random_indices)
+        random_indices = random_indices[:nb_randoms]
+
         color_map = self.get_grid_color_map()
         colors = list(color_map.values())
         random.shuffle(colors)
         color_map = {k: colors[i] for i, k in enumerate(color_map.keys())}
-        ctx = ImageDraw.Draw(image)
+        grid_image = Image.new(
+            'RGBA', (image.width, image.height), color=(0, 0, 0)
+        )
+        ctx = ImageDraw.Draw(grid_image)
         curr_pos_x = 0
         curr_pos_y = 0
         h = 0
+        random_color = ImageColor.getrgb(
+            f'hsv({random.randint(0, 360)}, 40%, 45%)'
+        )
         for i, row in enumerate(sizes):
             for j, (w, h) in enumerate(row):
+                if (i, j) in random_indices:
+                    r, g, b = random_color
+                else:
+                    r, g, b, _ = color_map[(i, j)]  # We will darken it a bit
                 ctx.rectangle(
                     [
                         (curr_pos_x, curr_pos_y),
-                        (curr_pos_x + w, curr_pos_y + h)
+                        (curr_pos_x + w - 2, curr_pos_y + h - 2)  # border = 2
                     ],
-                    fill=color_map[(i, j)]
+                    fill=(r, g, b, 127)  # Reducing alpha to darken
                 )
                 curr_pos_x += w
             curr_pos_y += h
             curr_pos_x = 0
+        image.alpha_composite(grid_image, (0, 0))
 
     @staticmethod
     def _get_title_images_square_sizes(w, h, n):
@@ -365,7 +394,7 @@ class BoardImage(QtCore.QObject):
     def _add_logo(self, image):
         logo = self._load_image(image_path=c.IMAGE.PYCHESS_IMAGE_FILE_PATH)
         logo = logo.resize(
-            (int(logo.width / 3), int(logo.height / 3)),
+            (int(logo.width / 2), int(logo.height / 2)),
             resample=Image.LANCZOS,
         )
 
@@ -374,14 +403,13 @@ class BoardImage(QtCore.QObject):
             (
                 int((image.width - logo.width) / 2),
                 (image.height - logo.height) - 50,
-                # int((image.height - logo.height) / 2),
             ),
         )
 
     @staticmethod
     def _add_text_with_band(
             image, text, text_color,
-            font_size, start_y, band_color,
+            font_size, start_y, band_color, extra_height=0,
     ):
         ctx = ImageDraw.Draw(image)
         font = ImageFont.truetype(
@@ -390,7 +418,7 @@ class BoardImage(QtCore.QObject):
         )
 
         text_width, text_height = ctx.textsize(text, font=font)
-        band_height = int(text_height * 1.5)
+        band_height = int(text_height * 1.5) + extra_height
         band = Image.new(
             'RGBA',
             (image.width, band_height),
