@@ -2,6 +2,8 @@
 
 The game of Chess in python
 
+![Demo](pychess.gif)
+
 ## Demo
 
 [![Demo](demo.gif)](https://youtu.be/sE_knceX_E4)

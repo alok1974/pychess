@@ -144,15 +144,15 @@ class BoardImageLabel(QtWidgets.QLabel):
         self._quad_it = itertools.cycle(
             [
                 ((0, 50), (0, 50)),
-                ((51, 200), (0, 50)),
-                ((51, 200), (51, 200)),
-                ((0, 50), (51, 200)),
+                ((51, 101), (0, 50)),
+                ((51, 101), (51, 101)),
+                ((0, 50), (51, 101)),
             ]
         )
 
         self._piece_types = []
 
-        self._rest_piece_anim_params()
+        self._reset_piece_anim_params()
 
     def _draw_splash_graphics(self, size, painter):
         self._draw_bg_grid(size=size, painter=painter)
@@ -227,7 +227,7 @@ class BoardImageLabel(QtWidgets.QLabel):
         )
 
         if out_of_bounds:
-            self._rest_piece_anim_params()
+            self._reset_piece_anim_params()
 
         for (x, y) in self._active_pixels:
             x = x - self._piece_cx  # Apply transform from center
@@ -254,7 +254,7 @@ class BoardImageLabel(QtWidgets.QLabel):
                 painter=painter,
             )
 
-    def _rest_piece_anim_params(self):
+    def _reset_piece_anim_params(self):
         self._t = 0.0
         self._size_scale = 0.0
         self._size_scale = 0.0
@@ -279,7 +279,7 @@ class BoardImageLabel(QtWidgets.QLabel):
         # in the active pixels list
         (self._piece_cx, self._piece_cy) = self._active_pixels.pop()
 
-    def _draw_rays(self, size, cx, cy, painter, alpha_percent=5):
+    def _draw_rays(self, size, cx, cy, painter, alpha_percent=9):
         lcolor = QtGui.QColor()
         alpha = int(255 * alpha_percent / 100)
         lcolor.setHsv(self._hue, 100, 255, alpha)
@@ -287,11 +287,11 @@ class BoardImageLabel(QtWidgets.QLabel):
         painter.setPen(lcolor)
 
         sign_x = random.choice([-1, 1])
-        x_mult = random.randint(0, 50)
+        x_mult = random.randint(0, 20)
         x = sign_x * size.width() * x_mult / 100
 
         sign_y = random.choice([-1, 1])
-        y_mult = random.randint(0, 50)
+        y_mult = random.randint(0, 20)
         y = sign_y * size.height() * y_mult / 100
 
         painter.drawLine(cx, cy, cx + x, cy + y)
