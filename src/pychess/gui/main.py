@@ -165,6 +165,23 @@ class MainWidget(QtWidgets.QDialog):
         self._start_current_player_time()
         self._handle_engine_move()
 
+        self._flip_timer = QtCore.QTimer()
+        self._flip_timer.setInterval(350)
+        self._flip_timer.setSingleShot(True)
+        self._flip_timer.timeout.connect(self._flip_player)
+        self._flip_timer.start()
+
+    def _flip_player(self):
+        if self._current_player == c.Color.black:
+            if self._is_flipped:
+                return
+        elif self._current_player == c.Color.white:
+            if not self._is_flipped:
+                return
+
+        self._is_flipped = self._current_player == c.Color.black
+        self._board_widget.is_flipped = self._is_flipped
+
     def _handle_engine_move(self):
         if self._engine_color is None:
             return
