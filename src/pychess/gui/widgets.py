@@ -1728,6 +1728,7 @@ class OptionWidget(QtWidgets.QDialog):
             'is_standard_type',
             'white_promotion',
             'black_promotion',
+            'auto_flip',
         ]
     )
 
@@ -1745,6 +1746,8 @@ class OptionWidget(QtWidgets.QDialog):
         self._is_standard_type = True
         self._white_promotion = self._default_white_promotion
         self._black_promotion = self._default_black_promotion
+
+        self._auto_flip = False
 
         self._image_store = {}
         self._setup_ui()
@@ -1774,6 +1777,8 @@ class OptionWidget(QtWidgets.QDialog):
             self._white_promotion_combobox.setCurrentIndex(0)
             self._black_promotion_combobox.setCurrentIndex(0)
 
+            self._auto_flip.setChecked(False)
+
     def _setup_ui(self):
         self.setModal(True)
         self._main_layout = QtWidgets.QVBoxLayout(self)
@@ -1794,6 +1799,20 @@ class OptionWidget(QtWidgets.QDialog):
 
         promotion_widget = self._create_promotion_widget()
         self._main_layout.addWidget(promotion_widget)
+
+        self._main_layout.addSpacerItem(
+            QtWidgets.QSpacerItem(1, 20),
+        )
+
+        auto_flip_widget = QtWidgets.QWidget()
+        auto_flip_layout = QtWidgets.QHBoxLayout(auto_flip_widget)
+        text = ' AUTO FLIP BOARD ON PLAYER\'S TURN'
+        self._auto_flip_checkbox = QtWidgets.QCheckBox(text)
+        self._auto_flip_checkbox.setStyleSheet('border: none;')
+        self._auto_flip_checkbox.setChecked(False)
+        auto_flip_layout.addWidget(self._auto_flip_checkbox)
+
+        self._main_layout.addWidget(auto_flip_widget)
 
     def _create_time_widget(self):
         widget = QtWidgets.QWidget()
@@ -2008,6 +2027,10 @@ class OptionWidget(QtWidgets.QDialog):
             self._white_combo_index_changed,
         )
 
+        self._auto_flip_checkbox.stateChanged.connect(
+            self._auto_flip_checkbox_changed,
+        )
+
     def _play_time_slider_changed(self, val):
         self._play_time = val
         self._play_time_slider_value_label.setText(f'{str(val).zfill(2)} min')
@@ -2029,6 +2052,9 @@ class OptionWidget(QtWidgets.QDialog):
     def _black_combo_index_changed(self, index):
         self._black_promotion = self.PROMOTION_PIECES[index]
 
+    def _auto_flip_checkbox_changed(self, val):
+        self._auto_flip = bool(val)
+
     def closeEvent(self, event):
         options = self.OPTIONS(
             play_time=self._play_time,
@@ -2036,6 +2062,7 @@ class OptionWidget(QtWidgets.QDialog):
             is_standard_type=self._is_standard_type,
             white_promotion=self._white_promotion,
             black_promotion=self._black_promotion,
+            auto_flip=self._auto_flip
         )
         self.OPTIONS_SET_SIGNAL.emit(options)
 
