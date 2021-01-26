@@ -118,8 +118,8 @@ class BoardImage(QtCore.QObject):
     FRAME_UPDATED_SIGNAL = QtCore.Signal()
     ANIM_FINISHED_SIGNAL = QtCore.Signal()
 
-    COLOR_MOVE_HINT_CAPTURE = (255, 42, 14)
-    COLOR_MOVE_HINT_EMPTY = (127, 127, 127)
+    COLOR_MOVE_HINT_CAPTURE = (255, 42, 14, 255)
+    COLOR_MOVE_HINT_EMPTY = (64, 158, 72, 100)
 
     FPS = 60
     MIN_DURATION = 0.06  # seconds
@@ -728,7 +728,7 @@ class BoardImage(QtCore.QObject):
 
         return image
 
-    def _draw_move_hint(self, square, width=0.03, circle=False):
+    def _draw_move_hint(self, square, width=0.05, circle=True):
         incr_min = int(self._square_size * (0.5 - width))
         incr_max = int(self._square_size * (0.5 + width))
         possible_destinations = self.board.move_hint(square)
