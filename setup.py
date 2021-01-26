@@ -4,7 +4,7 @@ from glob import glob
 
 
 PACKAGE_NAME = 'pychess'
-PACKAGE_VERSION = '4.9'
+PACKAGE_VERSION = '5.0'
 
 
 setup(
