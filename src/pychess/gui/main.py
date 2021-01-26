@@ -61,6 +61,7 @@ class MainWidget(QtWidgets.QDialog):
         self._current_player = c.Color.white
         self._winner = None
         self._bonus_time = c.GAME.DEFAULT_BONUS_TIME
+
         self._timer_white = QtCore.QTimer()
         self._timer_white.setInterval(1000)  # timeout per 1 second
         self._remaining_time_white = c.GAME.DEFAULT_PLAY_TIME * 60
@@ -68,6 +69,8 @@ class MainWidget(QtWidgets.QDialog):
         self._timer_black = QtCore.QTimer()
         self._timer_black.setInterval(1000)  # timeout per 1 second
         self._remaining_time_black = c.GAME.DEFAULT_PLAY_TIME * 60
+
+        self._auto_flip = False
 
         self._is_paused = False
         self._is_game_over = False
@@ -92,6 +95,7 @@ class MainWidget(QtWidgets.QDialog):
         self._custom_white_promotion = None
         self._custom_black_promotion = None
         self._custom_is_standard_type = None
+        self._custom_auto_flip = None
 
         self._setup_ui()
         self._connect_signals()
@@ -111,11 +115,14 @@ class MainWidget(QtWidgets.QDialog):
         self._current_player = c.Color.white
         self._winner = None
         self._bonus_time = c.GAME.DEFAULT_BONUS_TIME
+
         self._timer_white.stop()
         self._remaining_time_white = c.GAME.DEFAULT_PLAY_TIME * 60
 
         self._timer_black.stop()
         self._remaining_time_black = c.GAME.DEFAULT_PLAY_TIME * 60
+
+        self._auto_flip = False
 
         self._is_paused = False
         self._is_game_over = False
@@ -148,6 +155,7 @@ class MainWidget(QtWidgets.QDialog):
         self._custom_white_promotion = None
         self._custom_black_promotion = None
         self._custom_is_standard_type = None
+        self._custom_auto_flip = False
 
     def update_move(self, game_data):
         self._game_data = game_data
@@ -165,6 +173,30 @@ class MainWidget(QtWidgets.QDialog):
         self._start_current_player_time()
         self._handle_engine_move()
 
+        if self._engine_color is None:
+            self._handle_auto_flip()
+
+    def _handle_auto_flip(self):
+        if not self._auto_flip:
+            return
+
+        self._flip_timer = QtCore.QTimer()
+        self._flip_timer.setInterval(350)
+        self._flip_timer.setSingleShot(True)
+        self._flip_timer.timeout.connect(self._flip_board)
+        self._flip_timer.start()
+
+    def _flip_board(self):
+        if self._current_player == c.Color.black:
+            if self._is_flipped:
+                return
+        elif self._current_player == c.Color.white:
+            if not self._is_flipped:
+                return
+
+        self._is_flipped = self._current_player == c.Color.black
+        self._board_widget.is_flipped = self._is_flipped
+
     def _handle_engine_move(self):
         if self._engine_color is None:
             return
@@ -177,7 +209,16 @@ class MainWidget(QtWidgets.QDialog):
         if best_move is None:
             return
 
-        self.MOVE_SIGNAL.emit((best_move, None))
+        self._engine_move_timer = QtCore.QTimer()
+        self._engine_move_timer.setInterval(350)
+        self._engine_move_timer.setSingleShot(True)
+        self._engine_move_timer.timeout.connect(
+            lambda: self._make_engine_move(best_move)
+        )
+        self._engine_move_timer.start()
+
+    def _make_engine_move(self, move):
+        self.MOVE_SIGNAL.emit((move, None))
 
     def update_board(self):
         self._board_widget.update_board()
@@ -407,6 +448,7 @@ class MainWidget(QtWidgets.QDialog):
         self._custom_white_promotion = options.white_promotion
         self._custom_black_promotion = options.black_promotion
         self._custom_is_standard_type = options.is_standard_type
+        self._custom_auto_flip = options.auto_flip
 
     def _resign(self, winning_color):
         if self._is_paused:
@@ -682,8 +724,26 @@ class MainWidget(QtWidgets.QDialog):
 
     def _choose_player(self):
         if self._has_game_started:
-            return
+            msg_box = CustomMessageBox(
+                text=(
+                    'There is a game in progress.\n'
+                    'Do you really want to start a new game?'
+                ),
+                title="Start new game?",
+                is_yes_no=True,
+            )
+            msg_box.YES_SELECTED_SIGNAL.connect(self._proceed_with_new_game)
+            msg_box.exec_()
+        else:
+            self._set_players_and_start()
 
+    def _proceed_with_new_game(self, proceed):
+        if not proceed:
+            return
+        self._reset()
+        self._set_players_and_start()
+
+    def _set_players_and_start(self):
         w = ChoosePlayerWidget(parent=self)
         w.CHOSEN_COLOR_SIGNAL.connect(
             lambda color: self._start_new_game(engine_color=color)
@@ -700,7 +760,7 @@ class MainWidget(QtWidgets.QDialog):
         w.OPTIONS_SET_SIGNAL.connect(self._set_options)
         w.show()
 
-    def _update_ui_for_start(self):
+    def _update_ui_for_start(self, engine_color=None):
         # NOTE: The order of widget initialization below
         # is important otherwise the move widget does not fill
         # the whole space
@@ -711,6 +771,13 @@ class MainWidget(QtWidgets.QDialog):
         self._board_widget.ready_to_start()
         self.adjustSize()
         self.adjustPosition(self)
+
+        if engine_color is not None:
+            self._auto_flip = engine_color == c.Color.white
+            self._handle_auto_flip()
+        else:
+            self._auto_flip = self._custom_auto_flip
+
 
     def _update_data_for_start(self, engine_color=None):
         self._reset()
@@ -735,6 +802,7 @@ class MainWidget(QtWidgets.QDialog):
         self._bonus_time = self._custom_bonus_time
         self._remaining_time_white = self._custom_play_time * 60
         self._remaining_time_black = self._custom_play_time * 60
+        self._auto_flip = self._custom_auto_flip
 
         game_options = GAME_OPTIONS(
             white_promotion=self._custom_white_promotion,
@@ -792,7 +860,7 @@ class MainWidget(QtWidgets.QDialog):
             # Something went wrong while updating the start data
             return
 
-        self._update_ui_for_start()
+        self._update_ui_for_start(engine_color=engine_color)
         self._update_engine_for_start(engine_color=engine_color)
 
     def _set_game_info(self):

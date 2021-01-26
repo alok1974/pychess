@@ -118,8 +118,8 @@ class BoardImage(QtCore.QObject):
     FRAME_UPDATED_SIGNAL = QtCore.Signal()
     ANIM_FINISHED_SIGNAL = QtCore.Signal()
 
-    COLOR_MOVE_HINT_CAPTURE = (255, 42, 14)
-    COLOR_MOVE_HINT_EMPTY = (127, 127, 127)
+    COLOR_MOVE_HINT_CAPTURE = (255, 42, 14, 255)
+    COLOR_MOVE_HINT_EMPTY = (64, 158, 72, 100)
 
     FPS = 60
     MIN_DURATION = 0.06  # seconds
@@ -137,6 +137,10 @@ class BoardImage(QtCore.QObject):
         self._timer.setInterval(interval)
         self._timer.timeout.connect(self._update_frame)
         self._init_anim_params()
+
+        # Flip timer
+        self._flip_timer = QtCore.QTimer()
+        self._flip_timer.timeout.connect(self._update_flip)
 
     @classmethod
     def get_grid_color_map(cls):
@@ -213,7 +217,7 @@ class BoardImage(QtCore.QObject):
     @is_flipped.setter
     def is_flipped(self, val):
         self._is_flipped = val
-        self._handle_flip()
+        self._flip_timer.start()
 
     @property
     def height(self):
@@ -235,7 +239,7 @@ class BoardImage(QtCore.QObject):
         else:
             self.update()
 
-    def _handle_flip(self):
+    def _draw_flipped(self):
         self._coords.is_flipped = self._is_flipped
         image_to_use = (
             c.IMAGE.FLIPPED_BOARD_IMAGE_FILE_PATH
@@ -477,6 +481,11 @@ class BoardImage(QtCore.QObject):
         self._move_src = None
         self._move_dst = None
         self._move_distance = 0
+        self._flip_direction = -1
+        self._init_height = self._base_image.height
+        self._flip_height = self._init_height
+        self._min_flip_height = 1
+        self._flip_speed = 60
 
     def _reset_anim_params(self):
         self._init_anim_params()
@@ -509,6 +518,83 @@ class BoardImage(QtCore.QObject):
         )
 
         self._timer.start()
+
+    def _update_flip(self):
+        # Here is how the flip anim is applied -
+        # 1. Keep on decreasing height and rotate the image
+        # 2. Once the height reaches 0.1, flip the pieces
+        # 3. Increase the height and keep on rotating the image
+        # 4. If the final height or flip angle reaches a threshold, stop
+        self.update()
+
+        self._flip_height += self._flip_speed * self._flip_direction
+        normalized_height = 1 - (self._flip_height / self._init_height)
+
+        if self._flip_height < self._min_flip_height:
+            self._flip_height = self._min_flip_height
+            self._draw_flipped()
+            self._flip_direction = 1
+            normalized_height = self._flip_height / self._init_height
+
+        angle_magnitude = self._rescale(normalized_height, 0, 1, 0, 90)
+        angle = angle_magnitude * self._flip_direction
+        haze_alpha = int(255 * normalized_height)
+        self._board_image = self._board_image.resize(
+            (
+                self._board_image.width,
+                self._flip_height,
+            ),
+            resample=Image.LANCZOS
+        )
+        haze = Image.new(
+            'RGBA',
+            (self._board_image.width, self._board_image.height),
+            color=(25, 25, 25, haze_alpha),
+        )
+        self._board_image.alpha_composite(haze, (0, 0))
+
+        if self._flip_height > self._init_height:
+            self.update()
+            self._board_image = self._board_image.resize(
+                (
+                    self._board_image.width,
+                    self._init_height,
+                ),
+                resample=Image.LANCZOS
+            )
+            self._board_image.rotate(0)
+            self._flip_direction = -1
+            self._flip_height = self._init_height
+            self._flip_timer.stop()
+            self.update()
+            self.FRAME_UPDATED_SIGNAL.emit()
+            return
+
+        final_image = Image.new(
+            'RGBA',
+            (self._board_image.width, self._init_height),
+            color=(25, 25, 25),
+        )
+
+        final_image.alpha_composite(
+            self._board_image,
+            (
+                int((final_image.width - self._board_image.width) / 2),
+                int((final_image.height - self._board_image.height) / 2),
+            ),
+        )
+
+        final_image = final_image.rotate(angle)
+        self._board_image = final_image
+
+        self.FRAME_UPDATED_SIGNAL.emit()
+
+    @staticmethod
+    def _rescale(x, x1, y1, x2, y2):
+        if x1 == y1:
+            return 0
+
+        return x2 + ((y2 - x2) * (x - x1) / (y1 - x1))
 
     def _update_frame(self):
         self._frame += 1
@@ -642,7 +728,7 @@ class BoardImage(QtCore.QObject):
 
         return image
 
-    def _draw_move_hint(self, square, width=0.03, circle=False):
+    def _draw_move_hint(self, square, width=0.05, circle=True):
         incr_min = int(self._square_size * (0.5 - width))
         incr_max = int(self._square_size * (0.5 + width))
         possible_destinations = self.board.move_hint(square)
